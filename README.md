@@ -29,9 +29,9 @@
 ```mermaid
 graph TD
     Agent[🤖 AI Agent]
-subgraph "Flutter Skill Layer"
-        CLI[bin/launch.dart]
-        MCP[bin/server.dart]
+    subgraph "Flutter Skill Layer"
+        CLI[flutter_skill]
+        MCP[flutter_skill server]
     end
     subgraph "Target App"
         App[📱 Flutter App]

@@ -1,3 +1,8 @@
+## 0.1.2
+
+- Docs: Updated README architecture diagram to reflect `flutter_skill` executable.
+- No functional changes.
+
 ## 0.1.1
 
 - Featured: Simplified CLI with `flutter_skill` global executable.
