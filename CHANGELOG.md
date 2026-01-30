@@ -1,3 +1,31 @@
+## 0.2.20
+
+**Multi-Platform Distribution**
+
+### New Installation Methods
+
+| Method | Platform | Command |
+|--------|----------|---------|
+| Docker | All | `docker pull ghcr.io/ai-dashboad/flutter-skill` |
+| Snap | Linux | `snap install flutter-skill` |
+| Scoop | Windows | `scoop install flutter-skill` |
+| Winget | Windows | `winget install AIDashboard.FlutterSkill` |
+| Devcontainer | All | Feature: `ghcr.io/ai-dashboad/flutter-skill/flutter-skill` |
+
+### Documentation
+
+- Added Continue.dev integration guide (`docs/continue-dev.md`)
+
+### CI/CD
+
+- Added Docker workflow for GHCR publishing
+- Added Snap workflow for Snap Store publishing
+- Added Winget manifest generation on release
+- Added Scoop manifest generation on release
+- Added Devcontainer feature publishing workflow
+
+---
+
 ## 0.2.19
 
 **Smart Diagnosis Tool**
