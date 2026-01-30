@@ -96,7 +96,7 @@ flutter-skill.inspect()
 ### UI Inspection
 | Tool | Description |
 |------|-------------|
-| `inspect` | Get interactive elements (buttons, text fields, etc.) |
+| `inspect` | Get interactive elements with coordinates, size, and center point |
 | `get_widget_tree` | Get widget tree structure with depth control |
 | `get_widget_properties` | Get properties of a widget (size, position, visibility) |
 | `get_text_content` | Extract all visible text from the screen |
@@ -105,13 +105,14 @@ flutter-skill.inspect()
 ### Interactions
 | Tool | Description |
 |------|-------------|
-| `tap` | Tap a widget by Key or Text |
+| `tap` | Tap a widget by Key or Text (returns success/failure) |
 | `double_tap` | Double tap a widget |
 | `long_press` | Long press with configurable duration |
 | `swipe` | Swipe gesture (up/down/left/right) |
+| `edge_swipe` | Swipe from screen edge (for drawer menus, back gestures) |
 | `drag` | Drag from one element to another |
 | `scroll_to` | Scroll to make an element visible |
-| `enter_text` | Enter text into a text field |
+| `enter_text` | Enter text into a text field (returns success/failure) |
 
 ### State & Validation
 | Tool | Description |
@@ -125,7 +126,8 @@ flutter-skill.inspect()
 ### Screenshots
 | Tool | Description |
 |------|-------------|
-| `screenshot` | Take full app screenshot (returns base64) |
+| `screenshot` | Take full app screenshot (quality, max_width options) |
+| `screenshot_region` | Take screenshot of specific region (x, y, width, height) |
 | `screenshot_element` | Take screenshot of specific element |
 
 ### Navigation
@@ -187,7 +189,7 @@ flutter-skill launch /path/to/project
 1. Add dependency:
 ```yaml
 dependencies:
-  flutter_skill: ^0.2.13
+  flutter_skill: ^0.2.15
 ```
 
 2. Initialize in main.dart:

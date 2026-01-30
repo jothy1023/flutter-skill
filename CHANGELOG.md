@@ -1,3 +1,32 @@
+## 0.2.15
+
+**Critical Bug Fixes & AI Agent Improvements**
+
+### Bug Fixes
+- **Fixed tap/enter_text/scroll_to returning misleading success** - Now returns `{success: false, error: "Element not found"}` when element not found
+- Previously these tools returned success even when the target element didn't exist
+
+### New MCP Tools
+- `edge_swipe` - Swipe from screen edge for drawer menus and iOS back gestures
+  - Parameters: `edge` (left/right/top/bottom), `direction` (up/down/left/right), `distance`
+- `screenshot_region` - Capture a cropped region of the screen
+
+### Enhanced Tools
+- `inspect` now returns element coordinates:
+  - `position: {x, y}` - top-left corner
+  - `size: {width, height}` - element dimensions
+  - `center: {x, y}` - center point for coordinate-based tapping
+  - `semanticsLabel` - accessibility label when available
+- `screenshot` now accepts:
+  - `quality` (0.1-1.0) - reduce image size via pixel ratio
+  - `max_width` - scale down large screenshots
+
+### Improvements
+- Better error messages with element key/text in failure responses
+- Tappable elements (InkWell, GestureDetector) now include extracted text
+
+---
+
 ## 0.2.14
 
 **Testing Efficiency & Batch Operations**
