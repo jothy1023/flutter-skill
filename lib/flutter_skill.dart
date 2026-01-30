@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:ui' as ui;
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -424,8 +423,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
     return found;
   }
@@ -448,8 +447,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
     return found;
   }
@@ -729,8 +728,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
 
     return results;
@@ -773,8 +772,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      return buildNode(binding.renderViewElement!, 0);
+    if (binding.rootElement != null) {
+      return buildNode(binding.rootElement!, 0);
     }
     return {};
   }
@@ -838,8 +837,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
 
     return results;
@@ -876,8 +875,8 @@ class FlutterSkillBinding {
 
     final binding = WidgetsBinding.instance;
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
 
     return results;
@@ -958,7 +957,7 @@ class FlutterSkillBinding {
     try {
       final binding = WidgetsBinding.instance;
       // ignore: invalid_use_of_protected_member
-      final renderObject = binding.renderViewElement?.renderObject;
+      final renderObject = binding.rootElement?.renderObject;
       if (renderObject is! RenderRepaintBoundary) {
         // Try to find a RenderRepaintBoundary
         RenderRepaintBoundary? boundary;
@@ -1078,8 +1077,8 @@ class FlutterSkillBinding {
     }
 
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
 
     return currentRoute;
@@ -1125,8 +1124,8 @@ class FlutterSkillBinding {
     }
 
     // ignore: invalid_use_of_protected_member
-    if (binding.renderViewElement != null) {
-      visit(binding.renderViewElement!);
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
     }
 
     return context;
