@@ -7,7 +7,7 @@ void main() async {
 
   // 1. Setup Environment
   final cwd = Directory.current.path;
-  final mockFlutterPath = '$cwd/tests/bin';
+  final mockFlutterPath = '$cwd/test/bin';
   // Add mock flutter to PATH
   final env = Map<String, String>.from(Platform.environment);
   env['PATH'] = '$mockFlutterPath:${env['PATH']}';
