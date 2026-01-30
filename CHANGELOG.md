@@ -1,3 +1,25 @@
+## 0.2.0
+
+**Major Feature Release - 25+ MCP Tools**
+
+### New Features
+- **UI Inspection**: `get_widget_tree`, `get_widget_properties`, `get_text_content`, `find_by_type`
+- **Interactions**: `double_tap`, `long_press`, `swipe`, `drag`
+- **State Validation**: `get_text_value`, `get_checkbox_state`, `get_slider_value`, `wait_for_element`, `wait_for_gone`
+- **Screenshots**: `screenshot` (full app), `screenshot_element` (specific element)
+- **Navigation**: `get_current_route`, `go_back`, `get_navigation_stack`
+- **Debug & Logs**: `get_logs`, `get_errors`, `get_performance`, `clear_logs`
+- **Development**: `hot_reload`, `pub_search`
+
+### Bug Fixes
+- Fixed global swipe using `platformDispatcher.views` for screen center calculation
+- Fixed `screenshot_element` to capture any widget by finding nearest `RenderRepaintBoundary` ancestor
+
+### Documentation
+- Complete rewrite of README.md with all tool categories
+- Updated SKILL.md with full tool reference and parameters
+- Updated USAGE_GUIDE.md with CLI and MCP examples
+
 ## 0.1.6
 
 - Docs: Updated README to reflect unified `flutter_skill` global commands.

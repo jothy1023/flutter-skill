@@ -1,0 +1,8 @@
+# Claude Code local settings
+.claude/
+
+# Test dummy app
+test_dummy/
+
+# Demo projects
+demo_counter/

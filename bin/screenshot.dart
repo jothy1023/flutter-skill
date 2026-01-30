@@ -17,7 +17,7 @@ void main(List<String> args) async {
     await client.connect();
     final base64Image = await client.takeScreenshot();
 
-    if (base64Image.isEmpty) {
+    if (base64Image == null || base64Image.isEmpty) {
       print('Failed to take screenshot (empty result)');
       exit(1);
     }
