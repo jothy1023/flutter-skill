@@ -1,3 +1,29 @@
+## 0.2.17
+
+**P2 Optimizations - Gesture Presets & Wait for Idle**
+
+### New MCP Tools
+
+- `gesture` - Perform gestures with presets or custom coordinates
+  - Presets: `drawer_open`, `drawer_close`, `pull_refresh`, `page_back`, `swipe_left`, `swipe_right`
+  - Custom: Specify `from_x/from_y/to_x/to_y` as screen ratios (0.0-1.0)
+
+- `wait_for_idle` - Wait for app to stabilize (no animations/UI changes)
+  - Parameters: `timeout` (default 5000ms), `min_idle_time` (default 500ms)
+  - Returns idle status and timing info
+
+### Gesture Presets
+
+| Preset | Description |
+|--------|-------------|
+| drawer_open | Swipe from left edge to open drawer |
+| drawer_close | Swipe to close drawer |
+| pull_refresh | Pull down to refresh |
+| page_back | iOS-style back gesture |
+| swipe_left/right | Horizontal swipes |
+
+---
+
 ## 0.2.16
 
 **P0/P1 Expert-level Optimizations**
