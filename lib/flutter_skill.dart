@@ -586,10 +586,10 @@ class FlutterSkillBinding {
       if (renderObject is! RenderBox) return false;
       start = renderObject.localToGlobal(renderObject.size.center(Offset.zero));
     } else {
-      // ignore: invalid_use_of_protected_member
-      final renderView = binding.renderViewElement?.renderObject;
-      if (renderView is! RenderBox) return false;
-      start = renderView.size.center(Offset.zero);
+      // Use window size for global swipe
+      final window = binding.platformDispatcher.views.first;
+      final size = window.physicalSize / window.devicePixelRatio;
+      start = Offset(size.width / 2, size.height / 2);
     }
 
     Offset delta;
@@ -996,9 +996,18 @@ class FlutterSkillBinding {
   static Future<String?> _takeElementScreenshot(String key) async {
     try {
       final element = _findElementByKey(key);
-      if (element == null) return null;
+      if (element == null) {
+        _log('Element not found: $key');
+        return null;
+      }
 
       final renderObject = element.renderObject;
+      if (renderObject == null) {
+        _log('No render object for element: $key');
+        return null;
+      }
+
+      // If it's a RenderRepaintBoundary, capture directly
       if (renderObject is RenderRepaintBoundary) {
         final image = await renderObject.toImage(pixelRatio: 1.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -1006,7 +1015,45 @@ class FlutterSkillBinding {
         return base64Encode(byteData.buffer.asUint8List());
       }
 
-      _log('Element is not a RenderRepaintBoundary');
+      // For other render objects, find the nearest RepaintBoundary ancestor
+      RenderObject? current = renderObject;
+      while (current != null) {
+        if (current is RenderRepaintBoundary) {
+          // Get the element's bounds relative to the boundary
+          if (renderObject is RenderBox) {
+            final box = renderObject;
+            final boundaryBox = current;
+
+            // Get element position relative to boundary
+            final offset = box.localToGlobal(Offset.zero, ancestor: boundaryBox);
+            final size = box.size;
+
+            // Capture the boundary
+            final fullImage = await current.toImage(pixelRatio: 1.0);
+
+            // Crop to element bounds
+            final recorder = ui.PictureRecorder();
+            final canvas = Canvas(recorder);
+
+            // Draw the cropped portion
+            canvas.drawImageRect(
+              fullImage,
+              Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height),
+              Rect.fromLTWH(0, 0, size.width, size.height),
+              Paint(),
+            );
+
+            final picture = recorder.endRecording();
+            final croppedImage = await picture.toImage(size.width.toInt(), size.height.toInt());
+            final byteData = await croppedImage.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData == null) return null;
+            return base64Encode(byteData.buffer.asUint8List());
+          }
+        }
+        current = current.parent;
+      }
+
+      _log('No suitable RenderRepaintBoundary ancestor found for: $key');
       return null;
     } catch (e) {
       _log('Element screenshot failed: $e');
