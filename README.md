@@ -154,13 +154,42 @@ flutter-skill.inspect()
 
 ## Installation Methods
 
-| Method | Command | Auto-Update | Native Binary |
-|--------|---------|-------------|---------------|
-| npm | `npm install -g flutter-skill-mcp` | Manual | Auto-download |
-| Homebrew | `brew install ai-dashboad/flutter-skill/flutter-skill` | `brew upgrade` | Pre-compiled |
-| VSCode | Extensions → "Flutter Skill" | Auto | Auto-download |
-| IntelliJ | Plugins → "Flutter Skill" | Auto | Auto-download |
-| pub.dev | `dart pub global activate flutter_skill` | Manual | Dart runtime |
+| Method | Command | Platform |
+|--------|---------|----------|
+| **npm** | `npm install -g flutter-skill-mcp` | All |
+| **Homebrew** | `brew install ai-dashboad/flutter-skill/flutter-skill` | macOS/Linux |
+| **Docker** | `docker pull ghcr.io/ai-dashboad/flutter-skill` | All |
+| **Snap** | `snap install flutter-skill` | Linux |
+| **Scoop** | `scoop install flutter-skill` | Windows |
+| **Winget** | `winget install AIDashboard.FlutterSkill` | Windows |
+| **pub.dev** | `dart pub global activate flutter_skill` | All |
+| **VSCode** | Extensions → "Flutter Skill" | All |
+| **IntelliJ** | Plugins → "Flutter Skill" | All |
+| **Devcontainer** | See below | All |
+
+### Docker
+
+```bash
+# Run MCP server
+docker run --rm -it ghcr.io/ai-dashboad/flutter-skill server
+
+# Or use in docker-compose
+services:
+  flutter-skill:
+    image: ghcr.io/ai-dashboad/flutter-skill:latest
+    command: ["server"]
+```
+
+### Devcontainer Feature
+
+Add to your `.devcontainer/devcontainer.json`:
+```json
+{
+    "features": {
+        "ghcr.io/ai-dashboad/flutter-skill/flutter-skill:latest": {}
+    }
+}
+```
 
 ### Native Binary Performance
 | Version | Startup Time |
@@ -189,7 +218,7 @@ flutter-skill launch /path/to/project
 1. Add dependency:
 ```yaml
 dependencies:
-  flutter_skill: ^0.2.19
+  flutter_skill: ^0.2.20
 ```
 
 2. Initialize in main.dart:
