@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../flutter_skill_client.dart';
 import 'setup.dart';
 
-const String _currentVersion = '0.2.0';
+const String _currentVersion = '0.2.12';
 
 Future<void> runServer(List<String> args) async {
   // Check for updates in background
@@ -132,6 +132,32 @@ class FlutterMcpServer {
           "properties": {
             "project_path": {"type": "string", "description": "Path to Flutter project"},
             "device_id": {"type": "string", "description": "Target device"},
+            "dart_defines": {"type": "array", "items": {"type": "string"}, "description": "Dart defines (e.g. ['ENV=staging', 'DEBUG=true'])"},
+            "extra_args": {"type": "array", "items": {"type": "string"}, "description": "Additional flutter run arguments"},
+            "flavor": {"type": "string", "description": "Build flavor"},
+            "target": {"type": "string", "description": "Target file (e.g. lib/main_staging.dart)"},
+          },
+        },
+      },
+      {
+        "name": "scan_and_connect",
+        "description": "Scan for running Flutter apps and auto-connect to the first one found",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "port_start": {"type": "integer", "description": "Start of port range (default: 50000)"},
+            "port_end": {"type": "integer", "description": "End of port range (default: 50100)"},
+          },
+        },
+      },
+      {
+        "name": "list_running_apps",
+        "description": "List all running Flutter apps (VM Services) on the system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "port_start": {"type": "integer", "description": "Start of port range (default: 50000)"},
+            "port_end": {"type": "integer", "description": "End of port range (default: 50100)"},
           },
         },
       },
@@ -415,6 +441,10 @@ class FlutterMcpServer {
     if (name == 'launch_app') {
       final projectPath = args['project_path'] ?? '.';
       final deviceId = args['device_id'];
+      final dartDefines = args['dart_defines'] as List<dynamic>?;
+      final extraArgs = args['extra_args'] as List<dynamic>?;
+      final flavor = args['flavor'];
+      final target = args['target'];
 
       if (_flutterProcess != null) {
         _flutterProcess!.kill();
@@ -423,6 +453,22 @@ class FlutterMcpServer {
 
       final processArgs = ['run'];
       if (deviceId != null) processArgs.addAll(['-d', deviceId]);
+      if (flavor != null) processArgs.addAll(['--flavor', flavor]);
+      if (target != null) processArgs.addAll(['-t', target]);
+
+      // Add dart defines
+      if (dartDefines != null) {
+        for (final define in dartDefines) {
+          processArgs.addAll(['--dart-define', define.toString()]);
+        }
+      }
+
+      // Add extra arguments
+      if (extraArgs != null) {
+        for (final arg in extraArgs) {
+          processArgs.add(arg.toString());
+        }
+      }
 
       try {
         await runSetup(projectPath);
@@ -462,6 +508,31 @@ class FlutterMcpServer {
         const Duration(seconds: 120),
         onTimeout: () => "Timed out waiting for app to start",
       );
+    }
+
+    if (name == 'scan_and_connect') {
+      final portStart = args['port_start'] ?? 50000;
+      final portEnd = args['port_end'] ?? 50100;
+
+      final vmServices = await _scanVmServices(portStart, portEnd);
+      if (vmServices.isEmpty) {
+        return {"success": false, "message": "No running Flutter apps found"};
+      }
+
+      // Connect to the first one
+      final uri = vmServices.first;
+      if (_client != null) await _client!.disconnect();
+      _client = FlutterSkillClient(uri);
+      await _client!.connect();
+      return {"success": true, "connected": uri, "available": vmServices};
+    }
+
+    if (name == 'list_running_apps') {
+      final portStart = args['port_start'] ?? 50000;
+      final portEnd = args['port_end'] ?? 50100;
+
+      final vmServices = await _scanVmServices(portStart, portEnd);
+      return {"apps": vmServices, "count": vmServices.length};
     }
 
     if (name == 'pub_search') {
@@ -574,8 +645,49 @@ class FlutterMcpServer {
 
   void _requireConnection() {
     if (_client == null || !_client!.isConnected) {
-      throw Exception("Not connected. Call 'connect_app' or 'launch_app' first.");
+      throw Exception("Not connected. Call 'connect_app', 'launch_app', or 'scan_and_connect' first.");
     }
+  }
+
+  /// Scan for VM Services on local ports
+  Future<List<String>> _scanVmServices(int portStart, int portEnd) async {
+    final vmServices = <String>[];
+    final futures = <Future>[];
+
+    for (var port = portStart; port <= portEnd; port++) {
+      futures.add(_checkVmServicePort(port).then((uri) {
+        if (uri != null) vmServices.add(uri);
+      }));
+    }
+
+    await Future.wait(futures);
+    return vmServices;
+  }
+
+  /// Check if a specific port has a VM Service
+  Future<String?> _checkVmServicePort(int port) async {
+    try {
+      final socket = await Socket.connect('127.0.0.1', port, timeout: const Duration(milliseconds: 200));
+      await socket.close();
+
+      // Try to get VM Service info via HTTP
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:$port/'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(milliseconds: 500));
+
+      if (response.statusCode == 200) {
+        // Extract WebSocket URI from response
+        final body = response.body;
+        if (body.contains('ws://') || body.contains('Dart VM')) {
+          // Construct WebSocket URI
+          return 'ws://127.0.0.1:$port/ws';
+        }
+      }
+    } catch (e) {
+      // Port not available or not a VM Service
+    }
+    return null;
   }
 
   void _sendResult(dynamic id, dynamic result) {
