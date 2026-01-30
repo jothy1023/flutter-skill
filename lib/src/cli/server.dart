@@ -550,6 +550,32 @@ class FlutterMcpServer {
           "required": ["edge", "direction"],
         },
       },
+      {
+        "name": "gesture",
+        "description": "Perform a gesture with preset or custom coordinates. Presets: drawer_open, drawer_close, pull_refresh, page_back, swipe_left, swipe_right",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "preset": {"type": "string", "enum": ["drawer_open", "drawer_close", "pull_refresh", "page_back", "swipe_left", "swipe_right"], "description": "Use a predefined gesture"},
+            "from_x": {"type": "number", "description": "Custom start X (0.0-1.0 as ratio, or pixels)"},
+            "from_y": {"type": "number", "description": "Custom start Y (0.0-1.0 as ratio, or pixels)"},
+            "to_x": {"type": "number", "description": "Custom end X (0.0-1.0 as ratio, or pixels)"},
+            "to_y": {"type": "number", "description": "Custom end Y (0.0-1.0 as ratio, or pixels)"},
+            "duration": {"type": "integer", "description": "Gesture duration in ms (default: 300)"},
+          },
+        },
+      },
+      {
+        "name": "wait_for_idle",
+        "description": "Wait for the app to become idle (no animations, no pending frames)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "timeout": {"type": "integer", "description": "Maximum wait time in ms (default: 5000)"},
+            "min_idle_time": {"type": "integer", "description": "Minimum idle duration to confirm stability (default: 500)"},
+          },
+        },
+      },
 
       // === NEW: Smart Scroll ===
       {
@@ -985,6 +1011,12 @@ class FlutterMcpServer {
         final result = await _client!.edgeSwipe(edge: edge, direction: direction, distance: distance);
         return result;
 
+      case 'gesture':
+        return await _performGesture(args);
+
+      case 'wait_for_idle':
+        return await _waitForIdle(args);
+
       // === NEW: Smart Scroll ===
       case 'scroll_until_visible':
         return await _scrollUntilVisible(args);
@@ -1145,6 +1177,150 @@ class FlutterMcpServer {
       "total_steps": actions.length,
       "completed_steps": results.length,
       "results": results,
+    };
+  }
+
+  /// Gesture presets for common interactions
+  static const Map<String, Map<String, dynamic>> _gesturePresets = {
+    'drawer_open': {
+      'from_x': 0.0,
+      'from_y': 0.5,
+      'to_x': 0.75,
+      'to_y': 0.5,
+      'duration': 300,
+    },
+    'drawer_close': {
+      'from_x': 0.75,
+      'from_y': 0.5,
+      'to_x': 0.0,
+      'to_y': 0.5,
+      'duration': 300,
+    },
+    'pull_refresh': {
+      'from_x': 0.5,
+      'from_y': 0.15,
+      'to_x': 0.5,
+      'to_y': 0.6,
+      'duration': 500,
+    },
+    'page_back': {
+      'from_x': 0.02,
+      'from_y': 0.5,
+      'to_x': 0.8,
+      'to_y': 0.5,
+      'duration': 250,
+    },
+    'swipe_left': {
+      'from_x': 0.8,
+      'from_y': 0.5,
+      'to_x': 0.2,
+      'to_y': 0.5,
+      'duration': 300,
+    },
+    'swipe_right': {
+      'from_x': 0.2,
+      'from_y': 0.5,
+      'to_x': 0.8,
+      'to_y': 0.5,
+      'duration': 300,
+    },
+  };
+
+  /// Perform gesture with preset or custom coordinates
+  Future<Map<String, dynamic>> _performGesture(Map<String, dynamic> args) async {
+    final preset = args['preset'] as String?;
+    final duration = args['duration'] as int? ?? 300;
+
+    double fromX, fromY, toX, toY;
+    int gestureDuration = duration;
+
+    if (preset != null) {
+      final presetConfig = _gesturePresets[preset];
+      if (presetConfig == null) {
+        return {
+          "success": false,
+          "error": {
+            "code": "E102",
+            "message": "Unknown gesture preset: $preset",
+          },
+          "available_presets": _gesturePresets.keys.toList(),
+        };
+      }
+      fromX = presetConfig['from_x'] as double;
+      fromY = presetConfig['from_y'] as double;
+      toX = presetConfig['to_x'] as double;
+      toY = presetConfig['to_y'] as double;
+      gestureDuration = presetConfig['duration'] as int? ?? duration;
+    } else {
+      // Custom coordinates
+      fromX = (args['from_x'] as num?)?.toDouble() ?? 0.5;
+      fromY = (args['from_y'] as num?)?.toDouble() ?? 0.5;
+      toX = (args['to_x'] as num?)?.toDouble() ?? 0.5;
+      toY = (args['to_y'] as num?)?.toDouble() ?? 0.5;
+    }
+
+    // Get screen size to convert ratios to pixels
+    final layoutTree = await _client!.getLayoutTree();
+    final screenWidth = (layoutTree['size']?['width'] as num?)?.toDouble() ?? 400.0;
+    final screenHeight = (layoutTree['size']?['height'] as num?)?.toDouble() ?? 800.0;
+
+    // Convert ratios (0.0-1.0) to pixels if values are small
+    final startX = fromX <= 1.0 ? fromX * screenWidth : fromX;
+    final startY = fromY <= 1.0 ? fromY * screenHeight : fromY;
+    final endX = toX <= 1.0 ? toX * screenWidth : toX;
+    final endY = toY <= 1.0 ? toY * screenHeight : toY;
+
+    await _client!.swipeCoordinates(startX, startY, endX, endY, duration: gestureDuration);
+
+    return {
+      "success": true,
+      "gesture": preset ?? "custom",
+      "from": {"x": startX.round(), "y": startY.round()},
+      "to": {"x": endX.round(), "y": endY.round()},
+      "duration": gestureDuration,
+    };
+  }
+
+  /// Wait for the app to become idle
+  Future<Map<String, dynamic>> _waitForIdle(Map<String, dynamic> args) async {
+    final timeout = args['timeout'] as int? ?? 5000;
+    final minIdleTime = args['min_idle_time'] as int? ?? 500;
+
+    final stopwatch = Stopwatch()..start();
+    var lastActivityTime = DateTime.now();
+    var previousTree = '';
+
+    while (stopwatch.elapsedMilliseconds < timeout) {
+      // Get current widget tree snapshot
+      final tree = await _client!.getWidgetTree(maxDepth: 3);
+      final currentTree = tree.toString();
+
+      if (currentTree == previousTree) {
+        // No changes detected
+        final idleTime = DateTime.now().difference(lastActivityTime).inMilliseconds;
+        if (idleTime >= minIdleTime) {
+          return {
+            "success": true,
+            "idle": true,
+            "idle_time_ms": idleTime,
+            "total_wait_ms": stopwatch.elapsedMilliseconds,
+          };
+        }
+      } else {
+        // Activity detected, reset idle timer
+        lastActivityTime = DateTime.now();
+        previousTree = currentTree;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    return {
+      "success": false,
+      "idle": false,
+      "message": "Timeout waiting for idle state",
+      "timeout_ms": timeout,
+      "total_wait_ms": stopwatch.elapsedMilliseconds,
     };
   }
 
