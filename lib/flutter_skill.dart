@@ -104,16 +104,78 @@ class FlutterSkillBinding {
   static List<Map<String, String>> _findInteractiveElements() {
     final results = <Map<String, String>>[];
 
-    // Placeholders for real implementation to pass analysis
-    // In real implementation, we would use recursive visitor.
-    // For now, returning empty to satisfy strict analysis without unused 'visit' function.
+    void visit(Element element) {
+      final widget = element.widget;
 
-    // ignore: unused_local_variable
+      // Simple Heuristic: Check for Buttons and TextFields
+      String? type;
+      String? text;
+      String? key;
+
+      if (widget.key is ValueKey<String>) {
+        key = (widget.key as ValueKey<String>).value;
+      }
+
+      if (widget is ElevatedButton ||
+          widget is TextButton ||
+          widget is OutlinedButton ||
+          widget is IconButton ||
+          widget is FloatingActionButton) {
+        type = 'Button';
+        text = _extractTextFrom(element);
+      } else if (widget is TextField || widget is TextFormField) {
+        type = 'TextField';
+        // Try to find label
+      } else if (widget is InkWell || widget is GestureDetector) {
+        if (widget is InkWell && widget.onTap != null) type = 'Tappable';
+        if (widget is GestureDetector && widget.onTap != null)
+          type = 'Tappable';
+      }
+
+      if (type != null) {
+        results.add({
+          if (key != null) 'key': key,
+          if (text != null) 'text': text,
+          'type': type,
+        });
+      }
+
+      element.visitChildren(visit);
+    }
+
+    // Traverse from root
+    // WidgetsBinding.instance.rootElement might be null early on,
+    // but typically available if app is running.
+    // We use a safe check.
+
+    // Attempt to access rootElement via mixin if possible,
+    // otherwise fallback to renderViewElement (deprecated/internal).
+    // Actually, we can use `WidgetsBinding.instance.renderViewElement`.
+
     final binding = WidgetsBinding.instance;
+    // ignore: invalid_use_of_protected_member
+    if (binding.renderViewElement != null) {
+      visit(binding.renderViewElement!);
+    }
+
     return results;
   }
 
-  // Unused _extractTextFrom removed to pass analysis for now
+  static String? _extractTextFrom(Element element) {
+    String? found;
+    void visit(Element e) {
+      if (found != null) return;
+      if (e.widget is Text) {
+        found = (e.widget as Text).data;
+      } else if (e.widget is RichText) {
+        found = (e.widget as RichText).text.toPlainText();
+      }
+      e.visitChildren(visit);
+    }
+
+    visit(element);
+    return found;
+  }
 
   static Future<bool> _performTap({String? key, String? text}) async {
     print('Flutter Skill: Mock Tap on $key / $text');

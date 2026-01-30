@@ -6,8 +6,23 @@ import 'setup.dart'; // Import setup logic
 final _uriFile = File('.flutter_skill_uri');
 
 Future<void> runLaunch(List<String> args) async {
-  // Usage: flutter_skill launch [project_path]
-  final projectPath = args.isNotEmpty ? args[0] : '.';
+  // Extract project path. Everything else is passed to flutter run.
+  // We assume: flutter_skill launch [project_path] [flutter_args...]
+  // But wait, standard args might be tricky.
+  // Let's say: first arg is project path if it doesn't start with -?
+
+  String projectPath = '.';
+  List<String> flutterArgs = [];
+
+  if (args.isNotEmpty) {
+    if (!args[0].startsWith('-')) {
+      projectPath = args[0];
+      flutterArgs = args.sublist(1);
+    } else {
+      // Current dir, all args are for flutter
+      flutterArgs = args;
+    }
+  }
 
   print('Running auto-setup...');
   try {
@@ -18,11 +33,11 @@ Future<void> runLaunch(List<String> args) async {
     print('Proceeding with launch anyway...');
   }
 
-  print('Launching Flutter app in: $projectPath');
+  print('Launching Flutter app in: $projectPath with args: $flutterArgs');
 
   final process = await Process.start(
     'flutter',
-    ['run'],
+    ['run', ...flutterArgs],
     workingDirectory: projectPath,
     mode: ProcessStartMode.normal,
   );
@@ -57,7 +72,7 @@ Future<void> runLaunch(List<String> args) async {
 
 void _checkForUri(String line) {
   if (line.contains('ws://')) {
-    final uriRegex = RegExp(r'ws://[a-zA-Z0-9.:/-]+');
+    final uriRegex = RegExp(r'ws://[^\s]+');
     final match = uriRegex.firstMatch(line);
     if (match != null) {
       final uri = match.group(0)!;

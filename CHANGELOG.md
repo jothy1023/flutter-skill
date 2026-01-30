@@ -1,3 +1,9 @@
+## 0.1.3
+
+- Fix: Critical fix for `launch` command to correctly capture VM Service URI with auth tokens.
+- Fix: Critical fix for `inspect` command to correctly traverse widget tree (was stubbed in 0.1.2).
+- Feature: `launch` command now forwards arguments to `flutter run` (e.g. `-d macos`).
+
 ## 0.1.2
 
 - Docs: Updated README architecture diagram to reflect `flutter_skill` executable.
