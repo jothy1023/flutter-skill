@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.aidashboad"
-version = "0.2.0"
+version = "0.2.1"
 
 repositories {
     mavenCentral()
@@ -20,13 +20,16 @@ dependencies {
         // Dart plugin from marketplace (optional dependency)
         plugin("Dart", "233.11799.172")
     }
+    // Gson for JSON parsing (MCP config management)
+    implementation("com.google.code.gson:gson:2.10.1")
+    // Note: Kotlin coroutines are provided by IntelliJ Platform, no need to add explicitly
 }
 
 intellijPlatform {
     pluginConfiguration {
         name = "Flutter Skill"
         ideaVersion {
-            sinceBuild = "231"
+            sinceBuild = "233"
             untilBuild = "243.*"
         }
     }

@@ -2,31 +2,63 @@ import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { configureAllAgents, detectAiAgents, checkExistingConfigs } from './mcpConfigManager';
+import { VmServiceScanner } from './vmServiceScanner';
+import { StatusBar, showStatusMenu } from './statusBar';
 
 let mcpServerProcess: child_process.ChildProcess | undefined;
 let outputChannel: vscode.OutputChannel;
+let statusBar: StatusBar;
+let vmScanner: VmServiceScanner;
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Flutter Skill');
+    statusBar = new StatusBar();
+    vmScanner = new VmServiceScanner(outputChannel);
+
+    // Connect scanner state changes to status bar
+    vmScanner.onStateChange((state, service) => {
+        statusBar.update(state, service);
+    });
 
     // Register commands
     context.subscriptions.push(
         vscode.commands.registerCommand('flutter-skill.launch', launchApp),
         vscode.commands.registerCommand('flutter-skill.inspect', inspectUI),
         vscode.commands.registerCommand('flutter-skill.screenshot', takeScreenshot),
-        vscode.commands.registerCommand('flutter-skill.startMcpServer', startMcpServer)
+        vscode.commands.registerCommand('flutter-skill.startMcpServer', startMcpServer),
+        vscode.commands.registerCommand('flutter-skill.stopMcpServer', stopMcpServer),
+        vscode.commands.registerCommand('flutter-skill.configureAgents', () => configureAllAgents(outputChannel)),
+        vscode.commands.registerCommand('flutter-skill.rescan', () => vmScanner.rescan()),
+        vscode.commands.registerCommand('flutter-skill.showStatus', showStatus)
     );
 
-    // Auto-start MCP server if configured
-    const config = vscode.workspace.getConfiguration('flutter-skill');
-    if (config.get('autoConnect')) {
-        // Check if there's a .flutter_skill_uri file in workspace
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (workspaceFolder) {
-            const uriFile = path.join(workspaceFolder.uri.fsPath, '.flutter_skill_uri');
-            if (fs.existsSync(uriFile)) {
-                outputChannel.appendLine('Found existing Flutter app connection');
-            }
+    // Add status bar and scanner to subscriptions for cleanup
+    context.subscriptions.push(statusBar);
+    context.subscriptions.push({ dispose: () => vmScanner.stop() });
+
+    // Check if this is a Flutter project
+    const isFlutterProject = checkIsFlutterProject();
+
+    if (isFlutterProject) {
+        outputChannel.appendLine('Flutter project detected');
+
+        // Auto-initialization based on settings
+        const config = vscode.workspace.getConfiguration('flutter-skill');
+
+        // Auto-start MCP server if configured
+        if (config.get('autoStartMcpServer')) {
+            startMcpServer();
+        }
+
+        // Start VM service scanning if configured
+        if (config.get('scanVmServicePorts')) {
+            vmScanner.start();
+        }
+
+        // Prompt to configure AI agents if configured and not already done
+        if (config.get('autoConfigureAgents')) {
+            promptConfigureAgentsIfNeeded();
         }
     }
 
@@ -37,9 +69,89 @@ export function deactivate() {
     if (mcpServerProcess) {
         mcpServerProcess.kill();
     }
+    vmScanner?.stop();
 }
 
-async function launchApp() {
+/**
+ * Check if the current workspace is a Flutter project
+ */
+function checkIsFlutterProject(): boolean {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+        return false;
+    }
+
+    const pubspecPath = path.join(workspaceFolder.uri.fsPath, 'pubspec.yaml');
+    if (!fs.existsSync(pubspecPath)) {
+        return false;
+    }
+
+    // Check if pubspec contains flutter dependency
+    try {
+        const content = fs.readFileSync(pubspecPath, 'utf-8');
+        return content.includes('flutter:') || content.includes('flutter_test:');
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Prompt to configure AI agents if not already configured
+ */
+async function promptConfigureAgentsIfNeeded(): Promise<void> {
+    // Check if any agents are detected but not configured
+    const agents = detectAiAgents();
+    const detectedAgents = agents.filter(a => a.detected);
+    const configuredAgents = checkExistingConfigs();
+
+    // If no agents detected or all are configured, skip
+    if (detectedAgents.length === 0) {
+        return;
+    }
+
+    // Check if flutter-skill is already configured for any detected agent
+    const unconfiguredAgents = detectedAgents.filter(
+        detected => !configuredAgents.some(configured => configured.name === detected.name)
+    );
+
+    if (unconfiguredAgents.length === 0) {
+        outputChannel.appendLine('All detected AI agents already have flutter-skill configured');
+        return;
+    }
+
+    // Show notification with option to configure
+    const agentNames = unconfiguredAgents.map(a => a.displayName).join(', ');
+    const message = `Configure Flutter Skill MCP for ${agentNames}?`;
+
+    const selection = await vscode.window.showInformationMessage(
+        message,
+        'Configure',
+        'Later',
+        "Don't Ask Again"
+    );
+
+    if (selection === 'Configure') {
+        await configureAllAgents(outputChannel);
+    } else if (selection === "Don't Ask Again") {
+        const config = vscode.workspace.getConfiguration('flutter-skill');
+        await config.update('autoConfigureAgents', false, vscode.ConfigurationTarget.Global);
+    }
+}
+
+/**
+ * Show status menu
+ */
+async function showStatus(): Promise<void> {
+    const state = statusBar.getState();
+    await showStatusMenu(state, {
+        launch: launchApp,
+        inspect: inspectUI,
+        rescan: async () => { await vmScanner.rescan(); },
+        configureAgents: () => configureAllAgents(outputChannel)
+    });
+}
+
+async function launchApp(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
         vscode.window.showErrorMessage('No workspace folder open');
@@ -64,7 +176,7 @@ async function launchApp() {
     vscode.window.showInformationMessage('Launching Flutter app with Flutter Skill...');
 }
 
-async function inspectUI() {
+async function inspectUI(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
         vscode.window.showErrorMessage('No workspace folder open');
@@ -87,7 +199,7 @@ async function inspectUI() {
     terminal.sendText(`${dartPath} pub global run flutter_skill inspect`);
 }
 
-async function takeScreenshot() {
+async function takeScreenshot(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
         vscode.window.showErrorMessage('No workspace folder open');
@@ -120,7 +232,7 @@ async function takeScreenshot() {
     vscode.window.showInformationMessage(`Screenshot will be saved to ${saveUri.fsPath}`);
 }
 
-async function startMcpServer() {
+async function startMcpServer(): Promise<void> {
     if (mcpServerProcess) {
         vscode.window.showInformationMessage('MCP Server is already running');
         return;
@@ -146,6 +258,16 @@ async function startMcpServer() {
         mcpServerProcess = undefined;
     });
 
-    vscode.window.showInformationMessage('Flutter Skill MCP Server started');
-    outputChannel.show();
+    outputChannel.appendLine('Flutter Skill MCP Server started');
+}
+
+async function stopMcpServer(): Promise<void> {
+    if (!mcpServerProcess) {
+        vscode.window.showInformationMessage('MCP Server is not running');
+        return;
+    }
+
+    mcpServerProcess.kill();
+    mcpServerProcess = undefined;
+    vscode.window.showInformationMessage('MCP Server stopped');
 }

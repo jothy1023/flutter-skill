@@ -1,13 +1,19 @@
 {
   "name": "flutter-skill",
   "displayName": "Flutter Skill - AI App Automation",
-  "description": "Control Flutter apps with AI agents - inspect UI, perform gestures, take screenshots",
-  "version": "0.2.0",
+  "description": "Give your AI Agent eyes and hands inside your Flutter app. Bridge between AI coding assistants (Claude Code, Cursor, Windsurf) and running Flutter applications with 25+ MCP tools for UI inspection, gestures, screenshots, and more.",
+  "version": "0.2.1",
   "publisher": "ai-dashboad",
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/ai-dashboad/flutter-skill.git"
   },
+  "homepage": "https://github.com/ai-dashboad/flutter-skill",
+  "bugs": {
+    "url": "https://github.com/ai-dashboad/flutter-skill/issues"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -24,7 +30,10 @@
     "automation",
     "testing",
     "claude",
-    "cursor"
+    "cursor",
+    "windsurf",
+    "widget",
+    "inspector"
   ],
   "activationEvents": [
     "onLanguage:dart",
@@ -48,6 +57,22 @@
       {
         "command": "flutter-skill.startMcpServer",
         "title": "Flutter Skill: Start MCP Server"
+      },
+      {
+        "command": "flutter-skill.stopMcpServer",
+        "title": "Flutter Skill: Stop MCP Server"
+      },
+      {
+        "command": "flutter-skill.configureAgents",
+        "title": "Flutter Skill: Configure AI Agents"
+      },
+      {
+        "command": "flutter-skill.rescan",
+        "title": "Flutter Skill: Scan for Running Apps"
+      },
+      {
+        "command": "flutter-skill.showStatus",
+        "title": "Flutter Skill: Show Status"
       }
     ],
     "configuration": {
@@ -67,6 +92,31 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically connect when Flutter app starts"
+        },
+        "flutter-skill.autoStartMcpServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start MCP server when Flutter project is opened"
+        },
+        "flutter-skill.autoConfigureAgents": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prompt to configure AI agents (Claude Code, Cursor, Windsurf) when Flutter project is opened"
+        },
+        "flutter-skill.scanVmServicePorts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan for running Flutter apps on VM Service ports"
+        },
+        "flutter-skill.vmServicePortRangeStart": {
+          "type": "number",
+          "default": 50000,
+          "description": "Start of port range to scan for VM Service"
+        },
+        "flutter-skill.vmServicePortRangeEnd": {
+          "type": "number",
+          "default": 50100,
+          "description": "End of port range to scan for VM Service"
         }
       }
     },

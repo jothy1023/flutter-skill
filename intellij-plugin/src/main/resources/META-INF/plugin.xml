@@ -1,45 +1,104 @@
 <idea-plugin>
     <id>com.aidashboad.flutterskill</id>
     <name>Flutter Skill - AI App Automation</name>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
     <vendor email="support@ai-dashboad.com" url="https://github.com/ai-dashboad/flutter-skill">ai-dashboad</vendor>
 
     <description><![CDATA[
-    <h2>Flutter Skill - AI App Automation</h2>
-    <p>Control Flutter apps with AI agents - inspect UI, perform gestures, take screenshots.</p>
+    <h2>Give your AI Agent eyes and hands inside your Flutter app</h2>
 
-    <h3>Features</h3>
+    <p><b>Flutter Skill</b> creates a bi-directional control channel between AI coding assistants
+    (Claude Code, Cursor, Windsurf, etc.) and running Flutter applications through the Dart VM Service Protocol.</p>
+
+    <h3>Key Features</h3>
+
+    <h4>UI Inspection (25+ Tools)</h4>
     <ul>
-        <li>Launch Flutter app with auto-setup</li>
-        <li>Inspect UI elements and widget tree</li>
-        <li>Take screenshots</li>
-        <li>Start MCP server for AI agent integration (Cursor, Windsurf, Claude)</li>
+        <li><b>Widget Tree Analysis</b> - Explore the complete widget hierarchy with depth control</li>
+        <li><b>Interactive Elements</b> - Find buttons, text fields, and other actionable widgets</li>
+        <li><b>Element Properties</b> - Get size, position, visibility, and state information</li>
+        <li><b>Text Extraction</b> - Extract all visible text content from the screen</li>
+        <li><b>Find by Type</b> - Locate widgets by their type (ElevatedButton, TextField, etc.)</li>
     </ul>
 
-    <h3>Requirements</h3>
+    <h4>Interactions</h4>
     <ul>
-        <li>Flutter SDK</li>
-        <li>Dart SDK</li>
-        <li>flutter_skill package</li>
+        <li><b>Tap & Click</b> - Single tap, double tap, and long press gestures</li>
+        <li><b>Text Entry</b> - Enter text into text fields programmatically</li>
+        <li><b>Gestures</b> - Swipe (up/down/left/right), drag, and scroll operations</li>
+        <li><b>Navigation</b> - Go back, view navigation stack, get current route</li>
+    </ul>
+
+    <h4>State & Validation</h4>
+    <ul>
+        <li><b>State Queries</b> - Get text field values, checkbox states, slider values</li>
+        <li><b>Wait Conditions</b> - Wait for elements to appear or disappear (with timeout)</li>
+        <li><b>Screenshots</b> - Capture full app or specific element screenshots (base64 PNG)</li>
+    </ul>
+
+    <h4>Development Tools</h4>
+    <ul>
+        <li><b>Hot Reload</b> - Trigger hot reload remotely</li>
+        <li><b>Logs & Errors</b> - View application logs and error messages</li>
+        <li><b>Performance</b> - Monitor performance metrics</li>
+        <li><b>pub.dev Search</b> - Search packages directly from the agent</li>
+    </ul>
+
+    <h3>Zero Configuration Setup</h3>
+    <p>Simply run <code>flutter_skill launch /path/to/project</code> and the tool automatically:</p>
+    <ol>
+        <li>Adds the <code>flutter_skill</code> dependency if missing</li>
+        <li>Patches <code>main.dart</code> with initialization code</li>
+        <li>Launches the app and captures the VM Service URI</li>
+        <li>Saves connection info for subsequent commands</li>
+    </ol>
+
+    <h3>MCP Server Integration</h3>
+    <p>Works seamlessly with MCP-compatible AI agents. Add to your MCP configuration:</p>
+    <pre><code>{
+  "flutter-skill": {
+    "command": "flutter-skill",
+    "args": ["server"]
+  }
+}</code></pre>
+
+    <h3>Installation Options</h3>
+    <ul>
+        <li><b>pub.dev:</b> <code>dart pub global activate flutter_skill</code></li>
+        <li><b>Homebrew:</b> <code>brew install ai-dashboad/flutter-skill/flutter-skill</code></li>
+        <li><b>npm:</b> <code>npx flutter-skill-mcp</code></li>
     </ul>
 
     <h3>Links</h3>
     <ul>
-        <li><a href="https://github.com/ai-dashboad/flutter-skill">GitHub</a></li>
-        <li><a href="https://pub.dev/packages/flutter_skill">pub.dev</a></li>
+        <li><a href="https://github.com/ai-dashboad/flutter-skill">GitHub Repository</a></li>
+        <li><a href="https://pub.dev/packages/flutter_skill">pub.dev Package</a></li>
+        <li><a href="https://www.npmjs.com/package/flutter-skill-mcp">npm Package</a></li>
     </ul>
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>0.2.1</h3>
+    <ul>
+        <li>Added plugin icon</li>
+        <li>Enhanced plugin description with detailed feature documentation</li>
+    </ul>
+
     <h3>0.2.0</h3>
     <ul>
         <li>Initial release with 25+ MCP tools</li>
-        <li>UI inspection, gestures, screenshots</li>
-        <li>State validation, navigation, debug tools</li>
+        <li>UI inspection: widget tree, interactive elements, text content</li>
+        <li>Interactions: tap, double tap, long press, swipe, drag, scroll, enter text</li>
+        <li>State validation: text values, checkbox state, slider value</li>
+        <li>Wait conditions: wait for element, wait for gone</li>
+        <li>Screenshots: full app and element-specific capture</li>
+        <li>Navigation: routes, navigation stack, go back</li>
+        <li>Debug tools: logs, errors, performance metrics, hot reload</li>
+        <li>Zero-config setup with auto-patching</li>
     </ul>
     ]]></change-notes>
 
-    <idea-version since-build="231" until-build="243.*"/>
+    <idea-version since-build="233" until-build="243.*"/>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>Dart</depends>
@@ -52,6 +111,17 @@
                     factoryClass="com.aidashboad.flutterskill.FlutterSkillToolWindowFactory"/>
 
         <notificationGroup id="Flutter Skill" displayType="BALLOON"/>
+
+        <!-- Status bar widget for connection status -->
+        <statusBarWidgetFactory id="FlutterSkillStatus"
+                                implementation="com.aidashboad.flutterskill.FlutterSkillStatusBarWidgetFactory"
+                                order="after encodingWidget"/>
+
+        <!-- Application-level service for MCP config management -->
+        <applicationService serviceImplementation="com.aidashboad.flutterskill.McpConfigManager"/>
+
+        <!-- Project startup activity -->
+        <postStartupActivity implementation="com.aidashboad.flutterskill.FlutterSkillStartupActivity"/>
     </extensions>
 
     <actions>
