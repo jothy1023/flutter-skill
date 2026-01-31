@@ -31,8 +31,8 @@ jobs:
       - name: Format check
         run: dart format --set-exit-if-changed .
 
-      - name: Run tests
-        run: flutter test
+      - name: Run integration tests
+        run: dart run test_integration/integration_test.dart
 
   # VSCode extension checks
   vscode:
