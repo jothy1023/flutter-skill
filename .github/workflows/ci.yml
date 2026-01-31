@@ -76,10 +76,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build plugin
-        run: ./gradlew buildPlugin
+        run: ./gradlew buildPlugin --no-configuration-cache
 
       - name: Verify plugin structure
-        run: ./gradlew verifyPluginStructure
+        run: ./gradlew verifyPluginStructure --no-configuration-cache
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4

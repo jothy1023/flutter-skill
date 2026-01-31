@@ -172,13 +172,15 @@ class MyApp extends StatelessWidget {
             final content = result['content'][0]['text'];
             final contentJson = jsonDecode(content);
 
-            if (contentJson['success'] == true && contentJson['message']?.contains('Connected') == true) {
+            if (contentJson['success'] == true &&
+                contentJson['message']?.contains('Connected') == true) {
               print('[PASS] MCP Connect success');
               // B. Tap via MCP
               final tapReq =
                   '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "tap", "arguments": {"key": "login_btn"}}}';
               stdin.writeln(tapReq);
-            } else if (contentJson['success'] == true && contentJson['message']?.contains('Tap') == true) {
+            } else if (contentJson['success'] == true &&
+                contentJson['message']?.contains('Tap') == true) {
               print('[PASS] MCP Tap success');
               completerT4.complete(true);
             }
