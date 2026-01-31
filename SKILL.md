@@ -1,9 +1,23 @@
 ---
+name: flutter-skill
+version: 0.2.26
+category: testing
+priority: high
+auto_activate: true
+tags: [flutter, ui-testing, e2e, mobile, ios, android, automation, simulator, emulator]
+
 description: UI Testing and E2E validation for Flutter apps. Test features in iOS/Android simulators, verify UI interactions, debug screens, and automate user flows. Alternative to flutter_test for integration testing.
+
 triggers:
+  # English
   - test flutter app
+  - test app
+  - test ui
+  - test feature
   - verify UI
+  - verify feature
   - check button
+  - check screen
   - iOS simulator test
   - Android emulator test
   - E2E test
@@ -11,16 +25,77 @@ triggers:
   - UI automation
   - screen validation
   - user flow test
+  - run on simulator
+  - run on emulator
+  - launch app
+  - start app
+  - automate testing
+  # Chinese
+  - 测试应用
+  - 测试app
+  - 测试界面
+  - 测试功能
+  - 验证功能
+  - 验证界面
+  - 检查按钮
+  - 检查屏幕
+  - iOS测试
+  - Android测试
+  - 模拟器测试
+  - 集成测试
+  - 界面测试
+  - UI测试
+  - 自动化测试
+  - 运行应用
+  - 启动应用
+
 when_to_use:
   - User asks to test/verify a Flutter feature
   - User wants to check UI behavior in simulator/emulator
   - User needs to validate user flows or interactions
   - User asks to debug visual issues
   - User wants automated UI testing
+  - User mentions iOS/Android/simulator/emulator
+  - User asks "does this button work?" or similar UI validation
+  - User wants to see app behavior on device
+
 when_not_to_use:
   - Unit testing (use flutter test instead)
   - Widget testing (use WidgetTester instead)
   - Performance profiling (use Flutter DevTools instead)
+  - Building APK/IPA (use flutter build instead)
+  - Code analysis (use Read/Grep tools instead)
+
+examples:
+  - query: "test the flutter app"
+    intent: ui_testing
+    tools: [launch_app, inspect]
+  - query: "在iOS模拟器测试"
+    intent: ios_testing
+    tools: [launch_app]
+    device: iOS
+  - query: "验证登录功能"
+    intent: feature_verification
+    tools: [launch_app, inspect, enter_text, tap]
+  - query: "check if button is clickable"
+    intent: ui_validation
+    tools: [inspect, tap]
+  - query: "自动化测试注册流程"
+    intent: e2e_testing
+    tools: [launch_app, inspect, enter_text, tap, wait_for_element]
+  - query: "这个页面显示对不对"
+    intent: visual_validation
+    tools: [launch_app, screenshot]
+
+project_context:
+  auto_detect:
+    - pubspec.yaml with flutter dependency
+    - lib/main.dart exists
+    - ios/ or android/ directories exist
+  auto_suggest:
+    - When user asks generic "test" in Flutter project → suggest flutter-skill
+    - When user mentions simulator/emulator → suggest flutter-skill
+    - When user asks about UI behavior → suggest flutter-skill
 ---
 
 # Flutter Skill - UI Testing & E2E Validation
