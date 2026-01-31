@@ -1,3 +1,14 @@
+## 0.2.23
+
+**Fix IntelliJ plugin publishing - upgrade Kotlin Gradle Plugin to 2.0.21**
+
+### Bug Fixes
+- Fixed JetBrains Marketplace publishing failure caused by Kotlin Gradle Plugin compatibility issue
+- Upgraded Kotlin Gradle Plugin from 1.9.21 to 2.0.21 for compatibility with IntelliJ Platform Gradle Plugin 2.2.1
+- IntelliJ plugin now successfully publishes to JetBrains Marketplace
+
+---
+
 ## 0.2.21
 
 **IntelliJ Plugin Enhancement**
