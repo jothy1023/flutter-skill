@@ -317,23 +317,16 @@ class FlutterSkillClient {
 
   Future<Map<String, dynamic>> getMemoryStats() async {
     if (_service == null || _isolateId == null) {
-      throw Exception('Not connected');
+      throw Exception('Not connected to Flutter app');
     }
 
-    try {
-      final allocationProfile =
-          await _service!.getAllocationProfile(_isolateId!);
-      return {
-        "heap_used": allocationProfile.memoryUsage?.heapUsage ?? 0,
-        "heap_capacity": allocationProfile.memoryUsage?.heapCapacity ?? 0,
-        "external": allocationProfile.memoryUsage?.externalUsage ?? 0,
-      };
-    } catch (e) {
-      return {
-        "message": "Memory stats retrieval failed",
-        "error": e.toString(),
-      };
-    }
+    final allocationProfile =
+        await _service!.getAllocationProfile(_isolateId!);
+    return {
+      "heapUsed": allocationProfile.memoryUsage?.heapUsage ?? 0,
+      "heapCapacity": allocationProfile.memoryUsage?.heapCapacity ?? 0,
+      "external": allocationProfile.memoryUsage?.externalUsage ?? 0,
+    };
   }
 
   // ==================== ENHANCED INSPECTION ====================

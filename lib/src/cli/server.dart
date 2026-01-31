@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import '../flutter_skill_client.dart';
+import '../diagnostics/error_reporter.dart';
 import 'setup.dart';
 
 const String _currentVersion = '0.2.14';
@@ -12,8 +13,21 @@ Future<void> runServer(List<String> args) async {
   // Check for updates in background
   _checkForUpdates();
 
-  final server = FlutterMcpServer();
-  await server.run();
+  // Acquire lock to prevent multiple instances
+  final lockFile = await _acquireLock();
+  if (lockFile == null) {
+    stderr.writeln('ERROR: Another flutter-skill server is already running.');
+    stderr.writeln('If you believe this is an error, delete: ~/.flutter_skill.lock');
+    exit(1);
+  }
+
+  try {
+    final server = FlutterMcpServer();
+    await server.run();
+  } finally {
+    // Release lock on exit
+    await _releaseLock(lockFile);
+  }
 }
 
 /// Check pub.dev for newer version
@@ -120,9 +134,28 @@ class FlutterMcpServer {
           ],
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (id != null) {
         _sendError(id, -32603, "Internal error: $e");
+      }
+
+      // Auto-report critical errors
+      if (_shouldReportError(e)) {
+        // Auto-report is enabled by default (can be disabled with env var)
+        final autoReport =
+            Platform.environment['FLUTTER_SKILL_AUTO_REPORT'] != 'false';
+
+        await errorReporter.reportError(
+          errorType: e.runtimeType.toString(),
+          errorMessage: e.toString(),
+          stackTrace: stackTrace,
+          context: {
+            'method': method,
+            'params': params,
+            'client_connected': _client?.isConnected ?? false,
+          },
+          autoCreate: autoReport,
+        );
       }
     }
   }
@@ -1817,7 +1850,7 @@ class FlutterMcpServer {
   }
 
   void _requireConnection() {
-    if (_client == null || !_client!.isConnected) {
+    if (_client == null) {
       throw Exception('''Not connected to Flutter app.
 
 Solutions:
@@ -1827,6 +1860,52 @@ Solutions:
 
 Tip: Use get_connection_status() to see available running apps.''');
     }
+
+    if (!_client!.isConnected) {
+      // Connection lost, clean up
+      _client = null;
+      throw Exception('''Connection to Flutter app was lost.
+
+Please reconnect using one of these methods:
+1. scan_and_connect() - Auto-detect running apps
+2. connect_app(uri: "ws://...") - Connect to specific URI
+3. launch_app(project_path: "...") - Launch new app instance''');
+    }
+  }
+
+  /// Determine if an error should be auto-reported to GitHub
+  bool _shouldReportError(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+
+    // Report these critical errors
+    final criticalPatterns = [
+      'lateinitializationerror',
+      'null check operator',
+      'unhandledexception',
+      'stackoverflow',
+      'outofmemory',
+    ];
+
+    // Don't report these expected errors
+    final ignoredPatterns = [
+      'not connected',
+      'no isolates found',
+      'connection refused',
+      'timeout',
+    ];
+
+    // Check if it's a critical error
+    for (final pattern in criticalPatterns) {
+      if (errorStr.contains(pattern)) {
+        // Make sure it's not an ignored error
+        for (final ignored in ignoredPatterns) {
+          if (errorStr.contains(ignored)) return false;
+        }
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /// Scan for VM Services on local ports
@@ -2208,5 +2287,42 @@ if (mounted) {
       "id": id,
       "error": {"code": code, "message": message},
     }));
+  }
+}
+
+// ==================== Lock Management ====================
+
+/// Acquire a lock file to prevent multiple server instances
+Future<File?> _acquireLock() async {
+  final home = Platform.environment['HOME'];
+  if (home == null) return null;
+
+  final lockFile = File('$home/.flutter_skill.lock');
+
+  // Check if lock exists and is stale (older than 10 minutes)
+  if (await lockFile.exists()) {
+    final stat = await lockFile.stat();
+    final age = DateTime.now().difference(stat.modified);
+    if (age.inMinutes < 10) {
+      // Lock is fresh, another instance is likely running
+      return null;
+    }
+    // Stale lock, remove it
+    await lockFile.delete();
+  }
+
+  // Create lock file with current PID
+  await lockFile.writeAsString('${pid}\n${DateTime.now().toIso8601String()}');
+  return lockFile;
+}
+
+/// Release the lock file
+Future<void> _releaseLock(File lockFile) async {
+  try {
+    if (await lockFile.exists()) {
+      await lockFile.delete();
+    }
+  } catch (e) {
+    // Ignore cleanup errors
   }
 }
