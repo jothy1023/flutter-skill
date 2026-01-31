@@ -3,10 +3,14 @@ package com.aidashboad.flutterskill
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
+import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
+import org.jetbrains.plugins.terminal.TerminalToolWindowManager
 import javax.swing.*
+import javax.swing.Timer
 import java.awt.*
 
 class FlutterSkillToolWindowFactory : ToolWindowFactory {
@@ -14,6 +18,9 @@ class FlutterSkillToolWindowFactory : ToolWindowFactory {
         val panel = FlutterSkillPanel(project)
         val content = ContentFactory.getInstance().createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
+
+        // 设置默认宽度为 350px（约半屏宽度），高度自动占满
+        toolWindow.component.preferredSize = Dimension(350, -1)
     }
 
     override fun shouldBeAvailable(project: Project): Boolean = true
@@ -229,6 +236,50 @@ class FlutterSkillPanel(private val project: Project) : JPanel(BorderLayout()) {
     private fun configureMcp(tool: AiToolDetector.AiTool) {
         val configPath = tool.configPath ?: return
         McpConfigManager.getInstance().configureForTool(tool.name, configPath)
+
+        // 配置完成后，在内置 Terminal 中打开对应的 CLI
+        openCliInTerminal(tool)
+    }
+
+    /**
+     * 在 IntelliJ 内置 Terminal 中打开 AI CLI 工具
+     */
+    private fun openCliInTerminal(tool: AiToolDetector.AiTool) {
+        val command = tool.command
+        val tabName = tool.name
+
+        SwingUtilities.invokeLater {
+            try {
+                val terminalManager = TerminalToolWindowManager.getInstance(project)
+                val terminalToolWindow = ToolWindowManager.getInstance(project)
+                    .getToolWindow(TerminalToolWindowFactory.TOOL_WINDOW_ID)
+
+                if (terminalToolWindow != null) {
+                    terminalToolWindow.show {
+                        // 创建新的 Terminal tab 并执行命令
+                        val widget = terminalManager.createLocalShellWidget(
+                            project.basePath,
+                            tabName
+                        )
+                        // 使用 Timer 延迟执行命令，等待 shell 初始化
+                        Timer(800) {
+                            SwingUtilities.invokeLater {
+                                try {
+                                    widget.executeCommand(command)
+                                } catch (e: Exception) {
+                                    // 忽略执行错误
+                                }
+                            }
+                        }.apply {
+                            isRepeats = false
+                            start()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Terminal 插件可能未安装，静默失败
+            }
+        }
     }
 
     fun updateStatus(connected: Boolean, appInfo: String?) {

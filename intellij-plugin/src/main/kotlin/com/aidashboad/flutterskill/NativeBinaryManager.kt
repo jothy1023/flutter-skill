@@ -48,17 +48,52 @@ class NativeBinaryManager {
     }
 
     fun hasNativeBinary(): Boolean {
-        val path = getLocalBinaryPath() ?: return false
+        val path = getLatestBinaryPath() ?: return false
         return File(path).exists()
     }
 
     fun getBestBinaryPath(): Pair<String, Boolean> {
+        // 优先使用最新版本的 binary
+        val latestPath = getLatestBinaryPath()
+        if (latestPath != null && File(latestPath).exists()) {
+            return Pair(latestPath, true)
+        }
+
+        // 其次使用当前版本
         val localPath = getLocalBinaryPath()
         if (localPath != null && File(localPath).exists()) {
             return Pair(localPath, true)
         }
+
         // Fallback to dart command
         return Pair("dart", false)
+    }
+
+    /**
+     * 获取最新下载的 binary 路径（支持自动更新后的新版本）
+     */
+    private fun getLatestBinaryPath(): String? {
+        val binaryName = getBinaryName() ?: return null
+        val cacheDir = getCacheDir()
+
+        if (!cacheDir.exists()) return null
+
+        // 找到所有匹配的 binary 文件，选择版本最新的
+        val binaries = cacheDir.listFiles { file ->
+            file.name.startsWith(binaryName) && file.name.contains("-v")
+        } ?: return null
+
+        // 按版本号排序，返回最新的
+        return binaries
+            .mapNotNull { file ->
+                val versionMatch = Regex("-v(\\d+\\.\\d+\\.\\d+)").find(file.name)
+                versionMatch?.let { Pair(file, it.groupValues[1]) }
+            }
+            .maxByOrNull { (_, version) ->
+                val parts = version.split(".").map { it.toIntOrNull() ?: 0 }
+                parts.getOrElse(0) { 0 } * 10000 + parts.getOrElse(1) { 0 } * 100 + parts.getOrElse(2) { 0 }
+            }
+            ?.first?.absolutePath
     }
 
     fun downloadNativeBinaryAsync(onComplete: (success: Boolean) -> Unit = {}) {

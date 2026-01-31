@@ -472,6 +472,7 @@ brew upgrade flutter-skill
 
     <depends>com.intellij.modules.platform</depends>
     <depends>Dart</depends>
+    <depends optional="true" config-file="terminal-support.xml">org.jetbrains.plugins.terminal</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Flutter Skill"

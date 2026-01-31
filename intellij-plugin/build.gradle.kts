@@ -19,6 +19,8 @@ dependencies {
         intellijIdeaCommunity("2023.3")
         // Dart plugin from marketplace (optional dependency)
         plugin("Dart", "233.11799.172")
+        // Terminal plugin (bundled with IntelliJ)
+        bundledPlugin("org.jetbrains.plugins.terminal")
     }
     // Gson for JSON parsing (MCP config management)
     implementation("com.google.code.gson:gson:2.10.1")
