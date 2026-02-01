@@ -131,10 +131,19 @@ class VmServiceScanner(private val project: Project) : Disposable {
 
         scope.launch {
             try {
-                val uri = uriFile.readText().trim()
+                var uri = uriFile.readText().trim()
                 if (uri.isEmpty()) {
                     notifyStateChange(ConnectionState.DISCONNECTED)
                     return@launch
+                }
+
+                // Ensure URI ends with /ws for VM Service WebSocket endpoint
+                if (!uri.endsWith("/ws")) {
+                    uri = if (uri.endsWith("/")) {
+                        "${uri}ws"
+                    } else {
+                        "$uri/ws"
+                    }
                 }
 
                 notifyStateChange(ConnectionState.CONNECTING)
@@ -155,15 +164,25 @@ class VmServiceScanner(private val project: Project) : Disposable {
                         logger.info("Connected to VM service at $uri")
                     } catch (e: Exception) {
                         logger.error("Failed to connect VM client: ${e.message}", e)
-                        notifyStateChange(ConnectionState.ERROR)
+                        // Clean up stale URI file
+                        uriFile.delete()
+                        notifyStateChange(ConnectionState.DISCONNECTED)
                     }
                 } else {
-                    notifyStateChange(ConnectionState.ERROR)
-                    logger.warn("Failed to validate VM service at $uri")
+                    logger.warn("Failed to validate VM service at $uri - cleaning up stale URI file")
+                    // Clean up stale URI file
+                    uriFile.delete()
+                    notifyStateChange(ConnectionState.DISCONNECTED)
                 }
             } catch (e: Exception) {
-                notifyStateChange(ConnectionState.ERROR)
                 logger.error("Error reading URI file: ${e.message}", e)
+                // Clean up invalid URI file
+                try {
+                    uriFile.delete()
+                } catch (deleteError: Exception) {
+                    logger.error("Failed to delete invalid URI file: ${deleteError.message}")
+                }
+                notifyStateChange(ConnectionState.DISCONNECTED)
             }
         }
     }
@@ -172,20 +191,111 @@ class VmServiceScanner(private val project: Project) : Disposable {
      * Start periodic scanning for VM services
      */
     private fun startPeriodicScan() {
+        val basePath = project.basePath ?: return
+        val uriFilePath = "$basePath/.flutter_skill_uri"
+
         // Initial scan after a delay
         periodicScanJob = scope.launch {
             delay(2000)
             if (currentService == null) {
-                scanForVmServices()
-            }
-
-            // Periodic scan every 30 seconds
-            while (isActive) {
-                delay(30000)
+                // 1. Try to find Flutter process and extract URI
+                val processUri = findFlutterProcessUri()
+                if (processUri != null) {
+                    connectToUri(processUri)
+                }
+                // 2. Check URI file
+                if (currentService == null) {
+                    checkUriFile(uriFilePath)
+                }
+                // 3. Scan ports as last resort
                 if (currentService == null) {
                     scanForVmServices()
                 }
             }
+
+            // Periodic scan every 5 seconds (faster for better UX)
+            while (isActive) {
+                delay(5000)
+                if (currentService == null) {
+                    // 1. Try to find Flutter process and extract URI
+                    val processUri = findFlutterProcessUri()
+                    if (processUri != null) {
+                        connectToUri(processUri)
+                    }
+                    // 2. Check URI file
+                    if (currentService == null) {
+                        checkUriFile(uriFilePath)
+                    }
+                    // 3. Scan ports as last resort
+                    if (currentService == null) {
+                        scanForVmServices()
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Find Flutter process and extract VM Service URI
+     * This automatically detects Flutter running in any terminal/IDE
+     */
+    private suspend fun findFlutterProcessUri(): String? = withContext(Dispatchers.IO) {
+        try {
+            // Execute ps command to find Flutter processes
+            val process = Runtime.getRuntime().exec(arrayOf(
+                "sh", "-c",
+                "ps aux | grep -E 'dart.*development-service.*vm-service-uri' | grep -v grep"
+            ))
+
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+
+            if (output.isNotBlank()) {
+                // Extract HTTP URI from process arguments
+                val httpUriPattern = Regex("--vm-service-uri=(http://[0-9.:]+/[a-zA-Z0-9_=-]+/?)")
+                val match = httpUriPattern.find(output)
+
+                if (match != null) {
+                    val httpUri = match.groupValues[1]
+
+                    // Convert to WebSocket URI
+                    var wsUri = httpUri.replace("http://", "ws://")
+
+                    // Ensure trailing slash is present if auth token exists
+                    if (wsUri.contains("=") && !wsUri.endsWith("/")) {
+                        wsUri = "$wsUri/"
+                    }
+
+                    // Append /ws for VM Service WebSocket endpoint
+                    val finalUri = if (wsUri.endsWith("/")) {
+                        "${wsUri}ws"
+                    } else {
+                        "$wsUri/ws"
+                    }
+
+                    logger.info("Auto-detected Flutter VM Service: $finalUri")
+
+                    // Optionally save to file for other tools
+                    val basePath = project.basePath
+                    if (basePath != null) {
+                        try {
+                            File("$basePath/.flutter_skill_uri").writeText(finalUri)
+                        } catch (e: Exception) {
+                            // Ignore file write errors
+                        }
+                    }
+
+                    return@withContext finalUri
+                } else {
+                    logger.warn("DEBUG: Regex did not match. Output was: $output")
+                }
+            } else {
+                logger.info("DEBUG: ps command returned empty output")
+            }
+            null
+        } catch (e: Exception) {
+            logger.error("Failed to scan Flutter processes: ${e.message}", e)
+            null
         }
     }
 
@@ -265,6 +375,36 @@ class VmServiceScanner(private val project: Project) : Disposable {
         logger.info("Manual scan triggered")
         scope.launch {
             scanForVmServices()
+        }
+    }
+
+    /**
+     * Connect to a specific VM Service URI directly (no file, no scan)
+     * This is the preferred method for auto-detection from process output
+     */
+    fun connectToUri(uri: String) {
+        logger.info("Direct connection requested to: $uri")
+
+        scope.launch {
+            try {
+                notifyStateChange(ConnectionState.CONNECTING)
+
+                // Extract port from URI
+                val portMatch = Regex(":(\\d+)").find(uri)
+                val port = portMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+
+                // Create and connect VM Service client
+                vmClient?.disconnect()
+                vmClient = VmServiceClient(uri)
+                vmClient?.connect()
+
+                currentService = VmServiceInfo(uri, port)
+                notifyStateChange(ConnectionState.CONNECTED, currentService)
+                logger.info("Successfully connected to VM service at $uri")
+            } catch (e: Exception) {
+                logger.error("Failed to connect to VM service: ${e.message}", e)
+                notifyStateChange(ConnectionState.ERROR)
+            }
         }
     }
 

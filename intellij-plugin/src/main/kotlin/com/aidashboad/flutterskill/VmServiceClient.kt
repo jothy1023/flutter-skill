@@ -125,6 +125,7 @@ class VmServiceClient(private val uri: String) {
      * Connect to VM Service
      *
      * Establishes WebSocket connection and initializes the main isolate.
+     * Follows HTTP redirects to find the actual VM Service endpoint.
      * Throws exception if connection fails or times out.
      */
     suspend fun connect(): Unit = withContext(Dispatchers.IO) {
@@ -137,13 +138,17 @@ class VmServiceClient(private val uri: String) {
 
         val client = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofMillis(connectionTimeoutMs))
+            .followRedirects(HttpClient.Redirect.ALWAYS)
             .build()
 
-        val connectFuture = CompletableFuture<WebSocket>()
-
         try {
+            // Follow HTTP redirects to get the final WebSocket URI
+            val finalWsUri = resolveWebSocketUri(uri, client)
+            logger.info("[VmServiceClient] Resolved WebSocket URI: $finalWsUri")
+
+            // Connect to the final WebSocket endpoint
             webSocket = client.newWebSocketBuilder()
-                .buildAsync(URI.create(uri), VmServiceWebSocketListener())
+                .buildAsync(URI.create(finalWsUri), VmServiceWebSocketListener())
                 .get(connectionTimeoutMs, TimeUnit.MILLISECONDS)
 
             // Wait a bit for connection to stabilize
@@ -159,6 +164,63 @@ class VmServiceClient(private val uri: String) {
             logger.error("[VmServiceClient] Connection failed", e)
             disconnect()
             throw Exception("Failed to connect to VM Service: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Resolve WebSocket URI by following HTTP redirects.
+     *
+     * DDS (Dart Development Service) redirects to the actual VM Service on a different port.
+     * This function follows the redirect and extracts the final WebSocket URI.
+     */
+    private fun resolveWebSocketUri(wsUri: String, client: HttpClient): String {
+        try {
+            // Convert ws:// to http:// for HTTP request
+            val httpUri = wsUri.replace("ws://", "http://")
+
+            // Remove /ws suffix if present for the HTTP request
+            val baseHttpUri = if (httpUri.endsWith("/ws")) {
+                httpUri.substring(0, httpUri.length - 3)
+            } else {
+                httpUri
+            }
+
+            logger.info("[VmServiceClient] Following redirects from: $baseHttpUri")
+
+            // Make HTTP GET request to follow redirects
+            val request = java.net.http.HttpRequest.newBuilder()
+                .uri(URI.create(baseHttpUri))
+                .timeout(java.time.Duration.ofMillis(connectionTimeoutMs))
+                .GET()
+                .build()
+
+            val response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+
+            val finalUri = response.uri()
+            logger.info("[VmServiceClient] HTTP response status: ${response.statusCode()}")
+            logger.info("[VmServiceClient] Final URI after redirects: $finalUri")
+
+            // Extract WebSocket URI from the final URI's query parameter
+            val finalUriString = finalUri.toString()
+            if (finalUriString.contains("uri=")) {
+                // Extract ws:// URI from query parameter
+                val match = Regex("uri=([^&]+)").find(finalUriString)
+                if (match != null) {
+                    val encodedUri = match.groupValues[1]
+                    val decodedUri = java.net.URLDecoder.decode(encodedUri, "UTF-8")
+                    logger.info("[VmServiceClient] Extracted WebSocket URI from query param: $decodedUri")
+                    return decodedUri
+                }
+            }
+
+            // If no redirect or couldn't extract URI, return original with /ws
+            logger.info("[VmServiceClient] No redirect detected, using original URI with /ws")
+            return if (wsUri.endsWith("/ws")) wsUri else "$wsUri/ws"
+
+        } catch (e: Exception) {
+            logger.warn("[VmServiceClient] Failed to resolve WebSocket URI via HTTP redirect: ${e.message}")
+            // Fall back to original URI
+            return if (wsUri.endsWith("/ws")) wsUri else "$wsUri/ws"
         }
     }
 
