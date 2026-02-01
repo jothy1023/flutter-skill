@@ -65,7 +65,8 @@ Just ask the Agent:
 The Agent will automatically:
 1. Call `launch_app` or `connect_app`
 2. Auto-patch `pubspec.yaml` and `main.dart` if needed
-3. Use tools like `inspect`, `tap`, `screenshot`
+3. **Auto-configure VM Service for Flutter 3.x compatibility** (adds `--vm-service-port=50000`)
+4. Use tools like `inspect`, `tap`, `screenshot`
 
 ---
 
@@ -142,6 +143,46 @@ void main() {
   runApp(const MyApp());
 }
 ```
+
+---
+
+## Flutter 3.x Compatibility 🎯
+
+### Auto-Configuration (No Action Needed!)
+
+**Good news:** Flutter Skill automatically handles Flutter 3.x compatibility!
+
+Flutter 3.x changed from VM Service to DTD (Dart Tooling Daemon) as the default protocol.
+Flutter Skill requires VM Service, so it **automatically adds** `--vm-service-port=50000` when launching apps.
+
+**You don't need to do anything!** Just use `launch_app` normally:
+
+```bash
+# This simple command...
+launch_app(device_id: "iPhone 16 Pro")
+
+# ...automatically becomes:
+flutter run -d "iPhone 16 Pro" --vm-service-port=50000
+```
+
+### Custom VM Service Port (Optional)
+
+If you need a specific port:
+
+```bash
+launch_app(
+  device_id: "iPhone 16 Pro",
+  extra_args: ["--vm-service-port=8888"]
+)
+```
+
+### Troubleshooting
+
+If you see "Found DTD URI but no VM Service URI" (very rare):
+1. The auto-configuration should prevent this
+2. Check Flutter version: `flutter --version`
+3. Try a different port: `extra_args: ["--vm-service-port=8888"]`
+4. Report the issue with Flutter version details
 
 ---
 

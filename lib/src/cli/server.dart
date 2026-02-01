@@ -9,6 +9,37 @@ import 'setup.dart';
 
 const String _currentVersion = '0.3.1';
 
+/// Session information for multi-session support
+class SessionInfo {
+  final String id;
+  final String name;
+  final String projectPath;
+  final String deviceId;
+  final int port;
+  final String vmServiceUri;
+  final DateTime createdAt;
+
+  SessionInfo({
+    required this.id,
+    required this.name,
+    required this.projectPath,
+    required this.deviceId,
+    required this.port,
+    required this.vmServiceUri,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'project_path': projectPath,
+        'device_id': deviceId,
+        'port': port,
+        'vm_service_uri': vmServiceUri,
+        'created_at': createdAt.toIso8601String(),
+      };
+}
+
 Future<void> runServer(List<String> args) async {
   // Check for updates in background
   _checkForUpdates();
@@ -85,7 +116,24 @@ bool _isNewerVersion(String latest, String current) {
 }
 
 class FlutterMcpServer {
-  FlutterSkillClient? _client;
+  // Multi-session support
+  final Map<String, FlutterSkillClient> _clients = {};
+  final Map<String, SessionInfo> _sessions = {};
+  String? _activeSessionId;
+
+  // Legacy single client support (for backward compatibility)
+  FlutterSkillClient? get _client => _activeSessionId != null
+      ? _clients[_activeSessionId]
+      : _clients.values.isNotEmpty
+          ? _clients.values.first
+          : null;
+
+  set _client(FlutterSkillClient? client) {
+    if (client != null && _activeSessionId != null) {
+      _clients[_activeSessionId!] = client;
+    }
+  }
+
   Process? _flutterProcess;
 
   Future<void> run() async {

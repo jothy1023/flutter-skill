@@ -383,6 +383,24 @@ brew upgrade flutter-skill
 
 ---
 
+## 📚 Documentation
+
+### Core Documentation
+- [Usage Guide](docs/USAGE_GUIDE.md) - Detailed usage instructions
+- [Architecture](docs/ARCHITECTURE.md) - System architecture and communication flow
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Flutter 3.x Fix](docs/FLUTTER_3X_FIX.md) - Flutter 3.x compatibility guide
+
+### Research & Deep Dives
+- [DTD Protocol Research](docs/research/DTD_PROTOCOL_RESEARCH.md) - DTD vs VM Service analysis
+- [Communication Flow](docs/COMMUNICATION_FLOW.md) - Complete communication flow examples
+- [Protocol Details](docs/research/DTD_PROTOCOL_DETAILS.md) - DTD protocol specifications
+
+### Release Notes
+- [v0.3.2 Auto VM Service](docs/releases/v0.3.2_AUTO_VM_SERVICE.md) - Auto-configuration feature
+
+---
+
 ## Links
 
 - [GitHub](https://github.com/ai-dashboad/flutter-skill)
