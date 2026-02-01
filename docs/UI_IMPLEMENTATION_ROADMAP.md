@@ -1,6 +1,19 @@
 # Flutter Skill UI 改进实施路线图
 
-## 📅 总体时间线: 8 周
+> **跨平台统一开发计划** - VSCode & IntelliJ IDEA 并行实施
+
+## 📅 总体时间线: 8 周（两个平台并行）
+
+### 团队分工
+- **VSCode 团队**: 负责 VSCode Extension 实现
+- **IntelliJ 团队**: 负责 IntelliJ Plugin 实现
+- **Core 团队**: 负责共享核心逻辑（Dart）
+- **设计团队**: 负责跨平台设计审查
+
+### 同步节点
+- **每周五**: 跨平台进度同步会议
+- **每两周**: UI/UX 一致性审查
+- **每月**: 用户测试和反馈收集
 
 ---
 
@@ -567,3 +580,574 @@ git commit -m "docs(ui): update design guide"
 **开始日期**: TBD
 **预计完成**: 8 周后
 **负责人**: Flutter Skill Team
+
+## 🔄 跨平台开发原则
+
+### 设计一致性
+- ✅ **相同的功能集** - 两个平台提供相同的功能
+- ✅ **相同的布局** - 统一的信息架构和视觉层次
+- ✅ **相同的交互** - 统一的操作流程
+- ⚠️ **平台适配** - 遵循各平台的原生体验
+
+### 开发策略
+1. **设计优先** - 先统一设计，再分平台实现
+2. **核心共享** - VM Service 通信等核心逻辑共享
+3. **并行开发** - 两个平台同时开发，每周同步
+4. **统一测试** - 使用相同的测试用例
+
+---
+
+## Phase 0: 准备阶段 (Week 0)
+
+### 目标
+建立跨平台开发基础设施
+
+### Core 团队任务
+- [ ] 创建 `flutter_skill_core` Dart 包
+- [ ] 定义平台无关的接口
+- [ ] 实现 VM Service Client
+- [ ] 编写核心逻辑单元测试
+
+### 设计团队任务
+- [ ] 创建 Figma 设计文件
+- [ ] 定义设计 Token（颜色、间距、字体）
+- [ ] 制作图标集（SVG）
+- [ ] 编写设计规范文档
+
+### VSCode 团队任务
+- [ ] 设置项目结构
+- [ ] 配置构建工具
+- [ ] 集成核心 Dart 包
+- [ ] 创建基础 Webview 模板
+
+### IntelliJ 团队任务
+- [ ] 设置项目结构
+- [ ] 配置 Gradle 构建
+- [ ] 集成核心 Dart 包
+- [ ] 创建基础 Tool Window
+
+### 验收标准
+- ✅ 两个平台都能调用核心 Dart 代码
+- ✅ 设计规范文档完成
+- ✅ 开发环境配置完成
+
+---
+
+## Week 1-2: 基础改进 🏗️
+
+### 核心目标
+快速优化现有界面，立即改善用户体验
+
+---
+
+### 共享任务（Core 团队）
+
+#### 状态管理
+- [ ] 定义连接状态接口
+```dart
+enum ConnectionStatus { connected, disconnected, connecting, error }
+
+class ConnectionState {
+  final ConnectionStatus status;
+  final String? deviceName;
+  final int? vmServicePort;
+  final String? errorMessage;
+}
+```
+
+- [ ] 实现状态变更通知机制
+- [ ] 编写状态转换逻辑测试
+
+---
+
+### VSCode 团队任务
+
+#### 1.1 状态栏集成
+**文件**: `vscode-extension/src/statusBar.ts`
+
+- [ ] 创建 StatusBarItem
+- [ ] 实现状态更新逻辑
+- [ ] 添加点击打开 Quick Actions
+- [ ] 支持主题颜色适配
+
+**代码示例**:
+```typescript
+export class FlutterSkillStatusBar {
+  private statusBarItem: vscode.StatusBarItem;
+
+  constructor() {
+    this.statusBarItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      100
+    );
+    this.statusBarItem.command = 'flutter-skill.showQuickActions';
+    this.update('disconnected');
+  }
+
+  update(status: ConnectionStatus, device?: string) {
+    const icons = {
+      connected: '$(debug-alt)',
+      disconnected: '$(debug-disconnect)',
+      connecting: '$(loading~spin)'
+    };
+    
+    const labels = {
+      connected: `Flutter: ${device || 'Connected'}`,
+      disconnected: 'Flutter: Disconnected',
+      connecting: 'Flutter: Connecting...'
+    };
+
+    this.statusBarItem.text = `${icons[status]} ${labels[status]}`;
+    this.statusBarItem.show();
+  }
+}
+```
+
+#### 1.2 连接状态卡片
+**文件**: `vscode-extension/src/views/statusCard.html`
+
+- [ ] 设计卡片 HTML/CSS
+- [ ] 实现状态徽章组件
+- [ ] 添加设备信息显示
+- [ ] 实现断开/刷新按钮
+
+#### 1.3 错误提示优化
+**文件**: `vscode-extension/src/errorHandler.ts`
+
+- [ ] 创建错误处理器
+- [ ] 实现快速修复建议
+- [ ] 添加复制命令功能
+- [ ] 集成帮助文档链接
+
+---
+
+### IntelliJ 团队任务
+
+#### 1.1 状态栏 Widget
+**文件**: `intellij-plugin/src/main/kotlin/com/flutter/skill/statusbar/FlutterSkillStatusWidget.kt`
+
+- [ ] 创建 StatusBarWidget
+- [ ] 实现状态更新逻辑
+- [ ] 添加点击打开 Tool Window
+- [ ] 支持主题颜色适配
+
+**代码示例**:
+```kotlin
+class FlutterSkillStatusWidget(private val project: Project) : StatusBarWidget {
+  private var status: ConnectionStatus = ConnectionStatus.DISCONNECTED
+  
+  override fun getPresentation(): StatusBarWidget.WidgetPresentation {
+    return object : StatusBarWidget.TextPresentation {
+      override fun getText(): String {
+        return when (status) {
+          ConnectionStatus.CONNECTED -> "Flutter: Connected"
+          ConnectionStatus.DISCONNECTED -> "Flutter: Disconnected"
+          ConnectionStatus.CONNECTING -> "Flutter: Connecting..."
+          ConnectionStatus.ERROR -> "Flutter: Error"
+        }
+      }
+      
+      override fun getIcon(): Icon? {
+        return when (status) {
+          ConnectionStatus.CONNECTED -> AllIcons.Debugger.ThreadAtBreakpoint
+          ConnectionStatus.DISCONNECTED -> AllIcons.Debugger.ThreadSuspended
+          ConnectionStatus.CONNECTING -> AnimatedIcon.Default.getInstance()
+          ConnectionStatus.ERROR -> AllIcons.General.Error
+        }
+      }
+    }
+  }
+}
+```
+
+#### 1.2 连接状态面板
+**文件**: `intellij-plugin/src/main/kotlin/com/flutter/skill/ui/StatusPanel.kt`
+
+- [ ] 使用 UI DSL 创建状态面板
+- [ ] 实现状态徽章组件
+- [ ] 添加设备信息显示
+- [ ] 实现断开/刷新按钮
+
+**UI DSL 示例**:
+```kotlin
+class StatusPanel : JPanel() {
+  init {
+    layout = BorderLayout()
+    
+    val panel = panel {
+      border = JBUI.Borders.customLine(borderColor, 1)
+      background = UIUtil.getPanelBackground()
+      
+      titledRow("Connection Status") {
+        row {
+          icon(AllIcons.Debugger.ThreadAtBreakpoint)
+          label("Connected") {
+            foreground = FileStatus.ADDED.color
+          }
+        }
+        row {
+          icon(AllIcons.General.Information)
+          label("iPhone 16 Pro")
+        }
+        row {
+          button("Disconnect") { disconnect() }
+          button("Refresh") { refresh() }
+        }
+      }
+    }
+    
+    add(panel, BorderLayout.CENTER)
+  }
+}
+```
+
+#### 1.3 错误通知
+**文件**: `intellij-plugin/src/main/kotlin/com/flutter/skill/ErrorNotifier.kt`
+
+- [ ] 创建错误通知器
+- [ ] 实现快速修复 Actions
+- [ ] 添加复制命令功能
+- [ ] 集成帮助文档链接
+
+```kotlin
+object ErrorNotifier {
+  fun showConnectionError(project: Project, error: ConnectionError) {
+    val notification = Notification(
+      "Flutter Skill",
+      "Connection Failed",
+      error.message,
+      NotificationType.ERROR
+    )
+    
+    error.fixes.forEach { fix ->
+      notification.addAction(object : AnAction(fix.label) {
+        override fun actionPerformed(e: AnActionEvent) {
+          fix.action()
+        }
+      })
+    }
+    
+    Notifications.Bus.notify(notification, project)
+  }
+}
+```
+
+---
+
+### 设计团队审查清单（Week 1-2）
+
+**视觉一致性检查**:
+- [ ] 状态栏图标在两个平台含义相同
+- [ ] 连接状态卡片布局一致
+- [ ] 颜色使用符合设计规范
+- [ ] 间距比例一致
+
+**交互一致性检查**:
+- [ ] 点击状态栏行为一致
+- [ ] 错误提示内容一致
+- [ ] 快速修复选项一致
+
+### 完成标准（Week 1-2）
+- ✅ **VSCode**: 状态栏正确显示连接状态
+- ✅ **IntelliJ**: 状态栏 Widget 正确显示连接状态
+- ✅ **Both**: 错误提示包含解决方案
+- ✅ **Both**: 所有按钮都有合适的图标和提示
+- ✅ **Consistency**: 通过设计团队审查
+- ✅ **Testing**: 通过 5 个用户跨平台测试
+
+---
+
+## Week 3-4: 核心功能 🎯
+
+### 核心目标
+实现核心交互功能，提升工作效率
+
+---
+
+### 共享任务（Core 团队）
+
+#### UI 元素模型
+- [ ] 定义元素接口
+```dart
+class UIElement {
+  final String key;
+  final String type;
+  final String? text;
+  final Rect bounds;
+  final Point center;
+  final bool enabled;
+  final Map<String, dynamic> properties;
+}
+```
+
+- [ ] 实现元素树解析
+- [ ] 添加元素筛选和搜索
+- [ ] 编写元素操作 API
+
+---
+
+### VSCode 团队任务
+
+#### 2.1 Inspector Webview
+**文件**: `vscode-extension/src/views/InspectorView.ts`
+
+- [ ] 创建 Webview Panel
+- [ ] 实现截图显示
+- [ ] 添加元素高亮层
+- [ ] 支持点击定位元素
+
+**实现示例**:
+```typescript
+export class InspectorView {
+  private panel: vscode.WebviewPanel | undefined;
+
+  show(elements: UIElement[], screenshot: string) {
+    if (!this.panel) {
+      this.panel = vscode.window.createWebviewPanel(
+        'flutterSkillInspector',
+        'Flutter UI Inspector',
+        vscode.ViewColumn.Two,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true
+        }
+      );
+    }
+
+    this.panel.webview.html = this.getHtmlContent(elements, screenshot);
+    this.panel.reveal();
+    
+    // Handle messages from webview
+    this.panel.webview.onDidReceiveMessage(
+      message => this.handleWebviewMessage(message)
+    );
+  }
+}
+```
+
+#### 2.2 Interactive Elements 列表
+**文件**: `vscode-extension/src/views/elementsTree.ts`
+
+- [ ] 创建 TreeDataProvider
+- [ ] 实现元素树视图
+- [ ] 添加搜索过滤
+- [ ] 支持元素操作（Tap/Input/Inspect）
+
+---
+
+### IntelliJ 团队任务
+
+#### 2.1 Inspector Tool Window
+**文件**: `intellij-plugin/src/main/kotlin/com/flutter/skill/inspector/InspectorPanel.kt`
+
+- [ ] 创建 Inspector Panel
+- [ ] 使用 JLabel 显示截图
+- [ ] 添加 Canvas 高亮层
+- [ ] 支持点击定位元素
+
+**实现示例**:
+```kotlin
+class InspectorPanel(private val project: Project) : JPanel() {
+  private val screenshotLabel = JLabel()
+  private val highlightCanvas = HighlightCanvas()
+  
+  init {
+    layout = BorderLayout()
+    
+    val screenshotPanel = JLayeredPane().apply {
+      add(screenshotLabel, JLayeredPane.DEFAULT_LAYER)
+      add(highlightCanvas, JLayeredPane.PALETTE_LAYER)
+    }
+    
+    add(screenshotPanel, BorderLayout.CENTER)
+    add(createElementsPanel(), BorderLayout.EAST)
+    
+    // Handle mouse clicks
+    screenshotLabel.addMouseListener(object : MouseAdapter() {
+      override fun mouseClicked(e: MouseEvent) {
+        handleScreenshotClick(e.point)
+      }
+    })
+  }
+}
+```
+
+#### 2.2 Elements Tree
+**文件**: `intellij-plugin/src/main/kotlin/com/flutter/skill/tree/ElementsTree.kt`
+
+- [ ] 创建 TreeModel
+- [ ] 实现 JTree 视图
+- [ ] 添加搜索过滤
+- [ ] 支持右键菜单操作
+
+```kotlin
+class ElementsTreeModel(private val elements: List<UIElement>) : DefaultTreeModel(null) {
+  init {
+    root = buildTree(elements)
+  }
+  
+  private fun buildTree(elements: List<UIElement>): DefaultMutableTreeNode {
+    val root = DefaultMutableTreeNode("App")
+    elements.forEach { element ->
+      val node = DefaultMutableTreeNode(element)
+      root.add(node)
+    }
+    return root
+  }
+}
+```
+
+---
+
+### 并行开发对齐
+
+#### 功能对照表
+| 功能 | VSCode 实现 | IntelliJ 实现 | 统一接口 |
+|-----|-----------|--------------|---------|
+| **Inspector** | Webview Panel | Tool Window | `showInspector(elements, screenshot)` |
+| **元素列表** | TreeView | JTree | `updateElements(elements[])` |
+| **截图显示** | `<img>` tag | JLabel | `showScreenshot(base64)` |
+| **元素高亮** | Canvas overlay | Canvas layer | `highlightElement(bounds)` |
+| **搜索** | Input filter | JTextField filter | `searchElements(query)` |
+
+### 完成标准（Week 3-4）
+- ✅ **VSCode**: Inspector 显示截图和元素列表
+- ✅ **IntelliJ**: Inspector 显示截图和元素列表
+- ✅ **Both**: 支持点击元素执行操作
+- ✅ **Both**: 支持搜索和过滤
+- ✅ **Consistency**: UI 布局一致性审查通过
+- ✅ **Testing**: 新用户 2 分钟内完成首次测试
+
+---
+
+## Week 5-6: 高级功能 🚀
+
+### 共享任务（Core 团队）
+
+#### Test Recording
+- [ ] 实现测试步骤记录
+```dart
+class TestStep {
+  final String type; // tap, input, wait, screenshot
+  final String? target;
+  final dynamic value;
+  final int? timeout;
+}
+
+class TestRecorder {
+  final List<TestStep> steps = [];
+  
+  void recordTap(String key) {
+    steps.add(TestStep(type: 'tap', target: key));
+  }
+  
+  void recordInput(String key, String text) {
+    steps.add(TestStep(type: 'input', target: key, value: text));
+  }
+  
+  String generateCode() {
+    // Generate test code from steps
+  }
+}
+```
+
+---
+
+### VSCode 团队任务
+
+#### 3.1 Test Builder
+- [ ] 创建 Test Builder Webview
+- [ ] 实现拖拽步骤
+- [ ] 生成测试代码
+- [ ] 保存/加载测试用例
+
+#### 3.2 Logs Viewer
+- [ ] 集成 Output Channel
+- [ ] 实现日志过滤
+- [ ] 添加搜索功能
+- [ ] 支持日志导出
+
+---
+
+### IntelliJ 团队任务
+
+#### 3.1 Test Builder
+- [ ] 创建 Test Builder Dialog
+- [ ] 使用 Table 显示步骤
+- [ ] 生成测试代码
+- [ ] 保存/加载测试用例
+
+#### 3.2 Logs Viewer
+- [ ] 集成 Console View
+- [ ] 实现日志过滤
+- [ ] 添加搜索功能
+- [ ] 支持日志导出
+
+---
+
+## 🎯 跨平台验收标准
+
+### 功能完整性
+- [ ] 两个平台提供相同的功能
+- [ ] 核心操作流程一致
+- [ ] 错误处理逻辑一致
+
+### UI 一致性
+- [ ] 布局结构相同
+- [ ] 颜色语义一致
+- [ ] 图标含义一致
+- [ ] 文本内容相同
+
+### 用户体验
+- [ ] 响应时间相近（±20ms）
+- [ ] 加载状态一致
+- [ ] 通知内容一致
+- [ ] 帮助文档统一
+
+---
+
+## 📊 成功指标（跨平台）
+
+### 用户体验指标
+| 指标 | 目标 | VSCode | IntelliJ |
+|-----|------|--------|----------|
+| 首次连接时间 | < 10s | ⏱️ | ⏱️ |
+| 新用户首次测试 | < 2min | 🎯 | 🎯 |
+| 错误自助解决率 | > 80% | 📊 | 📊 |
+| 用户满意度 | > 4.5/5 | ⭐ | ⭐ |
+
+### 一致性指标
+- **视觉一致性**: > 95% (设计审查)
+- **功能一致性**: 100% (功能集合)
+- **体验一致性**: > 90% (用户测试)
+
+---
+
+## 🔄 同步开发流程
+
+### 每日同步
+- 晨会（15分钟）
+- 更新进度到共享看板
+- 标记阻塞问题
+
+### 每周同步
+- **周三**: 技术同步会（1小时）
+  - 演示本周进度
+  - 讨论技术难点
+  - 对齐下周计划
+  
+- **周五**: 设计审查会（1小时）
+  - UI 一致性检查
+  - 用户体验评审
+  - 收集改进建议
+
+### 每两周同步
+- **Sprint Review**: 演示完成功能
+- **User Testing**: 用户测试会（两个平台）
+- **Retrospective**: 回顾和改进
+
+---
+
+**最后更新**: 2026-02-01
+**版本**: 2.0 (跨平台版本)
+**负责人**: Flutter Skill Team (VSCode + IntelliJ + Core + Design)
