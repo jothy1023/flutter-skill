@@ -11,7 +11,19 @@
 
 ## Quick Start
 
-### 1. Install (choose one)
+### 1. Install
+
+**⚡ 一键安装（推荐）**
+
+```bash
+# macOS/Linux
+curl -fsSL https://raw.githubusercontent.com/ai-dashboad/flutter-skill/main/install.sh | bash
+
+# Windows PowerShell (管理员权限)
+iwr https://raw.githubusercontent.com/ai-dashboad/flutter-skill/main/install.ps1 -useb | iex
+```
+
+**或手动安装：**
 
 ```bash
 # npm (recommended - includes native binary for instant startup)
@@ -25,13 +37,20 @@ brew install flutter-skill
 scoop bucket add flutter-skill https://github.com/ai-dashboad/scoop-flutter-skill
 scoop install flutter-skill
 
-# Dart
+# Dart (需要 Flutter SDK)
 dart pub global activate flutter_skill
 
 # IDE Extensions
 # - VSCode: Search "Flutter Skill" in Extensions
 # - IntelliJ/Android Studio: Search "Flutter Skill" in Plugins
 ```
+
+**一键安装做了什么？**
+- ✅ 自动检测最佳安装方法（npm > Homebrew/Scoop > 源码）
+- ✅ 自动安装工具优先级规则到 `~/.claude/prompts/`
+- ✅ 自动配置 PATH 环境变量
+- ✅ 解决所有依赖和版本问题
+- ✅ 跨平台支持（macOS, Linux, Windows）
 
 ### 2. Configure AI Agent
 
