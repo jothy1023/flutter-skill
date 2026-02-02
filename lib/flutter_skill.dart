@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -43,6 +44,10 @@ class FlutterSkillBinding {
   static final List<String> _logs = [];
   static final List<Map<String, dynamic>> _errors = [];
   static int _pointerCounter = 1;
+
+  // Test indicators
+  static TestIndicatorOverlay? _indicatorOverlay;
+  static bool _indicatorsEnabled = false;
 
   static void _registerExtensions() {
     // ==================== EXISTING EXTENSIONS ====================
@@ -449,6 +454,72 @@ class FlutterSkillBinding {
       }
     });
 
+    // ==================== TEST INDICATORS ====================
+
+    // Enable Test Indicators
+    developer.registerExtension('ext.flutter.flutter_skill.enableIndicators',
+        (method, parameters) async {
+      try {
+        _indicatorsEnabled = true;
+        _indicatorOverlay ??= TestIndicatorOverlay();
+        _indicatorOverlay!.enable();
+
+        // Optional: set style
+        final styleParam = parameters['style'];
+        if (styleParam != null) {
+          final style = IndicatorStyle.values.firstWhere(
+            (s) => s.name == styleParam,
+            orElse: () => IndicatorStyle.standard,
+          );
+          _indicatorOverlay!.setStyle(style);
+        }
+
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode({
+            'success': true,
+            'enabled': true,
+            'style': _indicatorOverlay!._style.name,
+          }),
+        );
+      } catch (e, stack) {
+        return _errorResponse(e, stack);
+      }
+    });
+
+    // Disable Test Indicators
+    developer.registerExtension('ext.flutter.flutter_skill.disableIndicators',
+        (method, parameters) async {
+      try {
+        _indicatorsEnabled = false;
+        _indicatorOverlay?.disable();
+        _indicatorOverlay = null;
+
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode({
+            'success': true,
+            'enabled': false,
+          }),
+        );
+      } catch (e, stack) {
+        return _errorResponse(e, stack);
+      }
+    });
+
+    // Get Indicator Status
+    developer.registerExtension('ext.flutter.flutter_skill.getIndicatorStatus',
+        (method, parameters) async {
+      try {
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode({
+            'enabled': _indicatorsEnabled,
+            'style': _indicatorOverlay?._style.name ?? 'standard',
+          }),
+        );
+      } catch (e, stack) {
+        return _errorResponse(e, stack);
+      }
+    });
+
     // ==================== DEBUG & LOGS ====================
 
     // 23. Get Logs
@@ -748,6 +819,12 @@ class FlutterSkillBinding {
         renderObject.localToGlobal(renderObject.size.center(Offset.zero));
     _log('Tapping at $center (key: $key, text: $text)');
 
+    // Show indicator if enabled
+    if (_indicatorsEnabled && _indicatorOverlay != null) {
+      final targetText = text ?? _extractTextFrom(element) ?? key ?? 'element';
+      _indicatorOverlay!.showTap(center, hint: "Tapping '$targetText'");
+    }
+
     await _dispatchTap(center);
     _log('Tap completed on (key: $key, text: $text)');
 
@@ -968,6 +1045,18 @@ class FlutterSkillBinding {
 
     final center =
         renderObject.localToGlobal(renderObject.size.center(Offset.zero));
+
+    // Show indicator if enabled
+    if (_indicatorsEnabled && _indicatorOverlay != null) {
+      final bounds = Rect.fromLTWH(
+        renderObject.localToGlobal(Offset.zero).dx,
+        renderObject.localToGlobal(Offset.zero).dy,
+        renderObject.size.width,
+        renderObject.size.height,
+      );
+      _indicatorOverlay!.showTextInput(bounds, hint: "Entering text: '$text'");
+    }
+
     await _dispatchTap(center);
     await Future.delayed(const Duration(milliseconds: 200));
 
@@ -1184,6 +1273,15 @@ class FlutterSkillBinding {
     final binding = WidgetsBinding.instance;
     final pointer = _pointerCounter++;
 
+    // Show indicator if enabled
+    if (_indicatorsEnabled && _indicatorOverlay != null) {
+      _indicatorOverlay!.showLongPress(
+        position,
+        Duration(milliseconds: duration),
+        hint: "Long pressing",
+      );
+    }
+
     binding.handlePointerEvent(
         PointerDownEvent(position: position, pointer: pointer));
     await Future.delayed(Duration(milliseconds: duration));
@@ -1207,6 +1305,12 @@ class FlutterSkillBinding {
     final start = Offset(startX, startY);
     final end = Offset(endX, endY);
     final delta = end - start;
+
+    // Show indicator if enabled
+    if (_indicatorsEnabled && _indicatorOverlay != null) {
+      final direction = _getSwipeDirection(delta);
+      _indicatorOverlay!.showSwipe(start, end, hint: "Swiping $direction");
+    }
 
     binding.handlePointerEvent(
         PointerDownEvent(position: start, pointer: pointer));
@@ -1942,6 +2046,14 @@ class FlutterSkillBinding {
 
   // ==================== HELPERS ====================
 
+  static String _getSwipeDirection(Offset delta) {
+    if (delta.dx.abs() > delta.dy.abs()) {
+      return delta.dx > 0 ? 'right' : 'left';
+    } else {
+      return delta.dy > 0 ? 'down' : 'up';
+    }
+  }
+
   static String? _extractTextFrom(Element element) {
     String? found;
     void visit(Element e) {
@@ -1956,5 +2068,674 @@ class FlutterSkillBinding {
 
     visit(element);
     return found;
+  }
+}
+
+// ==================== TEST INDICATORS ====================
+
+/// Visual indicator types for test actions
+enum IndicatorType { tap, swipe, longPress, textInput, hint }
+
+/// Style configuration for indicators
+enum IndicatorStyle {
+  minimal,  // Small, fast, no hints
+  standard, // Medium, normal speed, 1s hints
+  detailed, // Large, slow, 2s hints + debug info
+}
+
+/// Data model for an active indicator
+class IndicatorData {
+  final IndicatorType type;
+  final Offset? position;
+  final Offset? endPosition;
+  final Duration? duration;
+  final Rect? bounds;
+  final String? message;
+  final DateTime timestamp;
+
+  IndicatorData({
+    required this.type,
+    this.position,
+    this.endPosition,
+    this.duration,
+    this.bounds,
+    this.message,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+}
+
+/// Manages the overlay entry and indicator display
+class TestIndicatorOverlay {
+  OverlayEntry? _entry;
+  final GlobalKey<_TestIndicatorWidgetState> _widgetKey = GlobalKey();
+  IndicatorStyle _style = IndicatorStyle.standard;
+
+  /// Enable the indicator overlay
+  void enable() {
+    if (_entry != null) return;
+
+    final overlay = _findOverlayState();
+    if (overlay == null) {
+      print('Flutter Skill: Cannot find Overlay to show indicators');
+      return;
+    }
+
+    _entry = OverlayEntry(
+      builder: (context) => _TestIndicatorWidget(
+        key: _widgetKey,
+        style: _style,
+      ),
+    );
+
+    overlay.insert(_entry!);
+    print('Flutter Skill: Test indicators enabled');
+  }
+
+  /// Disable and remove the indicator overlay
+  void disable() {
+    _entry?.remove();
+    _entry = null;
+    print('Flutter Skill: Test indicators disabled');
+  }
+
+  /// Set indicator style
+  void setStyle(IndicatorStyle style) {
+    _style = style;
+    _widgetKey.currentState?.setStyle(style);
+  }
+
+  /// Show tap indicator
+  void showTap(Offset position, {String? hint}) {
+    _widgetKey.currentState?.addIndicator(IndicatorData(
+      type: IndicatorType.tap,
+      position: position,
+      message: hint,
+    ));
+  }
+
+  /// Show swipe indicator
+  void showSwipe(Offset start, Offset end, {String? hint}) {
+    _widgetKey.currentState?.addIndicator(IndicatorData(
+      type: IndicatorType.swipe,
+      position: start,
+      endPosition: end,
+      message: hint,
+    ));
+  }
+
+  /// Show long press indicator
+  void showLongPress(Offset position, Duration duration, {String? hint}) {
+    _widgetKey.currentState?.addIndicator(IndicatorData(
+      type: IndicatorType.longPress,
+      position: position,
+      duration: duration,
+      message: hint,
+    ));
+  }
+
+  /// Show text input indicator
+  void showTextInput(Rect bounds, {String? hint}) {
+    _widgetKey.currentState?.addIndicator(IndicatorData(
+      type: IndicatorType.textInput,
+      bounds: bounds,
+      message: hint,
+    ));
+  }
+
+  /// Show action hint only
+  void showHint(String message) {
+    _widgetKey.currentState?.addIndicator(IndicatorData(
+      type: IndicatorType.hint,
+      message: message,
+    ));
+  }
+
+  /// Find the app's overlay state
+  OverlayState? _findOverlayState() {
+    final context = WidgetsBinding.instance.rootElement;
+    if (context == null) return null;
+
+    OverlayState? overlayState;
+
+    void visit(Element element) {
+      if (overlayState != null) return;
+      if (element.widget is Overlay) {
+        overlayState = (element as StatefulElement).state as OverlayState;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    visit(context);
+    return overlayState;
+  }
+}
+
+/// Widget that renders all test indicators
+class _TestIndicatorWidget extends StatefulWidget {
+  final IndicatorStyle style;
+
+  const _TestIndicatorWidget({super.key, required this.style});
+
+  @override
+  State<_TestIndicatorWidget> createState() => _TestIndicatorWidgetState();
+}
+
+class _TestIndicatorWidgetState extends State<_TestIndicatorWidget>
+    with TickerProviderStateMixin {
+  final List<IndicatorData> _indicators = [];
+  final Map<IndicatorData, AnimationController> _controllers = {};
+  IndicatorStyle _style = IndicatorStyle.standard;
+
+  @override
+  void initState() {
+    super.initState();
+    _style = widget.style;
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void setStyle(IndicatorStyle style) {
+    setState(() {
+      _style = style;
+    });
+  }
+
+  void addIndicator(IndicatorData indicator) {
+    setState(() {
+      _indicators.add(indicator);
+
+      // Create animation controller
+      final duration = _getAnimationDuration(indicator);
+      final controller = AnimationController(
+        vsync: this,
+        duration: duration,
+      );
+
+      _controllers[indicator] = controller;
+
+      // Start animation
+      controller.forward().then((_) {
+        // Remove after animation completes
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              _indicators.remove(indicator);
+              _controllers[indicator]?.dispose();
+              _controllers.remove(indicator);
+            });
+          }
+        });
+      });
+    });
+  }
+
+  Duration _getAnimationDuration(IndicatorData indicator) {
+    switch (_style) {
+      case IndicatorStyle.minimal:
+        return const Duration(milliseconds: 200);
+      case IndicatorStyle.standard:
+        return indicator.type == IndicatorType.longPress && indicator.duration != null
+            ? indicator.duration!
+            : const Duration(milliseconds: 500);
+      case IndicatorStyle.detailed:
+        return indicator.type == IndicatorType.longPress && indicator.duration != null
+            ? indicator.duration!
+            : const Duration(milliseconds: 800);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          // Render each indicator
+          for (final indicator in _indicators)
+            _buildIndicator(context, indicator),
+
+          // Render action hints at the top
+          if (_style != IndicatorStyle.minimal)
+            ..._buildActionHints(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIndicator(BuildContext context, IndicatorData indicator) {
+    final controller = _controllers[indicator];
+    if (controller == null) return const SizedBox.shrink();
+
+    switch (indicator.type) {
+      case IndicatorType.tap:
+        return _TapIndicator(
+          position: indicator.position!,
+          animation: controller,
+          style: _style,
+        );
+
+      case IndicatorType.swipe:
+        return _SwipeIndicator(
+          start: indicator.position!,
+          end: indicator.endPosition!,
+          animation: controller,
+          style: _style,
+        );
+
+      case IndicatorType.longPress:
+        return _LongPressIndicator(
+          position: indicator.position!,
+          animation: controller,
+          style: _style,
+        );
+
+      case IndicatorType.textInput:
+        return _TextInputIndicator(
+          bounds: indicator.bounds!,
+          animation: controller,
+          style: _style,
+        );
+
+      case IndicatorType.hint:
+        return const SizedBox.shrink();
+    }
+  }
+
+  List<Widget> _buildActionHints(BuildContext context) {
+    final hints = _indicators
+        .where((i) => i.message != null && i.message!.isNotEmpty)
+        .toList();
+
+    if (hints.isEmpty) return [];
+
+    // Show only the most recent hint
+    final latestHint = hints.last;
+    final controller = _controllers[latestHint];
+    if (controller == null) return [];
+
+    return [
+      Positioned(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 16,
+        right: 16,
+        child: _ActionHint(
+          message: latestHint.message!,
+          animation: controller,
+          style: _style,
+        ),
+      ),
+    ];
+  }
+}
+
+// ==================== INDICATOR WIDGETS ====================
+
+/// Tap indicator: expanding circle
+class _TapIndicator extends StatelessWidget {
+  final Offset position;
+  final Animation<double> animation;
+  final IndicatorStyle style;
+
+  const _TapIndicator({
+    required this.position,
+    required this.animation,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final size = _getSize();
+        final radius = size * animation.value;
+        final opacity = (1.0 - animation.value) * 0.5;
+
+        return Positioned(
+          left: position.dx - radius,
+          top: position.dy - radius,
+          child: Container(
+            width: radius * 2,
+            height: radius * 2,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFF4CAF50).withValues(alpha: opacity),
+                width: 3,
+              ),
+              color: const Color(0xFF4CAF50).withValues(alpha: opacity * 0.3),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  double _getSize() {
+    switch (style) {
+      case IndicatorStyle.minimal:
+        return 30;
+      case IndicatorStyle.standard:
+        return 50;
+      case IndicatorStyle.detailed:
+        return 70;
+    }
+  }
+}
+
+/// Swipe indicator: arrow with trail
+class _SwipeIndicator extends StatelessWidget {
+  final Offset start;
+  final Offset end;
+  final Animation<double> animation;
+  final IndicatorStyle style;
+
+  const _SwipeIndicator({
+    required this.start,
+    required this.end,
+    required this.animation,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _SwipePainter(
+            start: start,
+            end: end,
+            progress: animation.value,
+            style: style,
+          ),
+          child: Container(),
+        );
+      },
+    );
+  }
+}
+
+class _SwipePainter extends CustomPainter {
+  final Offset start;
+  final Offset end;
+  final double progress;
+  final IndicatorStyle style;
+
+  _SwipePainter({
+    required this.start,
+    required this.end,
+    required this.progress,
+    required this.style,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF9C27B0).withValues(alpha: (1.0 - progress) * 0.5)
+      ..strokeWidth = style == IndicatorStyle.minimal ? 2 : 3
+      ..style = PaintingStyle.stroke;
+
+    // Draw dashed line
+    final path = Path();
+    path.moveTo(start.dx, start.dy);
+    path.lineTo(end.dx, end.dy);
+
+    canvas.drawPath(
+      _createDashedPath(path, dashWidth: 10, dashSpace: 5),
+      paint,
+    );
+
+    // Draw arrow head
+    final angle = (end - start).direction;
+    final arrowSize = style == IndicatorStyle.minimal ? 15.0 : 20.0;
+
+    final arrowPath = Path();
+    arrowPath.moveTo(end.dx, end.dy);
+    arrowPath.lineTo(
+      end.dx - arrowSize * cos(angle - pi / 6),
+      end.dy - arrowSize * sin(angle - pi / 6),
+    );
+    arrowPath.moveTo(end.dx, end.dy);
+    arrowPath.lineTo(
+      end.dx - arrowSize * cos(angle + pi / 6),
+      end.dy - arrowSize * sin(angle + pi / 6),
+    );
+
+    paint.style = PaintingStyle.stroke;
+    canvas.drawPath(arrowPath, paint);
+  }
+
+  Path _createDashedPath(Path source, {required double dashWidth, required double dashSpace}) {
+    final path = Path();
+    for (final metric in source.computeMetrics()) {
+      double distance = 0;
+      bool draw = true;
+      while (distance < metric.length) {
+        final length = draw ? dashWidth : dashSpace;
+        if (distance + length > metric.length) {
+          if (draw) {
+            path.addPath(
+              metric.extractPath(distance, metric.length),
+              Offset.zero,
+            );
+          }
+          break;
+        }
+        if (draw) {
+          path.addPath(
+            metric.extractPath(distance, distance + length),
+            Offset.zero,
+          );
+        }
+        distance += length;
+        draw = !draw;
+      }
+    }
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(_SwipePainter oldDelegate) => progress != oldDelegate.progress;
+}
+
+/// Long press indicator: filling circle
+class _LongPressIndicator extends StatelessWidget {
+  final Offset position;
+  final Animation<double> animation;
+  final IndicatorStyle style;
+
+  const _LongPressIndicator({
+    required this.position,
+    required this.animation,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final size = _getSize();
+        final opacity = 0.5;
+
+        return Positioned(
+          left: position.dx - size,
+          top: position.dy - size,
+          child: SizedBox(
+            width: size * 2,
+            height: size * 2,
+            child: CustomPaint(
+              painter: _LongPressPainter(
+                progress: animation.value,
+                opacity: opacity,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  double _getSize() {
+    switch (style) {
+      case IndicatorStyle.minimal:
+        return 25;
+      case IndicatorStyle.standard:
+        return 35;
+      case IndicatorStyle.detailed:
+        return 45;
+    }
+  }
+}
+
+class _LongPressPainter extends CustomPainter {
+  final double progress;
+  final double opacity;
+
+  _LongPressPainter({required this.progress, required this.opacity});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Background circle
+    final bgPaint = Paint()
+      ..color = const Color(0xFFFF9800).withValues(alpha: opacity * 0.2)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    final progressPaint = Paint()
+      ..color = const Color(0xFFFF9800).withValues(alpha: opacity)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 2),
+      -pi / 2,
+      2 * pi * progress,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LongPressPainter oldDelegate) => progress != oldDelegate.progress;
+}
+
+/// Text input indicator: glowing border
+class _TextInputIndicator extends StatelessWidget {
+  final Rect bounds;
+  final Animation<double> animation;
+  final IndicatorStyle style;
+
+  const _TextInputIndicator({
+    required this.bounds,
+    required this.animation,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final opacity = (sin(animation.value * pi * 4) + 1) / 2 * 0.5;
+
+        return Positioned(
+          left: bounds.left,
+          top: bounds.top,
+          child: Container(
+            width: bounds.width,
+            height: bounds.height,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: const Color(0xFF4CAF50).withValues(alpha: opacity),
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Action hint banner
+class _ActionHint extends StatelessWidget {
+  final String message;
+  final Animation<double> animation;
+  final IndicatorStyle style;
+
+  const _ActionHint({
+    required this.message,
+    required this.animation,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        // Slide in from top, then fade out
+        final slideProgress = animation.value < 0.2 ? animation.value / 0.2 : 1.0;
+        final fadeProgress = animation.value > 0.8 ? (1.0 - animation.value) / 0.2 : 1.0;
+        final opacity = fadeProgress * 0.95;
+
+        return Transform.translate(
+          offset: Offset(0, -20 * (1 - slideProgress)),
+          child: Opacity(
+            opacity: opacity,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.touch_app,
+                      color: Color(0xFF4CAF50),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

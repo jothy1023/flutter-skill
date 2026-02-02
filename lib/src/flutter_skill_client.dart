@@ -394,4 +394,23 @@ class FlutterSkillClient {
     throw ArgumentError(
         'No URI provided and .flutter_skill_uri not found/empty. Run `flutter_skill launch` or provide URI as first argument.');
   }
+
+  // ==================== TEST INDICATORS ====================
+
+  /// Enable test indicators with optional style
+  Future<Map<String, dynamic>> enableTestIndicators({String style = 'standard'}) async {
+    return await _call('ext.flutter.flutter_skill.enableIndicators', {
+      'style': style,
+    });
+  }
+
+  /// Disable test indicators
+  Future<Map<String, dynamic>> disableTestIndicators() async {
+    return await _call('ext.flutter.flutter_skill.disableIndicators');
+  }
+
+  /// Get indicator status
+  Future<Map<String, dynamic>> getIndicatorStatus() async {
+    return await _call('ext.flutter.flutter_skill.getIndicatorStatus');
+  }
 }

@@ -946,6 +946,33 @@ Detailed diagnostic report with:
         },
       },
 
+      // Test Indicators
+      {
+        "name": "enable_test_indicators",
+        "description": "Enable visual indicators for test actions (tap, swipe, long press, text input)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable or disable indicators",
+              "default": true
+            },
+            "style": {
+              "type": "string",
+              "description": "Indicator style: minimal (fast, small), standard (default), detailed (slow, large with debug info)",
+              "enum": ["minimal", "standard", "detailed"],
+              "default": "standard"
+            },
+          },
+        },
+      },
+      {
+        "name": "get_indicator_status",
+        "description": "Get current test indicator status",
+        "inputSchema": {"type": "object", "properties": {}},
+      },
+
       // === NEW: Batch Operations ===
       {
         "name": "execute_batch",
@@ -1999,6 +2026,36 @@ Detailed diagnostic report with:
       _requireConnection(client);
       await client!.hotRestart();
       return "Hot restart triggered";
+    }
+
+    if (name == 'enable_test_indicators') {
+      final client = _getClient(args);
+      _requireConnection(client);
+      final enabled = args['enabled'] ?? true;
+      final style = args['style'] ?? 'standard';
+
+      if (enabled) {
+        await client!.enableTestIndicators(style: style);
+        return {
+          "success": true,
+          "enabled": true,
+          "style": style,
+          "message": "Test indicators enabled with $style style"
+        };
+      } else {
+        await client!.disableTestIndicators();
+        return {
+          "success": true,
+          "enabled": false,
+          "message": "Test indicators disabled"
+        };
+      }
+    }
+
+    if (name == 'get_indicator_status') {
+      final client = _getClient(args);
+      _requireConnection(client);
+      return await client!.getIndicatorStatus();
     }
 
     // Require connection for all other tools
