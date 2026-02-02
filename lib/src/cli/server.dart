@@ -784,9 +784,10 @@ Capture a screenshot of the current app screen for visual inspection, debugging,
 • Verifying UI appearance after actions
 
 [RETURNS]
-Base64-encoded PNG image that can be displayed to user.
+By default, saves screenshot to a temporary file and returns file path. Optionally can return base64-encoded PNG image.
 
-[DEFAULTS OPTIMIZED FOR WEB]
+[DEFAULTS OPTIMIZED FOR USABILITY]
+• save_to_file: true (saves to file, returns path - recommended for large images)
 • quality: 0.5 (prevents token overflow, set to 1.0 for full quality)
 • max_width: 800 (scales down large screens, set to null for original size)
 • For high-quality screenshots, explicitly set: quality=1.0, max_width=null
@@ -794,6 +795,11 @@ Base64-encoded PNG image that can be displayed to user.
         "inputSchema": {
           "type": "object",
           "properties": {
+            "save_to_file": {
+              "type": "boolean",
+              "description": "Save to file and return path (default: true, recommended)",
+              "default": true
+            },
             "quality": {
               "type": "number",
               "description":
@@ -2180,9 +2186,49 @@ Detailed diagnostic report with:
         // Default to lower quality and max width to prevent token overflow
         final quality = (args['quality'] as num?)?.toDouble() ?? 0.5;
         final maxWidth = args['max_width'] as int? ?? 800;
-        final image =
+        final saveToFile = args['save_to_file'] ?? true;  // Default to saving as file
+
+        final imageBase64 =
             await client!.takeScreenshot(quality: quality, maxWidth: maxWidth);
-        return {"image": image, "quality": quality, "max_width": maxWidth};
+
+        if (imageBase64 == null) {
+          return {
+            "success": false,
+            "error": "Failed to capture screenshot",
+            "message": "Screenshot returned null"
+          };
+        }
+
+        if (saveToFile) {
+          // Save to temporary file
+          final tempDir = Directory.systemTemp;
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final filename = 'flutter_skill_screenshot_$timestamp.png';
+          final file = File('${tempDir.path}/$filename');
+
+          // Decode base64 and write to file
+          final bytes = base64.decode(imageBase64);
+          await file.writeAsBytes(bytes);
+
+          return {
+            "success": true,
+            "file_path": file.path,
+            "filename": filename,
+            "size_bytes": bytes.length,
+            "quality": quality,
+            "max_width": maxWidth,
+            "format": "png",
+            "message": "Screenshot saved to ${file.path}"
+          };
+        } else {
+          // Return base64 (legacy behavior)
+          return {
+            "image": imageBase64,
+            "quality": quality,
+            "max_width": maxWidth,
+            "warning": "Returning base64 data. Consider using save_to_file=true for large images."
+          };
+        }
 
       case 'screenshot_region':
         final x = (args['x'] as num).toDouble();
