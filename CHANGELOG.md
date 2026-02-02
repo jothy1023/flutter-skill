@@ -1,3 +1,15 @@
+## 0.4.4
+
+**Fix dart analyze errors**
+
+### Bug Fixes
+- Fix `WebSocket.connect` timeout parameter issue (use `.timeout()` method instead of named parameter)
+- Add missing `dart:convert` import for `utf8` usage in protocol detector
+- Fix test file: `getWidgetTree` returns `Map` not `String`, use correct `takeScreenshot` method name
+- Add `.mcp.json` to gitignore
+
+---
+
 ## 0.4.3
 
 **Multi-session support for parallel Flutter app testing**
