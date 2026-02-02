@@ -99,6 +99,10 @@ echo "  ✓ intellij-plugin/plugin.xml"
 sed -i '' "s/flutter_skill: \^[0-9.]*/flutter_skill: ^$VERSION/g" README.md
 echo "  ✓ README.md"
 
+# lib/src/cli/server.dart
+sed -i '' "s/const String _currentVersion = '[^']*'/const String _currentVersion = '$VERSION'/" lib/src/cli/server.dart
+echo "  ✓ lib/src/cli/server.dart"
+
 # Step 3: Update CHANGELOG
 echo ""
 echo -e "${BLUE}📝 Updating CHANGELOG.md...${NC}"
