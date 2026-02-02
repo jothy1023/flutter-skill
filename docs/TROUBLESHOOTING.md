@@ -1,302 +1,167 @@
-# Flutter Skill 连接问题诊断
+# Troubleshooting Guide
 
-## 🔍 你遇到的问题
+## Quick Fix for "Cannot Connect to VM Service"
 
-### 错误信息
+### Step 1: Run Diagnostic (NEW - Recommended!)
+
+**Option A: Using MCP Tool (from Claude Code)**
 ```
-connect_app(uri: "ws://127.0.0.1:54321/ws")
-→ Error: Connection refused, port = 62397
+Use the diagnose_project MCP tool:
+- Project path: /path/to/your/project
+- Auto-fix: true (default)
+
+This will automatically detect and fix all configuration issues!
 ```
 
-### 实际情况
-
-**检测结果**:
+**Option B: Using CLI**
 ```bash
-# 1. .flutter_skill_uri 文件内容
-ws://127.0.0.1:52043/SFErOrpc9AU=/ws  ← 旧的 URI
-
-# 2. 端口 52043 状态
-❌ 端口未监听（应用已关闭）
-
-# 3. 当前运行的 Flutter 应用
-✅ 有应用在运行
-✅ VM Service 端口: 64004
-✅ URI: http://127.0.0.1:64004/JNZQunrYU_4=/
+cd /path/to/your/flutter/project
+/path/to/flutter-skill/scripts/diagnose.sh
 ```
 
----
+### Step 2: Auto-Fix Configuration
 
-## 🎯 问题根源
+**Auto-fix is now built into ALL MCP connection tools!**
 
-### 问题 1: 使用了旧的/错误的 URI
+```javascript
+// NEW: diagnose_project - comprehensive diagnostic
+mcp_tool("diagnose_project", {
+  "project_path": ".",
+  "auto_fix": true
+})
 
+// launch_app - always auto-fixes (no change)
+mcp_tool("launch_app", {
+  "project_path": ".",
+  "device_id": "device_id"
+})
+
+// connect_app - now supports auto-fix
+mcp_tool("connect_app", {
+  "uri": "ws://...",
+  "project_path": "."  // Add this for auto-fix
+})
+
+// scan_and_connect - now supports auto-fix
+mcp_tool("scan_and_connect", {
+  "project_path": "."  // Add this for auto-fix
+})
 ```
-你使用的:   ws://127.0.0.1:54321/ws  ← 错误
-实际应该是: http://127.0.0.1:64004/JNZQunrYU_4=/  ← 正确
-```
 
-**为什么会这样？**
-- 应用重启后，VM Service 端口会变化（64004 → 另一个随机端口）
-- .flutter_skill_uri 文件保存的是旧的 URI
-- 你手动输入的 URI 也不正确
-
-### 问题 2: 应用没有用固定端口启动
-
-当前应用启动命令可能是：
+**Or use CLI:**
 ```bash
-flutter run  # ❌ 没有指定端口
+# Automatic setup
+flutter_skill setup
+
+# Or launch (automatically runs setup)
+flutter_skill launch . -d device_id
 ```
 
-导致：
-- VM Service 端口随机分配（64004、52043...每次不同）
-- 无法预测连接地址
-
----
-
-## ✅ 解决方案
-
-### 方案 A: 使用 launch_app（推荐，零配置）
-
-**停止当前应用，使用 flutter-skill 启动**：
-
-```python
-# 在 MCP 客户端（Cursor）中调用
-launch_app(
-  project_path: "/Users/cw/development/opencli/opencli_mobile",
-  device_id: "iPhone 16 Pro"  # 或你的设备 ID
-)
-
-# 自动完成:
-# 1. 启动应用（自动添加 --vm-service-port=50000）
-# 2. 自动连接
-# 3. 保存 URI 到 .flutter_skill_uri
-```
-
-**优势**:
-- ✅ 完全自动化
-- ✅ 固定端口（50000）
-- ✅ 零配置
-
----
-
-### 方案 B: 手动启动 + 正确的 URI
-
-#### 步骤 1: 重启应用，指定固定端口
-
+### Step 3: Verify
 ```bash
-# 停止当前应用
-# 然后重新启动，加上参数:
-cd /Users/cw/development/opencli/opencli_mobile
-flutter run -d "iPhone 16 Pro" --vm-service-port=50000
+# Check if everything is configured
+flutter_skill inspect
 ```
 
-**关键**: 必须加 `--vm-service-port=50000`
+## Common Issues and Solutions
 
-#### 步骤 2: 使用正确的 URI 连接
+### Issue 1: "No VM Service URI found"
 
-启动后会看到：
-```
-The Dart VM service is listening on http://127.0.0.1:50000/xxx=/
-```
+**Cause:** App not launched with `--vm-service-port` flag
 
-复制这个 URI，然后：
-```python
-connect_app(uri: "http://127.0.0.1:50000/xxx=/")
-```
-
----
-
-### 方案 C: 自动扫描并连接
-
-```python
-# 不需要 URI，自动扫描
-scan_and_connect()
-
-# 会自动:
-# 1. 扫描端口 50000-50100
-# 2. 查找运行的 Flutter 应用
-# 3. 自动连接
-```
-
-**问题**: 如果应用没有用固定端口启动，可能扫描不到（因为端口是 64004）
-
----
-
-## 🔍 诊断命令
-
-### 查看当前运行的应用
-
+**Solution:**
 ```bash
-# 查看 VM Service 端口
-lsof -iTCP -sTCP:LISTEN -n -P | grep dart
+# ✅ Use flutter_skill launch (auto-adds flag)
+flutter_skill launch . -d device_id
 
-# 查看保存的 URI
-cat .flutter_skill_uri
+# ✅ Or add flag manually
+flutter run -d device_id --vm-service-port=50000
 ```
 
-### 测试连接
+### Issue 2: "Connection refused"
 
-```python
-# 获取连接状态
-get_connection_status()
+**Cause:**
+- Port already in use
+- VM Service not enabled
+- Flutter app not running
 
-# 会显示:
-# - 是否已连接
-# - 当前 URI
-# - 可用的应用列表
+**Solution:**
+```bash
+# Check port usage
+lsof -i :50000
+
+# Kill existing Flutter processes
+pkill -f "flutter run"
+
+# Restart with flutter_skill
+flutter_skill launch . -d device_id
 ```
 
----
+### Issue 3: "FlutterSkillBinding not initialized"
 
-## 📋 完整的故障排除流程
+**Cause:** Missing setup in main.dart
 
-### 1️⃣ 检查应用是否运行
+**Solution:**
+```bash
+# Auto-fix
+flutter_skill setup
+
+# Or manually add to lib/main.dart:
+# import 'package:flutter_skill/flutter_skill.dart';
+# import 'package:flutter/foundation.dart';
+#
+# void main() {
+#   if (kDebugMode) {
+#     FlutterSkillBinding.ensureInitialized();
+#   }
+#   runApp(const MyApp());
+# }
+```
+
+### Issue 4: "DTD URI found but no VM Service"
+
+**Cause:** Flutter 3.x+ only enables DTD by default
+
+**Solution:**
+Always use `--vm-service-port` flag (flutter_skill does this automatically)
 
 ```bash
-ps aux | grep flutter | grep run
+flutter_skill launch . -d device_id
 ```
 
-如果没有运行 → 使用 `launch_app` 启动
+## Diagnostic Output Examples
 
-### 2️⃣ 检查 VM Service 是否启用
-
-```bash
-# 查看 Flutter 启动日志
-# 应该看到:
-The Dart VM service is listening on http://...
+### ✅ Healthy Configuration
+```
+=== Flutter Skill Configuration Check ===
+✅ pubspec.yaml has flutter_skill dependency
+✅ main.dart has FlutterSkillBinding initialization
+✅ Port 50000 is available
 ```
 
-如果没有看到 → 应用没有启用 VM Service，需要重启并加 `--vm-service-port=50000`
-
-### 3️⃣ 获取正确的 URI
-
-**方法 1**: 从启动日志复制
+### ❌ Needs Fix
 ```
-The Dart VM service is listening on http://127.0.0.1:50000/xxx=/
-```
-
-**方法 2**: 使用 scan_and_connect 自动发现
-```python
-scan_and_connect()
+=== Flutter Skill Configuration Check ===
+❌ pubspec.yaml missing flutter_skill dependency
+   Fix: Add flutter_skill: ^0.4.4
+❌ main.dart missing initialization
+   Fix: Add FlutterSkillBinding.ensureInitialized()
 ```
 
-### 4️⃣ 连接
+## Get Help
 
-```python
-connect_app(uri: "http://127.0.0.1:50000/xxx=/")
-```
+If automatic fixes don't work:
 
----
+1. Run diagnostic script: `./scripts/diagnose.sh`
+2. Check the output for specific errors
+3. Review [CLAUDE.md](CLAUDE.md) for project rules
+4. Open an issue with diagnostic output
 
-## 🎯 推荐工作流程
+## Flutter Version Compatibility
 
-### 最简单的方式（推荐）
+- **Flutter 3.x**: Requires `--vm-service-port=50000`
+- **Flutter 3.41+**: Requires `--vm-service-port=50000` (new URI format `#` supported)
 
-```python
-# 1. 停止当前应用（如果有）
-stop_app()
-
-# 2. 使用 launch_app 启动
-launch_app(
-  project_path: "/Users/cw/development/opencli/opencli_mobile",
-  device_id: "iPhone 16 Pro"
-)
-
-# 3. 自动连接成功！
-# 现在可以使用所有功能:
-inspect()
-tap(key: "button")
-screenshot()
-```
-
-**为什么推荐？**
-- ✅ 自动添加 `--vm-service-port=50000`
-- ✅ 固定端口，下次可以直接 `scan_and_connect()`
-- ✅ 零配置，无需手动输入 URI
-
----
-
-## 🐛 常见错误及解决
-
-### 错误 1: "Connection refused"
-
-**原因**: URI 过期或错误
-
-**解决**:
-```python
-# 清除旧 URI
-rm .flutter_skill_uri
-
-# 重新扫描
-scan_and_connect()
-```
-
-### 错误 2: "No running Flutter apps found"
-
-**原因**: 应用未运行或未启用 VM Service
-
-**解决**:
-```python
-launch_app(project_path: ".")
-```
-
-### 错误 3: "Found DTD URI but no VM Service URI"
-
-**原因**: 应用启动时没有加 `--vm-service-port`
-
-**解决**:
-```bash
-# 重启应用，加上参数
-flutter run --vm-service-port=50000
-```
-
----
-
-## 📊 URI 格式识别
-
-### ✅ 正确的 VM Service URI
-
-```
-http://127.0.0.1:50000/xxx=/
-ws://127.0.0.1:50000/xxx=/ws
-
-特征:
-- http:// 或 ws://
-- 包含随机 token (xxx=)
-- 通常在 "Dart VM service is listening" 消息后
-```
-
-### ❌ 错误的 URI
-
-```
-ws://127.0.0.1:54321/ws  ← 缺少 token，可能是 DTD
-ws://127.0.0.1:52043/...  ← 端口已关闭（旧 URI）
-```
-
----
-
-## 🎓 总结
-
-### 你的问题
-
-1. **使用了旧的 URI** (`ws://127.0.0.1:52043/...`)
-2. **应用没有固定端口** (当前在 64004，下次可能变)
-3. **使用了 connect_app 而不是 launch_app**
-
-### 解决方法
-
-**最简单**:
-```python
-launch_app(project_path: "/Users/cw/development/opencli/opencli_mobile")
-```
-
-**或者**:
-```bash
-flutter run --vm-service-port=50000
-# 然后
-scan_and_connect()
-```
-
----
-
-**关键点**: `launch_app` 自动添加 `--vm-service-port=50000` 的功能**只在使用 launch_app 时生效**，手动启动的应用需要自己加参数！
+The plugin automatically handles both URI formats:
+- Old: `http://127.0.0.1:port/token=/`
+- New: `http://127.0.0.1:port/token#/`

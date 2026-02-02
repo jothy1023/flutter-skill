@@ -270,6 +270,11 @@ If closing the active session, the next session becomes active automatically."""
 • If you don't have URI: use scan_and_connect() to auto-find
 • If app not running: use launch_app() to start it
 
+[AUTO-FIX]
+If project_path is provided, automatically checks and fixes missing configuration:
+• Adds flutter_skill dependency to pubspec.yaml if missing
+• Adds FlutterSkillBinding initialization to main.dart if missing
+
 [MULTI-SESSION]
 Returns a session_id that can be used to target this specific app in subsequent tool calls.
 Omitting session_id in other tools will use the active session.""",
@@ -279,6 +284,10 @@ Omitting session_id in other tools will use the active session.""",
             "uri": {
               "type": "string",
               "description": "WebSocket URI (ws://...)"
+            },
+            "project_path": {
+              "type": "string",
+              "description": "Optional: Project path for auto-fix configuration check"
             },
             "session_id": {
               "type": "string",
@@ -381,6 +390,11 @@ Automatically scan for and connect to a running Flutter app (scans VM Service po
 [WORKFLOW]
 Scans ports, finds first Flutter app, auto-connects. If no app found, use launch_app instead.
 
+[AUTO-FIX]
+If project_path is provided, automatically checks and fixes missing configuration:
+• Adds flutter_skill dependency to pubspec.yaml if missing
+• Adds FlutterSkillBinding initialization to main.dart if missing
+
 [MULTI-SESSION]
 Returns a session_id that can be used to target this specific app in subsequent tool calls.
 Omitting session_id in other tools will use the active session.""",
@@ -394,6 +408,10 @@ Omitting session_id in other tools will use the active session.""",
             "port_end": {
               "type": "integer",
               "description": "End of port range (default: 50100)"
+            },
+            "project_path": {
+              "type": "string",
+              "description": "Optional: Project path for auto-fix configuration check"
             },
             "session_id": {
               "type": "string",
@@ -871,6 +889,52 @@ Base64-encoded PNG image that can be displayed to user.
         "inputSchema": {"type": "object", "properties": {}},
       },
       {
+        "name": "diagnose_project",
+        "description": """⚡ DIAGNOSTIC & AUTO-FIX TOOL ⚡
+
+[TRIGGER KEYWORDS]
+diagnose | check configuration | verify setup | fix config | configuration problem | setup issue | missing dependency | not configured
+
+[PRIMARY PURPOSE]
+Diagnose Flutter project configuration and automatically fix common issues.
+
+[USE WHEN]
+• Connection problems ("not connected", "VM Service not found")
+• Setup verification before testing
+• Troubleshooting configuration issues
+• First-time project setup
+
+[CHECKS PERFORMED]
+• pubspec.yaml - flutter_skill dependency
+• lib/main.dart - FlutterSkillBinding initialization
+• Running processes - Flutter app status
+• Port availability - VM Service ports
+
+[AUTO-FIX OPTIONS]
+• auto_fix: true (default) - Automatically fix detected issues
+• auto_fix: false - Only report issues without fixing
+
+[RETURNS]
+Detailed diagnostic report with:
+• Configuration status (✅/❌)
+• Detected issues
+• Auto-fix results
+• Recommendations""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_path": {
+              "type": "string",
+              "description": "Path to Flutter project (default: current directory)"
+            },
+            "auto_fix": {
+              "type": "boolean",
+              "description": "Automatically fix detected issues (default: true)"
+            },
+          },
+        },
+      },
+      {
         "name": "pub_search",
         "description": "Search Flutter packages on pub.dev",
         "inputSchema": {
@@ -1319,6 +1383,17 @@ Base64-encoded PNG image that can be displayed to user.
     if (name == 'connect_app') {
       var uri = args['uri'] as String;
 
+      // Auto-fix configuration if project_path is provided
+      final projectPath = args['project_path'] as String?;
+      if (projectPath != null) {
+        try {
+          await runSetup(projectPath);
+        } catch (e) {
+          // Continue even if setup fails
+          print('Warning: Auto-setup failed: $e');
+        }
+      }
+
       // Normalize URI format
       uri = _normalizeVmServiceUri(uri);
 
@@ -1621,6 +1696,17 @@ Base64-encoded PNG image that can be displayed to user.
       final portEnd = args['port_end'] ?? 50100;
       final sessionId = args['session_id'] as String? ?? _generateSessionId();
 
+      // Auto-fix configuration if project_path is provided
+      final projectPath = args['project_path'] as String?;
+      if (projectPath != null) {
+        try {
+          await runSetup(projectPath);
+        } catch (e) {
+          // Continue even if setup fails
+          print('Warning: Auto-setup failed: $e');
+        }
+      }
+
       final vmServices = await _scanVmServices(portStart, portEnd);
       if (vmServices.isEmpty) {
         return {"success": false, "message": "No running Flutter apps found"};
@@ -1750,6 +1836,146 @@ Base64-encoded PNG image that can be displayed to user.
             ? "Found ${vmServices.length} running app(s). Use scan_and_connect() to auto-connect."
             : "No running apps found. Use launch_app() to start one.",
       };
+    }
+
+    if (name == 'diagnose_project') {
+      final projectPath = args['project_path'] ?? '.';
+      final autoFix = args['auto_fix'] ?? true;
+
+      final diagnosticResult = <String, dynamic>{
+        "project_path": projectPath,
+        "checks": <String, dynamic>{},
+        "issues": <String>[],
+        "fixes_applied": <String>[],
+        "recommendations": <String>[],
+      };
+
+      // Check pubspec.yaml
+      final pubspecFile = File('$projectPath/pubspec.yaml');
+      if (pubspecFile.existsSync()) {
+        final pubspecContent = pubspecFile.readAsStringSync();
+        final hasDependency = pubspecContent.contains('flutter_skill:');
+
+        diagnosticResult['checks']['pubspec_yaml'] = {
+          "status": hasDependency ? "ok" : "missing_dependency",
+          "message": hasDependency
+              ? "flutter_skill dependency found"
+              : "flutter_skill dependency missing",
+        };
+
+        if (!hasDependency) {
+          diagnosticResult['issues'].add("Missing flutter_skill dependency in pubspec.yaml");
+          if (autoFix) {
+            try {
+              await runSetup(projectPath);
+              diagnosticResult['fixes_applied'].add("Added flutter_skill dependency to pubspec.yaml");
+            } catch (e) {
+              diagnosticResult['fixes_applied'].add("Failed to add dependency: $e");
+            }
+          } else {
+            diagnosticResult['recommendations'].add("Run: flutter pub add flutter_skill");
+          }
+        }
+      } else {
+        diagnosticResult['checks']['pubspec_yaml'] = {
+          "status": "not_found",
+          "message": "pubspec.yaml not found - not a Flutter project?",
+        };
+        diagnosticResult['issues'].add("pubspec.yaml not found at $projectPath");
+      }
+
+      // Check lib/main.dart
+      final mainFile = File('$projectPath/lib/main.dart');
+      if (mainFile.existsSync()) {
+        final mainContent = mainFile.readAsStringSync();
+        final hasImport = mainContent.contains('package:flutter_skill/flutter_skill.dart');
+        final hasInit = mainContent.contains('FlutterSkillBinding.ensureInitialized()');
+
+        diagnosticResult['checks']['main_dart'] = {
+          "has_import": hasImport,
+          "has_initialization": hasInit,
+          "status": (hasImport && hasInit) ? "ok" : "incomplete",
+          "message": (hasImport && hasInit)
+              ? "FlutterSkillBinding properly configured"
+              : "FlutterSkillBinding not properly initialized",
+        };
+
+        if (!hasImport || !hasInit) {
+          if (!hasImport) diagnosticResult['issues'].add("Missing flutter_skill import in lib/main.dart");
+          if (!hasInit) diagnosticResult['issues'].add("Missing FlutterSkillBinding initialization in lib/main.dart");
+
+          if (autoFix) {
+            try {
+              await runSetup(projectPath);
+              diagnosticResult['fixes_applied'].add("Added FlutterSkillBinding initialization to lib/main.dart");
+            } catch (e) {
+              diagnosticResult['fixes_applied'].add("Failed to update main.dart: $e");
+            }
+          } else {
+            diagnosticResult['recommendations'].add("Add to main.dart: FlutterSkillBinding.ensureInitialized()");
+          }
+        }
+      } else {
+        diagnosticResult['checks']['main_dart'] = {
+          "status": "not_found",
+          "message": "lib/main.dart not found",
+        };
+        diagnosticResult['issues'].add("lib/main.dart not found");
+      }
+
+      // Check running Flutter processes
+      try {
+        final result = await Process.run('pgrep', ['-f', 'flutter']);
+        final hasRunningFlutter = result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
+
+        diagnosticResult['checks']['running_processes'] = {
+          "flutter_running": hasRunningFlutter,
+          "message": hasRunningFlutter
+              ? "Flutter process detected"
+              : "No Flutter process running",
+        };
+
+        if (!hasRunningFlutter) {
+          diagnosticResult['recommendations'].add("Start your Flutter app with: flutter_skill launch .");
+        }
+      } catch (e) {
+        diagnosticResult['checks']['running_processes'] = {
+          "error": "Could not check processes: $e",
+        };
+      }
+
+      // Check port availability
+      final portsToCheck = [50000, 50001, 50002];
+      final portStatus = <String, dynamic>{};
+
+      for (final port in portsToCheck) {
+        try {
+          final result = await Process.run('lsof', ['-i', ':$port']);
+          final inUse = result.exitCode == 0;
+          portStatus['port_$port'] = inUse ? "in_use" : "available";
+        } catch (e) {
+          portStatus['port_$port'] = "unknown";
+        }
+      }
+
+      diagnosticResult['checks']['ports'] = portStatus;
+
+      // Generate summary
+      final issueCount = (diagnosticResult['issues'] as List).length;
+      final fixCount = (diagnosticResult['fixes_applied'] as List).length;
+
+      diagnosticResult['summary'] = {
+        "status": issueCount == 0 ? "healthy" : (fixCount > 0 ? "fixed" : "needs_attention"),
+        "issues_found": issueCount,
+        "fixes_applied": fixCount,
+        "message": issueCount == 0
+            ? "✅ Project is properly configured"
+            : (fixCount > 0
+                ? "🔧 Fixed $fixCount issue(s), please restart your app"
+                : "⚠️ Found $issueCount issue(s), run with auto_fix:true to fix"),
+      };
+
+      return diagnosticResult;
     }
 
     if (name == 'pub_search') {

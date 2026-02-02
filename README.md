@@ -13,17 +13,17 @@
 
 ### 1. Install
 
-**⚡ 一键安装（推荐）**
+**⚡ One-Click Install (Recommended)**
 
 ```bash
 # macOS/Linux
 curl -fsSL https://raw.githubusercontent.com/ai-dashboad/flutter-skill/main/install.sh | bash
 
-# Windows PowerShell (管理员权限)
+# Windows PowerShell (Run as Administrator)
 iwr https://raw.githubusercontent.com/ai-dashboad/flutter-skill/main/install.ps1 -useb | iex
 ```
 
-**或手动安装：**
+**Or Manual Install:**
 
 ```bash
 # npm (recommended - includes native binary for instant startup)
@@ -37,7 +37,7 @@ brew install flutter-skill
 scoop bucket add flutter-skill https://github.com/ai-dashboad/scoop-flutter-skill
 scoop install flutter-skill
 
-# Dart (需要 Flutter SDK)
+# Dart (requires Flutter SDK)
 dart pub global activate flutter_skill
 
 # IDE Extensions
@@ -45,12 +45,12 @@ dart pub global activate flutter_skill
 # - IntelliJ/Android Studio: Search "Flutter Skill" in Plugins
 ```
 
-**一键安装做了什么？**
-- ✅ 自动检测最佳安装方法（npm > Homebrew/Scoop > 源码）
-- ✅ 自动安装工具优先级规则到 `~/.claude/prompts/`
-- ✅ 自动配置 PATH 环境变量
-- ✅ 解决所有依赖和版本问题
-- ✅ 跨平台支持（macOS, Linux, Windows）
+**What does one-click install do?**
+- ✅ Auto-detects best installation method (npm > Homebrew/Scoop > source)
+- ✅ Auto-installs tool priority rules to `~/.claude/prompts/`
+- ✅ Auto-configures PATH environment variable
+- ✅ Resolves all dependencies and version issues
+- ✅ Cross-platform support (macOS, Linux, Windows)
 
 ### 2. Configure AI Agent
 
