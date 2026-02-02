@@ -1,3 +1,20 @@
+## 0.4.8
+
+**Fix Infinity/NaN crash when inspecting widgets**
+
+### Bug Fixes
+- 🐛 Fixed "Unsupported operation: Infinity or NaN toInt" crash in `_findInteractiveElements`
+- ✅ Added `safeRound()` helper function to handle invalid numeric values
+- 🛡️ Widget bounds calculation now safely handles `Infinity` and `NaN` values (returns 0)
+- 🔧 Prevents MCP error -32603 when inspecting widgets with problematic layouts
+- 📦 Supports edge cases: `Positioned.fill`, `FractionalTranslation`, and malformed widget trees
+
+### Technical Details
+- Checks `value.isFinite` before calling `.round()` on position/size values
+- Gracefully degrades to `{x: 0, y: 0, width: 0, height: 0}` for invalid bounds
+
+---
+
 ## 0.4.7
 
 **Auto-update flutter_skill dependency in target projects**
