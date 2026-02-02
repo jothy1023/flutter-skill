@@ -1,3 +1,62 @@
+## 0.5.1
+
+**Major usability improvements for screenshots, errors, and logging**
+
+### 🎯 P0 Fixes (Critical)
+- 📸 **Screenshot Optimization**: Now saves to file by default instead of returning base64
+  - Returns file path, filename, size, format
+  - Dramatically reduces response size
+  - `save_to_file` parameter (default: true)
+  - Backward compatible: set `save_to_file=false` for base64
+  - Files saved to temp directory with timestamp
+
+- 🔌 **Improved Connection Error Messages**: Detailed, actionable error messages
+  - Clear status indicators with emojis (📍, 🔧, 💡, ⚠️)
+  - 3 connection options with code examples
+  - Troubleshooting checklist included
+  - Shows VM Service URI in errors for context
+  - Better guidance for first-time users
+
+### 🔧 P1 Improvements
+- 📊 **Structured Log/Error Responses**:
+  - `get_logs()`: Returns logs with summary (total_count, message)
+  - `get_errors()`: Returns errors with summary (has_errors, total_count, message)
+  - `clear_logs()`: Returns structured success response
+  - Easier to parse and display in UI
+
+### 💡 Benefits
+- ✅ Smaller response sizes (file paths vs base64 data)
+- ✅ Better developer experience with clear error messages
+- ✅ Faster problem resolution
+- ✅ More structured, parseable responses
+- ✅ Files can be opened directly in viewers/editors
+
+### 📝 Migration Guide
+**Screenshot:**
+```dart
+// New behavior (default)
+screenshot()  // Returns: {"file_path": "/tmp/...", "size_bytes": 45678}
+
+// Legacy behavior
+screenshot(save_to_file: false)  // Returns: {"image": "base64..."}
+```
+
+**Logs/Errors:**
+```dart
+// New response format
+get_errors()
+// Returns: {
+//   "errors": [...],
+//   "summary": {
+//     "total_count": 3,
+//     "has_errors": true,
+//     "message": "3 error(s) found ⚠️"
+//   }
+// }
+```
+
+---
+
 ## 0.5.0
 
 **Add visual test indicators for UI automation**
