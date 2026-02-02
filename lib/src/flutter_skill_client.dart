@@ -14,14 +14,43 @@ class FlutterSkillClient {
 
   Future<void> connect() async {
     print('DEBUG: Connecting to $wsUri');
-    _service = await vmServiceConnectUri(wsUri);
-    print('DEBUG: Connected to VM Service');
+    try {
+      _service = await vmServiceConnectUri(wsUri);
+      print('DEBUG: Connected to VM Service');
+    } catch (e) {
+      throw Exception('''❌ Failed to connect to VM Service at $wsUri
+
+Possible causes:
+• Invalid URI format (must start with ws://)
+• App is not running or has crashed
+• Wrong port number
+• Network connectivity issues
+
+Solution:
+1. Verify the URI: $wsUri
+2. Check if app is running: flutter run --vm-service-port=50000
+3. Try scan_and_connect() to auto-detect running apps
+
+Error details: $e''');
+    }
 
     final vm = await _service!.getVM();
     print('DEBUG: Got VM info');
     final isolates = vm.isolates;
     if (isolates == null || isolates.isEmpty) {
-      throw Exception('No isolates found');
+      throw Exception('''❌ No Dart isolates found in the VM
+
+This usually means:
+• App is still starting up (wait a few seconds and retry)
+• App crashed during startup
+• flutter_skill dependency is not properly initialized
+
+Solution:
+1. Wait 2-3 seconds and try again
+2. Ensure FlutterSkillBinding.ensureInitialized() is called in main()
+3. Check app logs for startup errors
+
+URI: $wsUri''');
     }
     _isolateId = isolates.first.id!;
   }
@@ -35,7 +64,10 @@ class FlutterSkillClient {
   Future<Map<String, dynamic>> _call(String method,
       [Map<String, dynamic>? args]) async {
     if (_service == null || _isolateId == null) {
-      throw Exception('Not connected');
+      throw Exception('''❌ Not connected to VM Service
+
+Call connect() first before making requests.
+URI: $wsUri''');
     }
     final response = await _service!.callServiceExtension(
       method,

@@ -2852,24 +2852,70 @@ Detailed diagnostic report with:
   void _requireConnection([FlutterSkillClient? client]) {
     client ??= _client;
     if (client == null) {
-      throw Exception('''Not connected to Flutter app.
+      throw Exception('''❌ Not connected to Flutter app.
 
-Solutions:
-1. If app is already running: call scan_and_connect() to auto-detect and connect
-2. To start a new app: call launch_app(project_path: "/path/to/project")
-3. If you have the VM Service URI: call connect_app(uri: "ws://...")
+📍 Current Status:
+   • No active VM Service connection
+   • Unable to interact with Flutter app
 
-Tip: Use get_connection_status() to see available running apps or list_sessions() to see all sessions.''');
+🔧 How to Connect:
+
+   Option 1: Auto-detect Running App (Easiest)
+   ───────────────────────────────────────────────
+   scan_and_connect()
+   → Automatically finds and connects to running Flutter apps on ports 50000-50100
+
+   Option 2: Auto-launch App (Recommended)
+   ───────────────────────────────────────────────
+   launch_app(project_path: ".", device_id: "iPhone 16 Pro")
+   → Starts app with VM Service enabled on port 50000
+
+   Option 3: Manual Connect with URI
+   ───────────────────────────────────────────────
+   connect_app(uri: "ws://127.0.0.1:50000/abcd1234=/ws")
+   → Connects to specific VM Service WebSocket URI
+
+💡 Pro Tips:
+   • Use get_connection_status() to see available running apps
+   • Use list_sessions() to see all active connections
+   • URI must start with "ws://" (WebSocket protocol)
+   • Port 50000 is the default for flutter_skill
+
+⚠️  Troubleshooting:
+   • Ensure flutter_skill dependency is in your Flutter project
+   • Verify FlutterSkillBinding.ensureInitialized() is called in main()
+   • Run flutter with: --vm-service-port=50000 for consistent connections
+''');
     }
 
     if (!client.isConnected) {
       // Connection lost - note: with multi-session, we don't clean up here
-      throw Exception('''Connection to Flutter app was lost.
+      throw Exception('''❌ Connection to Flutter app was lost.
 
-Please reconnect using one of these methods:
-1. scan_and_connect() - Auto-detect running apps
-2. connect_app(uri: "ws://...") - Connect to specific URI
-3. launch_app(project_path: "...") - Launch new app instance''');
+📍 What Happened:
+   • VM Service connection dropped
+   • App may have crashed, restarted, or been terminated
+
+🔧 How to Reconnect:
+
+   Option 1: Auto-reconnect
+   ───────────────────────────────────────────────
+   scan_and_connect()
+   → Automatically finds running Flutter apps
+
+   Option 2: Reconnect with URI
+   ───────────────────────────────────────────────
+   connect_app(uri: "ws://...")
+   → Use the same URI or check get_connection_status() for new URI
+
+   Option 3: Restart App
+   ───────────────────────────────────────────────
+   launch_app(project_path: "...")
+   → Launch a fresh instance
+
+💡 Check Status:
+   get_connection_status() → See all available running apps
+''');
     }
   }
 
