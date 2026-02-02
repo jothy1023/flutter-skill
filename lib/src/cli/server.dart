@@ -297,8 +297,7 @@ Omitting session_id in other tools will use the active session.""",
         "description": """⚡ PRIORITY TOOL FOR UI TESTING ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: test app | run app | launch | simulator | emulator | iOS test | Android test | E2E test | verify feature | validate UI | integration test | UI automation
-✓ 中文: 测试应用 | 运行app | 启动应用 | 模拟器测试 | iOS测试 | Android测试 | 验证功能 | 界面测试 | 集成测试 | UI自动化
+test app | run app | launch | simulator | emulator | iOS test | Android test | E2E test | verify feature | validate UI | integration test | UI automation | start app | debug app
 
 [PRIMARY PURPOSE]
 Launch and test a Flutter app on iOS simulator/Android emulator for UI validation and interaction testing.
@@ -369,8 +368,7 @@ Omitting session_id in other tools will use the active session.""",
         "description": """⚡ AUTO-CONNECT TOOL ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: connect to app | find running app | auto-connect | connect to running Flutter | find app | detect app
-✓ 中文: 连接应用 | 查找运行的应用 | 自动连接 | 连接运行中的Flutter | 查找app | 检测应用
+connect to app | find running app | auto-connect | connect to running Flutter | find app | detect app | scan for app | discover app
 
 [PRIMARY PURPOSE]
 Automatically scan for and connect to a running Flutter app (scans VM Service ports 50000-50100).
@@ -473,8 +471,7 @@ Omitting session_id in other tools will use the active session.""",
         "description": """⚡ UI DISCOVERY TOOL ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: what's on screen | list buttons | show elements | see UI | find element | inspect UI | what elements | interactive elements
-✓ 中文: 屏幕上有什么 | 列出按钮 | 显示元素 | 查看界面 | 找元素 | 检查UI | 有哪些元素 | 可交互元素
+what's on screen | list buttons | show elements | see UI | find element | inspect UI | what elements | interactive elements | get widgets | discover components
 
 [PRIMARY PURPOSE]
 Discover and list all interactive UI elements currently visible on screen (buttons, text fields, switches, etc.).
@@ -551,8 +548,7 @@ All action tools support optional session_id parameter. If omitted, uses the act
         "description": """⚡ UI INTERACTION TOOL ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: tap | click | press | select | activate | touch | hit button | click button | press button
-✓ 中文: 点击 | 点 | 按 | 选择 | 触摸 | 激活 | 按按钮 | 点按钮
+tap | click | press | select | activate | touch | hit button | click button | press button | trigger | push
 
 [PRIMARY PURPOSE]
 Tap/click a button or any interactive UI element. Simulates real user touch/click interaction.
@@ -590,8 +586,7 @@ For elements without text (icons, images), use coordinates from inspect():
         "description": """⚡ TEXT INPUT TOOL ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: enter text | type | input | fill in | write | fill form | enter email | enter password
-✓ 中文: 输入文本 | 输入 | 填写 | 录入 | 键入 | 填表单 | 输入邮箱 | 输入密码
+enter text | type | input | fill in | write | fill form | enter email | enter password | set value | submit text
 
 [PRIMARY PURPOSE]
 Type text into text fields (email, password, search, forms, etc.). Simulates real user keyboard input.
@@ -759,8 +754,7 @@ Call inspect() first to find TextField keys, then use enter_text() with key and 
         "description": """⚡ VISUAL CAPTURE TOOL ⚡
 
 [TRIGGER KEYWORDS]
-✓ English: screenshot | take picture | capture screen | show me | how does it look | visual debugging | take photo | snap | show current screen
-✓ 中文: 截图 | 截屏 | 拍照 | 给我看看 | 看起来怎样 | 可视化调试 | 抓屏 | 显示当前界面
+screenshot | take picture | capture screen | show me | how does it look | visual debugging | take photo | snap | show current screen | grab screen | print screen
 
 [PRIMARY PURPOSE]
 Capture a screenshot of the current app screen for visual inspection, debugging, or documentation.

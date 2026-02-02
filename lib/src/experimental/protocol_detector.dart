@@ -2,23 +2,23 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 
-/// 协议类型
+/// Protocol Type
 enum FlutterProtocol {
-  /// VM Service 协议（完整功能）
+  /// VM Service Protocol (full functionality)
   vmService,
 
-  /// DTD 协议（基础功能）
+  /// DTD Protocol (basic functionality)
   dtd,
 
-  /// 无可用协议
+  /// No available protocol
   none,
 }
 
-/// 协议检测器
+/// Protocol Detector
 class ProtocolDetector {
-  /// 检测 URI 使用的协议类型
+  /// Detect protocol type from URI
   static FlutterProtocol detectFromUri(String uri) {
-    // VM Service URI 格式:
+    // VM Service URI format:
     // http://127.0.0.1:50000/xxx=/
     // ws://127.0.0.1:50000/xxx=/ws
     if (uri.startsWith('http://') ||
@@ -26,9 +26,9 @@ class ProtocolDetector {
       return FlutterProtocol.vmService;
     }
 
-    // DTD URI 格式:
-    // ws://127.0.0.1:52049/xxx=/ws (通常端口不同)
-    // 或明确包含 'dtd' 标识
+    // DTD URI format:
+    // ws://127.0.0.1:52049/xxx=/ws (usually different port)
+    // or explicitly contains 'dtd' identifier
     if (uri.startsWith('ws://') && uri.contains('=/ws')) {
       return FlutterProtocol.dtd;
     }
@@ -36,7 +36,7 @@ class ProtocolDetector {
     return FlutterProtocol.none;
   }
 
-  /// 扫描本地端口，检测可用协议
+  /// Scan local ports for available protocols
   static Future<Map<FlutterProtocol, List<String>>> scanAvailableProtocols({
     int portStart = 50000,
     int portEnd = 50100,
@@ -63,17 +63,17 @@ class ProtocolDetector {
     return result;
   }
 
-  /// 检查特定端口是否有可用服务
+  /// Check if a specific port has available service
   static Future<String?> _checkPort(int port) async {
     try {
-      // 尝试连接端口
+      // Try to connect to the port
       final socket = await Socket.connect(
         '127.0.0.1',
         port,
         timeout: const Duration(milliseconds: 200),
       );
 
-      // 尝试 HTTP 请求（VM Service）
+      // Try HTTP request (VM Service)
       try {
         final request = await HttpClient()
             .getUrl(Uri.parse('http://127.0.0.1:$port'))
@@ -81,7 +81,7 @@ class ProtocolDetector {
         final response = await request.close();
 
         if (response.statusCode == 200) {
-          // 读取响应体查找 VM Service URI
+          // Read response body to find VM Service URI
           final body = await response.transform(utf8.decoder).join();
           final uriMatch = RegExp(r'ws://[^\s"]+').firstMatch(body);
           if (uriMatch != null) {
@@ -90,10 +90,10 @@ class ProtocolDetector {
           }
         }
       } catch (e) {
-        // 不是 HTTP 服务，可能是 WebSocket
+        // Not an HTTP service, might be WebSocket
       }
 
-      // 假设是 WebSocket 服务
+      // Assume it's a WebSocket service
       socket.destroy();
       return 'ws://127.0.0.1:$port/ws';
     } catch (e) {
@@ -101,7 +101,7 @@ class ProtocolDetector {
     }
   }
 
-  /// 获取协议能力描述
+  /// Get protocol capabilities description
   static Map<String, bool> getCapabilities(FlutterProtocol protocol) {
     switch (protocol) {
       case FlutterProtocol.vmService:
@@ -131,15 +131,15 @@ class ProtocolDetector {
     }
   }
 
-  /// 生成友好的协议描述
+  /// Generate friendly protocol description
   static String describeProtocol(FlutterProtocol protocol) {
     switch (protocol) {
       case FlutterProtocol.vmService:
-        return 'VM Service (完整功能)';
+        return 'VM Service (Full functionality)';
       case FlutterProtocol.dtd:
-        return 'DTD (基础功能: 热重载、日志)';
+        return 'DTD (Basic: hot reload, logs)';
       case FlutterProtocol.none:
-        return '无可用协议';
+        return 'No available protocol';
     }
   }
 }

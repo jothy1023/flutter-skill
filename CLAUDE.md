@@ -198,3 +198,28 @@ The error should be extremely rare now that auto-configuration is enabled.
 - Keep release notes concise but informative
 - Test on all platforms before major releases
 - **CRITICAL**: For Flutter testing, ALWAYS use flutter-skill, NEVER Dart MCP
+
+## Language Requirements
+
+**IMPORTANT: All documentation and code comments MUST be in English.**
+
+### What must be in English:
+- All code comments (inline comments, doc comments, TODO comments)
+- All documentation files (README.md, CHANGELOG.md, etc.)
+- All error messages and log output in code
+- All variable names, function names, class names
+- All commit messages
+- All PR descriptions and issue comments
+
+### Files that need translation (currently contain Chinese):
+- `lib/src/dtd_service_discovery.dart` - Chinese comments
+- `lib/src/experimental/dtd_service_discovery.dart` - Chinese comments
+- `lib/src/protocol_detector.dart` - Chinese comments
+- `lib/src/experimental/protocol_detector.dart` - Chinese comments
+- `lib/src/cli/server.dart` - Chinese in tool descriptions
+- `test/flutter_skill_complete_test.dart` - Chinese test output
+
+### When writing new code:
+- Write all comments in English
+- Use English for all user-facing strings
+- Keep consistent terminology with existing English documentation

@@ -2,23 +2,23 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-/// DTD 服务发现工具
+/// DTD Service Discovery Tool
 ///
-/// 利用 Flutter 3.x 默认启动的 DTD 协议来发现 VM Service URI
+/// Uses the DTD protocol (enabled by default in Flutter 3.x) to discover VM Service URI
 class DtdServiceDiscovery {
-  /// 通过 DTD 扫描发现 VM Service
+  /// Discover VM Service through DTD scanning
   ///
-  /// 策略:
-  /// 1. 扫描端口范围，查找 DTD 服务
-  /// 2. 连接到 DTD，查询 VM Service URI
-  /// 3. 返回可用的 VM Service URI
+  /// Strategy:
+  /// 1. Scan port range for DTD services
+  /// 2. Connect to DTD and query VM Service URI
+  /// 3. Return available VM Service URI
   static Future<DiscoveryResult> discover({
     int portStart = 50000,
     int portEnd = 60000,
   }) async {
-    print('🔍 扫描 DTD 服务 (端口范围: $portStart-$portEnd)...');
+    print('🔍 Scanning DTD services (port range: $portStart-$portEnd)...');
 
-    // 1. 扫描 DTD 端口
+    // 1. Scan DTD ports
     final dtdUris = await _scanDtdPorts(
       portStart: portStart,
       portEnd: portEnd,
@@ -27,47 +27,47 @@ class DtdServiceDiscovery {
     if (dtdUris.isEmpty) {
       return DiscoveryResult(
         success: false,
-        message: '未找到运行的 Flutter 应用（DTD 服务）',
+        message: 'No running Flutter app found (DTD service)',
       );
     }
 
-    print('✅ 找到 ${dtdUris.length} 个 DTD 服务');
+    print('✅ Found ${dtdUris.length} DTD service(s)');
 
-    // 2. 尝试从每个 DTD 获取 VM Service URI
+    // 2. Try to get VM Service URI from each DTD
     for (final dtdUri in dtdUris) {
-      print('   检查 DTD: $dtdUri');
+      print('   Checking DTD: $dtdUri');
 
       final vmUri = await _queryVmServiceFromDtd(dtdUri);
 
       if (vmUri != null) {
-        print('   ✅ 发现 VM Service: $vmUri');
+        print('   ✅ Found VM Service: $vmUri');
         return DiscoveryResult(
           success: true,
           vmServiceUri: vmUri,
           dtdUri: dtdUri,
           discoveryMethod: 'dtd_query',
-          message: '通过 DTD 发现 VM Service',
+          message: 'VM Service discovered via DTD',
         );
       } else {
-        print('   ⚠️  此 DTD 未启用 VM Service');
+        print('   ⚠️  This DTD has no VM Service enabled');
       }
     }
 
-    // 3. 找到 DTD 但没有 VM Service
+    // 3. Found DTD but no VM Service
     return DiscoveryResult(
       success: false,
       dtdUri: dtdUris.first,
       discoveryMethod: 'dtd_only',
-      message: '仅找到 DTD 服务，VM Service 未启用',
+      message: 'Only found DTD service, VM Service not enabled',
       suggestions: [
-        'DTD 协议已连接，但 VM Service 未启动',
-        '要启用完整功能，请重启应用:',
+        'DTD protocol is connected, but VM Service is not started',
+        'To enable full functionality, restart the app:',
         'flutter run --vm-service-port=50000',
       ],
     );
   }
 
-  /// 扫描端口范围，查找 DTD 服务
+  /// Scan port range for DTD services
   static Future<List<String>> _scanDtdPorts({
     required int portStart,
     required int portEnd,
@@ -87,10 +87,10 @@ class DtdServiceDiscovery {
     return dtdUris;
   }
 
-  /// 探测单个端口是否为 DTD 服务
+  /// Probe a single port to check if it's a DTD service
   static Future<String?> _probeDtdPort(int port) async {
     try {
-      // 尝试连接端口
+      // Try to connect to the port
       final socket = await Socket.connect(
         '127.0.0.1',
         port,
@@ -99,9 +99,9 @@ class DtdServiceDiscovery {
 
       socket.destroy();
 
-      // DTD 通常使用 WebSocket
-      // 格式: ws://127.0.0.1:PORT/SECRET=/ws
-      // 由于我们不知道 SECRET，先尝试常见路径
+      // DTD typically uses WebSocket
+      // Format: ws://127.0.0.1:PORT/SECRET=/ws
+      // Since we don't know the SECRET, try common paths first
       final commonPaths = ['/ws', '/dtd', '/'];
 
       for (final path in commonPaths) {
@@ -117,13 +117,13 @@ class DtdServiceDiscovery {
     }
   }
 
-  /// 验证是否为 DTD 端点
+  /// Verify if the endpoint is a DTD endpoint
   static Future<bool> _isDtdEndpoint(String uri) async {
     try {
       final ws = await WebSocket.connect(uri)
           .timeout(const Duration(milliseconds: 200));
 
-      // 发送 DTD 协议的探测请求
+      // Send DTD protocol probe request
       ws.add(jsonEncode({
         'jsonrpc': '2.0',
         'id': 1,
@@ -131,14 +131,14 @@ class DtdServiceDiscovery {
         'params': {},
       }));
 
-      // 等待响应
+      // Wait for response
       final responseStr = await ws.first.timeout(
         const Duration(milliseconds: 500),
       );
 
       final response = jsonDecode(responseStr as String);
 
-      // 检查是否为 DTD 响应
+      // Check if it's a DTD response
       final isDtd = response['result']?['protocolVersion'] != null;
 
       await ws.close();
@@ -148,18 +148,18 @@ class DtdServiceDiscovery {
     }
   }
 
-  /// 从 DTD 查询 VM Service URI
+  /// Query VM Service URI from DTD
   static Future<String?> _queryVmServiceFromDtd(String dtdUri) async {
     try {
       final ws = await WebSocket.connect(dtdUri)
           .timeout(const Duration(milliseconds: 500));
 
-      // DTD 可能提供 VM Service 信息的方法:
-      // 1. getVM (如果支持)
-      // 2. streamListen("VM") 然后接收事件
-      // 3. 读取特定的服务注册信息
+      // Methods that DTD might provide VM Service info:
+      // 1. getVM (if supported)
+      // 2. streamListen("VM") then receive events
+      // 3. Read specific service registration info
 
-      // 尝试方法 1: getVM
+      // Try method 1: getVM
       ws.add(jsonEncode({
         'jsonrpc': '2.0',
         'id': 2,
@@ -173,10 +173,10 @@ class DtdServiceDiscovery {
 
       final response = jsonDecode(responseStr as String);
 
-      // 解析 VM Service URI（如果有）
+      // Parse VM Service URI (if available)
       String? vmUri;
 
-      // 可能的响应格式:
+      // Possible response format:
       // { "result": { "vmServiceUri": "http://..." } }
       if (response['result']?['vmServiceUri'] != null) {
         vmUri = response['result']['vmServiceUri'] as String;
@@ -185,13 +185,13 @@ class DtdServiceDiscovery {
       await ws.close();
       return vmUri;
     } catch (e) {
-      print('   查询失败: $e');
+      print('   Query failed: $e');
       return null;
     }
   }
 }
 
-/// 发现结果
+/// Discovery Result
 class DiscoveryResult {
   final bool success;
   final String? vmServiceUri;
@@ -222,18 +222,18 @@ class DiscoveryResult {
   String toString() => jsonEncode(toJson());
 }
 
-/// 使用示例
+/// Usage Example
 ///
 /// ```dart
-/// // 自动发现 VM Service
+/// // Auto-discover VM Service
 /// final result = await DtdServiceDiscovery.discover();
 ///
 /// if (result.success) {
-///   print('找到 VM Service: ${result.vmServiceUri}');
+///   print('Found VM Service: ${result.vmServiceUri}');
 ///   final client = FlutterSkillClient(result.vmServiceUri!);
 ///   await client.connect();
 /// } else {
-///   print('警告: ${result.message}');
-///   print('建议: ${result.suggestions.join("\n")}');
+///   print('Warning: ${result.message}');
+///   print('Suggestions: ${result.suggestions.join("\n")}');
 /// }
 /// ```

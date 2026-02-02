@@ -6,148 +6,148 @@ Future<void> main() async {
   final client = FlutterSkillClient(uri);
 
   print('══════════════════════════════════════════════════════');
-  print('Flutter Skill MCP 工具完整测试');
+  print('Flutter Skill MCP Tools Complete Test');
   print('══════════════════════════════════════════════════════');
   print('VM Service: $uri\n');
 
   try {
-    // 1. 连接测试
-    print('1. 测试连接...');
+    // 1. Connection test
+    print('1. Testing connection...');
     await client.connect();
-    print('   ✅ 连接成功\n');
+    print('   ✅ Connected successfully\n');
 
-    // 2. 获取可交互元素
-    print('2. 获取可交互元素 (getInteractiveElements)...');
+    // 2. Get interactive elements
+    print('2. Getting interactive elements (getInteractiveElements)...');
     final elements = await client.getInteractiveElements();
-    print('   找到 ${elements.length} 个可交互元素:');
+    print('   Found ${elements.length} interactive elements:');
     for (final elem in elements) {
       print('   - ${elem['type']}: ${elem['key']} ${elem['text'] != null ? '"${elem['text']}"' : ""}');
     }
     print('');
 
-    // 3. 获取 Widget Tree
-    print('3. 获取 Widget Tree (getWidgetTree)...');
+    // 3. Get Widget Tree
+    print('3. Getting Widget Tree (getWidgetTree)...');
     final tree = await client.getWidgetTree(maxDepth: 5);
     final treeStr = tree.toString();
-    print('   Widget Tree (前5层):');
+    print('   Widget Tree (first 5 levels):');
     print('   ${treeStr.substring(0, treeStr.length > 500 ? 500 : treeStr.length)}...\n');
 
-    // 4. 获取文本内容
-    print('4. 获取所有文本内容 (getTextContent)...');
+    // 4. Get text content
+    print('4. Getting all text content (getTextContent)...');
     final texts = await client.getTextContent();
-    print('   找到 ${texts.length} 个文本元素:');
+    print('   Found ${texts.length} text elements:');
     for (final text in texts.take(5)) {
       print('   - "$text"');
     }
-    if (texts.length > 5) print('   ...(共${texts.length}个)');
+    if (texts.length > 5) print('   ...(total ${texts.length})');
     print('');
 
-    // 5. 截图测试
-    print('5. 测试截图功能 (takeScreenshot)...');
+    // 5. Screenshot test
+    print('5. Testing screenshot (takeScreenshot)...');
     try {
       final screenshot = await client.takeScreenshot();
       if (screenshot != null) {
-        print('   ✅ 截图成功，大小: ${screenshot.length} bytes');
-        // 保存截图 (screenshot 是 base64 字符串)
-        print('   💾 截图数据已获取\n');
+        print('   ✅ Screenshot successful, size: ${screenshot.length} bytes');
+        // Save screenshot (screenshot is base64 string)
+        print('   💾 Screenshot data obtained\n');
       } else {
-        print('   ⚠️  截图返回 null\n');
+        print('   ⚠️  Screenshot returned null\n');
       }
     } catch (e) {
-      print('   ❌ 截图失败: $e\n');
+      print('   ❌ Screenshot failed: $e\n');
     }
 
-    // 6. 获取当前路由
-    print('6. 获取当前路由 (getCurrentRoute)...');
+    // 6. Get current route
+    print('6. Getting current route (getCurrentRoute)...');
     try {
       final route = await client.getCurrentRoute();
-      print('   当前路由: $route\n');
+      print('   Current route: $route\n');
     } catch (e) {
-      print('   ❌ 获取路由失败: $e\n');
+      print('   ❌ Failed to get route: $e\n');
     }
 
-    // 7. 获取导航栈
-    print('7. 获取导航栈 (getNavigationStack)...');
+    // 7. Get navigation stack
+    print('7. Getting navigation stack (getNavigationStack)...');
     try {
       final stack = await client.getNavigationStack();
-      print('   导航栈: $stack\n');
+      print('   Navigation stack: $stack\n');
     } catch (e) {
-      print('   ❌ 获取导航栈失败: $e\n');
+      print('   ❌ Failed to get navigation stack: $e\n');
     }
 
-    // 8. 获取日志
-    print('8. 获取应用日志 (getLogs)...');
+    // 8. Get logs
+    print('8. Getting app logs (getLogs)...');
     try {
       final logs = await client.getLogs();
-      print('   日志数量: ${logs.length}');
+      print('   Log count: ${logs.length}');
       if (logs.isNotEmpty) {
-        print('   最新日志 (前3条):');
+        print('   Latest logs (first 3):');
         for (final log in logs.take(3)) {
           print('   - $log');
         }
       }
       print('');
     } catch (e) {
-      print('   ❌ 获取日志失败: $e\n');
+      print('   ❌ Failed to get logs: $e\n');
     }
 
-    // 9. 获取错误
-    print('9. 获取运行时错误 (getErrors)...');
+    // 9. Get errors
+    print('9. Getting runtime errors (getErrors)...');
     try {
       final errors = await client.getErrors();
-      print('   错误数量: ${errors.length}');
+      print('   Error count: ${errors.length}');
       if (errors.isNotEmpty) {
-        print('   错误列表:');
+        print('   Error list:');
         for (final error in errors.take(3)) {
           print('   - $error');
         }
       } else {
-        print('   ✅ 无错误\n');
+        print('   ✅ No errors\n');
       }
     } catch (e) {
-      print('   ❌ 获取错误失败: $e\n');
+      print('   ❌ Failed to get errors: $e\n');
     }
 
-    // 10. 获取性能数据
-    print('10. 获取性能数据 (getPerformance)...');
+    // 10. Get performance data
+    print('10. Getting performance data (getPerformance)...');
     try {
       final perf = await client.getPerformance();
-      print('   性能数据: $perf\n');
+      print('   Performance data: $perf\n');
     } catch (e) {
-      print('   ❌ 获取性能数据失败: $e\n');
+      print('   ❌ Failed to get performance data: $e\n');
     }
 
-    // 11. 交互测试 - 只测试不会影响UI的操作
+    // 11. Interaction test - only test operations that don't affect UI
     if (elements.isNotEmpty) {
       final firstElem = elements.first;
-      print('11. 交互测试 (tap) - 测试点击...');
-      print('   准备点击: ${firstElem['key']}');
+      print('11. Interaction test (tap) - Testing tap...');
+      print('   Tapping: ${firstElem['key']}');
       try {
         await client.tap(key: firstElem['key']);
-        print('   ✅ 点击成功\n');
+        print('   ✅ Tap successful\n');
       } catch (e) {
-        print('   ❌ 点击失败: $e\n');
+        print('   ❌ Tap failed: $e\n');
       }
     }
 
-    // 12. Hot Reload 测试
-    print('12. 测试 Hot Reload...');
+    // 12. Hot Reload test
+    print('12. Testing Hot Reload...');
     try {
       await client.hotReload();
-      print('   ✅ Hot Reload 成功\n');
+      print('   ✅ Hot Reload successful\n');
     } catch (e) {
-      print('   ❌ Hot Reload 失败: $e\n');
+      print('   ❌ Hot Reload failed: $e\n');
     }
 
     print('══════════════════════════════════════════════════════');
-    print('测试完成！');
+    print('Test complete!');
     print('══════════════════════════════════════════════════════');
   } catch (e, stack) {
-    print('❌ 测试过程中出错: $e');
+    print('❌ Error during testing: $e');
     print('Stack: $stack');
     exit(1);
   } finally {
     await client.disconnect();
-    print('\n✅ 已断开连接');
+    print('\n✅ Disconnected');
   }
 }
