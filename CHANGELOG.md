@@ -1,3 +1,52 @@
+## 0.5.2
+
+**Critical bug fixes for coordinate detection and JSON serialization**
+
+### 🐛 Bug Fixes (Critical)
+- 🔧 **Fixed JSON Serialization Error in find_by_type**: Added `safeRound()` helper to handle NaN/Infinity values
+  - Previously crashed with "Unsupported object: NaN" or "Unsupported object: Infinity"
+  - Now safely converts all coordinate values to finite integers
+  - Consistent with `inspect()` implementation
+
+- 📍 **Improved TextField Coordinate Detection**: Added reliability detection for widget coordinates
+  - New `coordinatesReliable` flag on all elements
+  - Detects when TextFields report false (0,0) coordinates
+  - Provides warning message: "Coordinates may be unreliable - use key or text for targeting"
+  - Helps AI agents know when to fall back to key/text-based targeting
+
+### 🔧 Improvements
+- 📋 **Enhanced MCP Tool Descriptions**: Updated `inspect` and `find_by_type` documentation
+  - Documents `coordinatesReliable` flag in output format
+  - Warns about TextField coordinate issues
+  - Guides AI agents to use keys when coordinates are unreliable
+
+### 💡 Benefits
+- ✅ find_by_type no longer crashes on off-screen or animated widgets
+- ✅ AI agents can detect unreliable coordinates and adjust targeting strategy
+- ✅ Better error messages guide users to use keys instead of coordinates
+- ✅ More robust JSON serialization prevents crashes
+
+### 📝 Migration Guide
+No breaking changes. New `coordinatesReliable` field is optional to check:
+
+```dart
+// Check coordinate reliability before using coordinates
+final elements = await inspect();
+for (final element in elements) {
+  if (element['coordinatesReliable'] == true) {
+    // Safe to use bounds/center coordinates
+    tap(x: element['center']['x'], y: element['center']['y']);
+  } else {
+    // Fall back to key/text targeting
+    if (element['key'] != null) {
+      tap(key: element['key']);
+    }
+  }
+}
+```
+
+---
+
 ## 0.5.1
 
 **Major usability improvements for screenshots, errors, and logging**

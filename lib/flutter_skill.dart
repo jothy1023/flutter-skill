@@ -1507,6 +1507,20 @@ class FlutterSkillBinding {
             return value.round();
           }
 
+          // Detect if coordinates are reliable (not (0,0) unless widget is actually at origin)
+          final isAtOrigin = offset.dx == 0 && offset.dy == 0;
+          final hasValidSize =
+              renderObject.size.width > 0 && renderObject.size.height > 0;
+          final isFinite = offset.dx.isFinite && offset.dy.isFinite;
+
+          // For TextFields, check if they're genuinely at origin or just not laid out
+          bool coordinatesReliable = isFinite && hasValidSize;
+          if (isAtOrigin && (widget is TextField || widget is TextFormField)) {
+            // TextField at (0,0) is suspicious - likely not fully laid out
+            // Check if there are other widgets to compare against
+            coordinatesReliable = false;
+          }
+
           entry['bounds'] = {
             'x': safeRound(offset.dx),
             'y': safeRound(offset.dy),
@@ -1517,8 +1531,14 @@ class FlutterSkillBinding {
             'x': safeRound(offset.dx + renderObject.size.width / 2),
             'y': safeRound(offset.dy + renderObject.size.height / 2),
           };
-          entry['visible'] =
-              renderObject.size.width > 0 && renderObject.size.height > 0;
+          entry['visible'] = hasValidSize;
+          entry['coordinatesReliable'] = coordinatesReliable;
+
+          // Add warning for unreliable coordinates
+          if (!coordinatesReliable && isAtOrigin) {
+            entry['warning'] =
+                'Coordinates may be unreliable - widget might not be fully laid out. Use key or text for targeting.';
+          }
         }
 
         results.add(entry);
@@ -1676,11 +1696,30 @@ class FlutterSkillBinding {
         final renderObject = element.renderObject;
         if (renderObject is RenderBox && renderObject.hasSize) {
           final offset = renderObject.localToGlobal(Offset.zero);
-          node['position'] = {'x': offset.dx, 'y': offset.dy};
-          node['size'] = {
-            'width': renderObject.size.width,
-            'height': renderObject.size.height
+
+          // Helper function to safely convert double to int, handling Infinity/NaN
+          int safeRound(double value) {
+            if (!value.isFinite) return 0;
+            return value.round();
+          }
+
+          // Use safeRound to prevent JSON serialization errors
+          node['position'] = {
+            'x': safeRound(offset.dx),
+            'y': safeRound(offset.dy)
           };
+          node['size'] = {
+            'width': safeRound(renderObject.size.width),
+            'height': safeRound(renderObject.size.height)
+          };
+
+          // Add coordinate reliability flag
+          final isReliable = offset.dx.isFinite &&
+                            offset.dy.isFinite &&
+                            (offset.dx != 0 || offset.dy != 0) &&
+                            renderObject.size.width > 0 &&
+                            renderObject.size.height > 0;
+          node['coordinatesReliable'] = isReliable;
         }
 
         results.add(node);

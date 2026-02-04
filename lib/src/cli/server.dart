@@ -7,7 +7,7 @@ import '../flutter_skill_client.dart';
 import '../diagnostics/error_reporter.dart';
 import 'setup.dart';
 
-const String _currentVersion = '0.5.1';
+const String _currentVersion = '0.5.2';
 
 /// Session information for multi-session support
 class SessionInfo {
@@ -503,6 +503,18 @@ Discover and list all interactive UI elements currently visible on screen (butto
 [WORKFLOW]
 Essential first step for any UI interaction. Returns element list with keys/texts for use with tap() and enter_text().
 
+[OUTPUT FORMAT]
+Each element includes:
+• key: Element identifier for targeting
+• type: Widget type (Button, TextField, etc.)
+• bounds/center: Position coordinates
+• coordinatesReliable: Boolean flag indicating if coordinates are trustworthy
+• warning: Present if coordinates are unreliable (e.g., TextField at (0,0))
+
+[IMPORTANT]
+⚠️ TextFields may report (0,0) coordinates if not fully laid out. Check 'coordinatesReliable' flag.
+   When false, use 'key' or 'text' for targeting instead of coordinates.
+
 [MULTI-SESSION]
 All action tools support optional session_id parameter. If omitted, uses the active session.
 """,
@@ -547,7 +559,27 @@ All action tools support optional session_id parameter. If omitted, uses the act
       },
       {
         "name": "find_by_type",
-        "description": "Find widgets by type name",
+        "description": """Find widgets by type name
+
+[PRIMARY PURPOSE]
+Search for all widgets matching a specific type (e.g., "TextField", "Button", "ListTile").
+
+[USAGE]
+find_by_type(type: "TextField")  // Finds all TextFields
+find_by_type(type: "Button")     // Finds all button types
+
+[OUTPUT FORMAT]
+Returns list of widgets with:
+• type: Full widget type name
+• key: Element identifier if available
+• position: {x, y} coordinates
+• size: {width, height} dimensions
+• coordinatesReliable: Boolean - true if coordinates are trustworthy
+
+[IMPORTANT]
+⚠️ Check 'coordinatesReliable' flag before using coordinates for tap/click actions.
+   If false, use 'key' property for reliable targeting.
+""",
         "inputSchema": {
           "type": "object",
           "properties": {
