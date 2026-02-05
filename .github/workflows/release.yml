@@ -349,70 +349,26 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  # Update Winget manifest
+  # Submit to Microsoft Winget official repository
   update-winget:
     needs: [prepare, build-native-binaries]
     runs-on: windows-latest
     continue-on-error: true  # Don't block if winget update fails
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Windows binary
-        uses: actions/download-artifact@v4
+      - name: Auto-submit to microsoft/winget-pkgs
+        uses: vedantmgoyal2009/winget-releaser@v2
         with:
-          name: flutter-skill-windows-x64.exe
-          path: ./
-
-      - name: Calculate SHA256
-        id: sha256
-        shell: pwsh
-        run: |
-          $hash = (Get-FileHash -Algorithm SHA256 "flutter-skill-windows-x64.exe").Hash.ToLower()
-          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
-
-      - name: Update Winget manifest
-        shell: pwsh
-        run: |
-          $version = "${{ needs.prepare.outputs.version }}"
-          $sha256 = "${{ steps.sha256.outputs.sha256 }}"
-
-          $manifest = @"
-          PackageIdentifier: AIDashboard.FlutterSkill
-          PackageVersion: $version
-          Publisher: AI Dashboard
-          PublisherUrl: https://github.com/ai-dashboad
-          PackageName: Flutter Skill
-          PackageUrl: https://github.com/ai-dashboad/flutter-skill
-          License: MIT
-          LicenseUrl: https://github.com/ai-dashboad/flutter-skill/blob/main/LICENSE
-          ShortDescription: AI Agent Bridge for Flutter Apps
-          Description: |
-            Flutter Skill is a bridge that connects AI agents (Claude, Cursor, Windsurf)
-            to running Flutter applications via the Dart VM Service Protocol.
-          Tags:
-            - flutter
-            - dart
-            - ai
-            - mcp
-            - developer-tools
-          Installers:
-            - Architecture: x64
-              InstallerType: exe
-              InstallerUrl: https://github.com/ai-dashboad/flutter-skill/releases/download/v$version/flutter-skill-windows-x64.exe
-              InstallerSha256: $sha256
-              UpgradeBehavior: install
-          ManifestType: singleton
-          ManifestVersion: 1.6.0
-          "@
-
-          # Save manifest for artifact upload
-          $manifest | Out-File -FilePath "AIDashboard.FlutterSkill.yaml" -Encoding utf8
-
-      - name: Upload Winget manifest
-        uses: actions/upload-artifact@v4
-        with:
-          name: winget-manifest
-          path: AIDashboard.FlutterSkill.yaml
+          identifier: AIDashboard.FlutterSkill
+          version: ${{ needs.prepare.outputs.version }}
+          installers-regex: 'flutter-skill-windows-x64\.exe$'
+          token: ${{ secrets.WINGET_SUBMIT_TOKEN }}
+          fork-user: ai-dashboad
+          release-tag: v${{ needs.prepare.outputs.version }}
 
   # Update Scoop bucket
   update-scoop:

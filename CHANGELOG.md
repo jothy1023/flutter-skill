@@ -1,3 +1,11 @@
+## Unreleased
+
+### 🤖 CI/CD Improvements
+- 🚀 **Automated Winget Submission**: Release workflow now auto-submits PRs to microsoft/winget-pkgs
+  - Uses `winget-releaser` GitHub Action for automatic PR creation
+  - Every release will be submitted to Microsoft's official Winget repository
+  - Eliminates manual PR submission for Windows package manager
+
 ## 0.5.2
 
 **Critical bug fixes for coordinate detection and JSON serialization**
