@@ -512,8 +512,20 @@ jobs:
 
       - name: Post to X (Twitter)
         run: |
-          # Twitter API v2 endpoint for creating tweets
-          curl -X POST "https://api.twitter.com/2/tweets" \
-            -H "Authorization: Bearer ${{ secrets.TWITTER_BEARER_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": $(echo '${{ steps.changelog.outputs.tweet }}' | jq -Rs .)}"
+          # Twitter API v2 endpoint for creating tweets using OAuth 1.0a
+          # Generate OAuth 1.0a signature and post tweet
+
+          TWEET_TEXT=$(echo '${{ steps.changelog.outputs.tweet }}' | jq -Rs .)
+
+          # Use nearform-actions/github-action-notify-twitter for OAuth 1.0a
+          # Note: This uses a GitHub Action that handles OAuth 1.0a signing
+          echo "Tweet content prepared: $TWEET_TEXT"
+
+      - name: Send tweet via OAuth 1.0a
+        uses: nearform-actions/github-action-notify-twitter@v1
+        with:
+          message: ${{ steps.changelog.outputs.tweet }}
+          twitter-app-key: ${{ secrets.TWITTER_API_KEY }}
+          twitter-app-secret: ${{ secrets.TWITTER_API_SECRET }}
+          twitter-access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          twitter-access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
