@@ -1,3 +1,19 @@
+## 0.6.1
+
+**Native platform interaction tools and VM Service reconnection fix**
+
+### Features
+- **Native Platform Interaction**: 4 new MCP tools (`native_screenshot`, `native_tap`, `native_input_text`, `native_swipe`) for interacting with native OS views that are invisible to Flutter's VM Service (photo pickers, permission dialogs, share sheets)
+  - iOS Simulator: Uses macOS Accessibility API — no external dependencies
+  - Android Emulator: Uses adb shell commands
+  - Smart element targeting with scoring system for accurate tap detection
+  - Auto-dismissal of iOS paste confirmation dialog
+
+### Bug Fixes
+- **VM Service Reconnection**: Fix `LateInitializationError` crash when VM Service connection breaks. Client now auto-reconnects and retries failed operations transparently
+
+---
+
 ## 0.6.0
 
 **Enhanced smart discovery with parallel port checking and priority-based selection**
