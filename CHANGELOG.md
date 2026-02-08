@@ -1,3 +1,12 @@
+## 0.6.1
+
+**Native platform interaction tools and VM Service reconnection fix**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.6.0
 
 **Enhanced smart discovery with parallel port checking and priority-based selection**
