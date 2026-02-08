@@ -409,6 +409,29 @@ brew upgrade flutter-skill
 - [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=ai-dashboad.flutter-skill)
 - [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/PLUGIN_ID)
 
+## Support This Project
+
+If Flutter Skill helps you build better Flutter apps, consider supporting its development:
+
+| Platform | Link |
+|----------|------|
+| GitHub Sponsors | [Sponsor on GitHub](https://github.com/sponsors/ai-dashboad) |
+| Buy Me a Coffee | [buymeacoffee.com/ai-dashboad](https://buymeacoffee.com/ai-dashboad) |
+| Ko-fi | [ko-fi.com/flutter-skill](https://ko-fi.com/flutter-skill) |
+
+<details>
+<summary>WeChat / Alipay</summary>
+
+| WeChat Pay | Alipay |
+|------------|--------|
+| <img src="docs/assets/wechat-pay.jpg" width="200"/> | <img src="docs/assets/alipay.jpg" width="200"/> |
+
+</details>
+
+Your support helps maintain the project, add new features, and keep it free and open source.
+
+---
+
 ## License
 
 MIT

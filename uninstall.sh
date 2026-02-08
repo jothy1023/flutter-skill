@@ -44,13 +44,15 @@ if [ -d "$HOME/.flutter-skill-src" ]; then
     removed=$((removed + 1))
 fi
 
-# 4. Remove wrapper script
-if [ -f "$HOME/bin/flutter-skill" ]; then
-    printf '%b\n' "${YELLOW}Removing wrapper script...${NC}"
-    rm -f "$HOME/bin/flutter-skill"
-    printf '%b\n' "${GREEN}  Removed $HOME/bin/flutter-skill${NC}"
-    removed=$((removed + 1))
-fi
+# 4. Remove wrapper scripts
+for wrapper in "$HOME/bin/flutter-skill" "$HOME/.pub-cache/bin/flutter-skill" "$HOME/.pub-cache/bin/flutter_skill"; do
+    if [ -f "$wrapper" ]; then
+        printf '%b\n' "${YELLOW}Removing wrapper script...${NC}"
+        rm -f "$wrapper"
+        printf '%b\n' "${GREEN}  Removed $wrapper${NC}"
+        removed=$((removed + 1))
+    fi
+done
 
 # 5. Remove cached binaries
 if [ -d "$HOME/.flutter-skill" ]; then

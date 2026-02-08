@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter_skill/src/cli/server.dart' show currentVersion;
 
 /// Run the doctor command to check installation health
 Future<void> runDoctor(List<String> args) async {
@@ -182,22 +183,7 @@ void _printInfo(String message) {
 }
 
 Future<String?> _getFlutterSkillVersion() async {
-  // Try to read version from pubspec.yaml in the package
-  try {
-    final scriptPath = Platform.script.toFilePath();
-    final binDir = Directory(scriptPath).parent;
-    final projectRoot = binDir.parent;
-    final pubspec = File('${projectRoot.path}/pubspec.yaml');
-    if (pubspec.existsSync()) {
-      final lines = pubspec.readAsLinesSync();
-      for (final line in lines) {
-        if (line.startsWith('version:')) {
-          return line.split(':').last.trim();
-        }
-      }
-    }
-  } catch (_) {}
-  return null;
+  return currentVersion;
 }
 
 String _detectRuntime() {

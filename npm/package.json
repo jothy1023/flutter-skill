@@ -4,7 +4,8 @@
   "description": "MCP Server for Flutter app automation - Give your AI Agent eyes and hands inside your Flutter app",
   "main": "index.js",
   "bin": {
-    "flutter-skill-mcp": "./bin/cli.js"
+    "flutter-skill-mcp": "./bin/cli.js",
+    "flutter-skill": "./bin/cli.js"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
