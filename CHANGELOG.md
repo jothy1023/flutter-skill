@@ -1,3 +1,12 @@
+## 0.6.2
+
+**Improve pub.dev score**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.6.1
 
 **Native platform interaction tools and VM Service reconnection fix**
