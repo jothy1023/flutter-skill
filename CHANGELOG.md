@@ -1,14 +1,5 @@
 ## 0.7.1
 
-**Bug fixes, screenshot reliability, enter_text without key, network monitoring**
-
-### Changes
-- TODO: Add your changes here
-
----
-
-## 0.7.1
-
 **Bug fixes, screenshot reliability, and new features**
 
 ### Bug Fixes
