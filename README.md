@@ -5,9 +5,9 @@
 ![Version](https://img.shields.io/pub/v/flutter_skill.svg)
 ![npm](https://img.shields.io/npm/v/flutter-skill.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Flutter-02569B)
+![Platform](https://img.shields.io/badge/Platform-Flutter%20%7C%20Web%20%7C%20React%20Native%20%7C%20iOS%20%7C%20Android-02569B)
 
-**Flutter Skill** is an E2E testing bridge that gives AI agents (Claude Code, Cursor, Windsurf, etc.) full control over running Flutter apps. Describe what you want to test in natural language, and the AI sees the screen, taps buttons, fills forms, scrolls, and verifies results - just like a human tester would.
+**Flutter Skill** is an E2E testing bridge that gives AI agents (Claude Code, Cursor, Windsurf, etc.) full control over running apps across **Flutter, Web, React Native, iOS, and Android**. Describe what you want to test in natural language, and the AI sees the screen, taps buttons, fills forms, scrolls, and verifies results - just like a human tester would.
 
 ```
 You: "Test the login flow - enter test@example.com and password123, tap Login, verify Dashboard appears"
@@ -149,6 +149,91 @@ flutter-skill.tap({ text: "Sign Up" })           // Tap by text
 flutter-skill.enter_text({ key: "email", text: "user@test.com" })
 flutter-skill.screenshot()                       // Visual verification
 ```
+
+---
+
+## Multi-Platform Support
+
+Flutter Skill isn't just for Flutter — it works with **5 platforms**, giving AI agents control over any app:
+
+| Platform | SDK | Status |
+|----------|-----|--------|
+| **Flutter** (Dart) | Core — `flutter_skill` package | ✅ Stable |
+| **Web** (JavaScript) | `sdks/web/flutter-skill.js` | ✅ Stable |
+| **React Native** | `sdks/react-native/` npm package | ✅ Stable |
+| **iOS** (Swift/SwiftUI) | `sdks/ios/` Swift Package | ✅ Stable |
+| **Android** (Kotlin) | `sdks/android/` Gradle dependency | ✅ Stable |
+
+### Web
+
+```html
+<script src="flutter-skill.js"></script>
+<script>
+  FlutterSkill.start({ port: 50000 });
+</script>
+```
+
+### React Native
+
+```bash
+npm install flutter-skill
+```
+
+```js
+import FlutterSkill from 'flutter-skill';
+FlutterSkill.start();
+```
+
+### iOS (Swift / SwiftUI)
+
+Add via Swift Package Manager:
+```
+https://github.com/ai-dashboad/flutter-skill (sdks/ios)
+```
+
+```swift
+import FlutterSkill
+
+// Initialize in your app
+FlutterSkillBridge.shared.start()
+
+// Register SwiftUI elements for AI interaction
+Text("Hello")
+    .flutterSkillId("greeting")
+
+Button("Submit") { submit() }
+    .flutterSkillButton("submitBtn")
+
+TextField("Email", text: $email)
+    .flutterSkillTextField("emailField")
+```
+
+### Android (Kotlin)
+
+```kotlin
+// build.gradle.kts
+implementation("com.flutterskill:flutter-skill:0.7.3")
+```
+
+```kotlin
+// In your Activity
+import com.flutterskill.FlutterSkillBridge
+
+FlutterSkillBridge.start(this)
+```
+
+### Connecting the AI Agent
+
+Once integrated, **the same CLI and MCP tools work for all platforms**:
+
+```bash
+flutter_skill inspect          # See all UI elements
+flutter_skill act tap "login"  # Tap a button
+flutter_skill act enter_text "email" "user@test.com"
+flutter_skill act screenshot   # Capture the screen
+```
+
+All platforms support the same 14 capabilities: inspect, tap, enter_text, scroll, screenshot, get_text, find_element, wait_for_element, and more.
 
 ---
 
