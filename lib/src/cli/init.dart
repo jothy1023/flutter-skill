@@ -282,11 +282,6 @@ Future<void> _setupAndroid(String path) async {
   print('📦 Setting up Android SDK...');
 
   // Find MainActivity
-  final mainActivity = _findFile(path, [
-    'app/src/main/java/com',
-    'app/src/main/kotlin/com',
-  ]);
-
   // Try to find MainActivity.kt
   File? activityFile;
   try {
