@@ -6,7 +6,7 @@
 ///
 /// This script:
 /// 1. Copies README.md to vscode-extension/README.md
-/// 2. Copies README.md to npm/README.md
+/// 2. Copies README.md to packaging/npm/README.md
 /// 3. Converts README.md to HTML for IntelliJ plugin.xml description
 /// 4. Converts CHANGELOG.md to HTML for IntelliJ plugin.xml change-notes
 
@@ -28,7 +28,7 @@ void main() async {
 
   // 2. Sync to npm package
   print('📦 npm Package...');
-  File('$projectRoot/npm/README.md').writeAsStringSync(readme);
+  File('$projectRoot/packaging/npm/README.md').writeAsStringSync(readme);
   print('   ✓ README.md copied');
 
   // 3. Update IntelliJ plugin.xml

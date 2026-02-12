@@ -57,7 +57,6 @@ The codebase has two main parts:
 **Entry Points:**
 - `bin/flutter_skill.dart` - Main CLI entry point, routes to subcommands
 - `bin/server.dart` - Standalone MCP server entry point
-- Individual `bin/*.dart` scripts - Direct script access (legacy style)
 
 **Connection Flow:**
 1. `launch` runs `flutter run`, captures VM Service URI from stdout
@@ -101,7 +100,7 @@ When the user asks to release a new version:
 2. **Update Version Numbers**
    - `pubspec.yaml` - version: X.Y.Z
    - `lib/src/cli/server.dart` - const String _currentVersion = 'X.Y.Z'
-   - `npm/package.json` - "version": "X.Y.Z"
+   - `packaging/npm/package.json` - "version": "X.Y.Z"
    - `vscode-extension/package.json` - "version": "X.Y.Z"
    - `intellij-plugin/build.gradle.kts` - version = "X.Y.Z"
    - `intellij-plugin/src/main/resources/META-INF/plugin.xml` - <version>X.Y.Z</version>

@@ -4,9 +4,8 @@
 # Test dummy app
 test_dummy/
 
-# Demo projects
-demo_app/
-demo_counter/
+# Demo/example projects (example/ stays for pub.dev)
+examples/
 
 # Build artifacts
 build/
@@ -15,14 +14,8 @@ build/
 # IntelliJ plugin (separate package)
 intellij-plugin/
 
-# Homebrew formula (separate package)
-homebrew/
-
-# Dev container
-devcontainer-feature/
-
-# NPM package files
-npm/
+# Packaging (npm, homebrew, scoop, devcontainer-feature)
+packaging/
 
 # Docker files
 Dockerfile

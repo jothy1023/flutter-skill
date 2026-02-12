@@ -75,7 +75,7 @@ echo ""
 
 # Run in background
 flutter run \
-    demo/test_indicators_demo.dart \
+    examples/demo_indicators/test_indicators_demo.dart \
     -d "$DEVICE_ID" \
     --vm-service-port=50000 \
     > /tmp/flutter_demo.log 2>&1 &

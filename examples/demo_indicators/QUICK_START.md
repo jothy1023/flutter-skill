@@ -174,7 +174,7 @@ flutter run -d "iPhone 16 Pro" --vm-service-port=50000
 cd /Users/cw/development/flutter-skill
 
 # 运行一键创建和启动脚本
-bash demo/auto_setup_demo.sh
+bash examples/demo_indicators/auto_setup_demo.sh
 ```
 
 ## 🎬 测试可视化指示器

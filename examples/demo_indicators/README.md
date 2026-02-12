@@ -32,10 +32,10 @@ This demo showcases the **visual operation tracking** feature of Flutter Skill, 
 ```bash
 # 1. Start the demo app
 cd /Users/cw/development/flutter-skill
-flutter run demo/test_indicators_demo.dart -d "iPhone 16 Pro"
+flutter run examples/demo_indicators/test_indicators_demo.dart -d "iPhone 16 Pro"
 
 # 2. In another terminal, run the demo guide
-node demo/run_demo.js
+node examples/demo_indicators/run_demo.js
 
 # 3. Follow the instructions and copy commands to Claude/Cursor
 ```
@@ -44,7 +44,7 @@ node demo/run_demo.js
 
 ```bash
 # 1. Start the demo app
-flutter run demo/test_indicators_demo.dart -d "iPhone 16 Pro"
+flutter run examples/demo_indicators/test_indicators_demo.dart -d "iPhone 16 Pro"
 
 # 2. In Claude/Cursor, run these commands:
 
@@ -222,7 +222,7 @@ flutter-skill.enable_test_indicators({
 flutter devices
 
 # Restart app with VM Service port
-flutter run demo/test_indicators_demo.dart \
+flutter run examples/demo_indicators/test_indicators_demo.dart \
   -d "iPhone 16 Pro" \
   --vm-service-port=50000
 ```

@@ -24,11 +24,11 @@ echo "📦 Updating SKILL.md..."
 sed -i.bak "s/^version: .*/version: $VERSION/" SKILL.md
 rm -f SKILL.md.bak
 
-# 3. npm/package.json
-if [ -f npm/package.json ]; then
-    echo "📦 Updating npm/package.json..."
-    sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" npm/package.json
-    rm -f npm/package.json.bak
+# 3. packaging/npm/package.json
+if [ -f packaging/npm/package.json ]; then
+    echo "📦 Updating packaging/npm/package.json..."
+    sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" packaging/npm/package.json
+    rm -f packaging/npm/package.json.bak
 fi
 
 # 4. vscode-extension/package.json

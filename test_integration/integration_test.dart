@@ -52,11 +52,11 @@ class MyApp extends StatelessWidget {
 ''');
   }
 
-  // 2. Test "launch.dart" (CLI Automation)
-  print('\n[TEST 1] Testing launch.dart ...');
+  // 2. Test "flutter_skill.dart launch" (CLI Automation)
+  print('\n[TEST 1] Testing flutter_skill.dart launch ...');
   final launchProcess = await Process.start(
     'dart',
-    ['run', 'bin/launch.dart', 'test_dummy'],
+    ['run', 'bin/flutter_skill.dart', 'launch', 'test_dummy'],
     environment: env,
     mode: ProcessStartMode.normal,
   );
@@ -86,17 +86,18 @@ class MyApp extends StatelessWidget {
   }
 
   if (uri == null) {
-    print('[FAIL] Test 1: launch.dart did not produce URI file.');
+    print('[FAIL] Test 1: flutter_skill.dart launch did not produce URI file.');
     launchProcess.kill();
     exit(1);
   }
-  print('[PASS] Test 1: launch.dart produced URI: $uri');
+  print('[PASS] Test 1: flutter_skill.dart launch produced URI: $uri');
 
-  // 3. Test "inspect.dart" (CLI Interaction)
-  print('\n[TEST 2] Testing inspect.dart against running mock...');
+  // 3. Test "flutter_skill.dart inspect" (CLI Interaction)
+  print('\n[TEST 2] Testing flutter_skill.dart inspect against running mock...');
   final inspectProcess = await Process.start('dart', [
     'run',
-    'bin/inspect.dart',
+    'bin/flutter_skill.dart',
+    'inspect',
   ]);
   final inspectStdout = StringBuffer();
 
@@ -111,34 +112,35 @@ class MyApp extends StatelessWidget {
   final inspectExitCode = await inspectProcess.exitCode;
 
   if (inspectExitCode != 0) {
-    print('[FAIL] inspect.dart failed');
+    print('[FAIL] flutter_skill.dart inspect failed');
     inspectProcess.kill();
     exit(1);
   }
 
-  print('[PASS] Test 2: inspect.dart exited with $inspectExitCode');
+  print('[PASS] Test 2: flutter_skill.dart inspect exited with $inspectExitCode');
 
   if (!inspectStdout.toString().contains('login_btn')) {
     print(
-      '[FAIL] inspect.dart did not find "login_btn". Output:\n${inspectStdout.toString()}',
+      '[FAIL] flutter_skill.dart inspect did not find "login_btn". Output:\n${inspectStdout.toString()}',
     );
     exit(1);
   }
-  print('[PASS] Test 2: inspect.dart found elements.');
+  print('[PASS] Test 2: flutter_skill.dart inspect found elements.');
 
-  // 4. Test "act.dart" (CLI Action)
-  print('\n[TEST 3] Testing act.dart tap...');
+  // 4. Test "flutter_skill.dart act" (CLI Action)
+  print('\n[TEST 3] Testing flutter_skill.dart act tap...');
   final actRes = await Process.run('dart', [
     'run',
-    'bin/act.dart',
+    'bin/flutter_skill.dart',
+    'act',
     'tap',
     'login_btn',
   ]);
   if (actRes.exitCode != 0) {
-    print('[FAIL] act.dart failed: ${actRes.stderr}');
+    print('[FAIL] flutter_skill.dart act failed: ${actRes.stderr}');
     exit(1);
   }
-  print('[PASS] Test 3: act.dart executed successfully.');
+  print('[PASS] Test 3: flutter_skill.dart act executed successfully.');
 
   // 5. Test "server.dart" (MCP Mode)
   print('\n[TEST 4] Testing server.dart (MCP Mode)...');

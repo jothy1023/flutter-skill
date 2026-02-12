@@ -79,9 +79,9 @@ echo -e "${BLUE}📦 Syncing version to all files...${NC}"
 sed -i '' "s/^version: .*/version: $VERSION/" pubspec.yaml
 echo "  ✓ pubspec.yaml"
 
-# npm/package.json
-sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" npm/package.json
-echo "  ✓ npm/package.json"
+# packaging/npm/package.json
+sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" packaging/npm/package.json
+echo "  ✓ packaging/npm/package.json"
 
 # vscode-extension/package.json
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" vscode-extension/package.json
@@ -103,11 +103,11 @@ echo "  ✓ README.md"
 sed -i '' "s/const String _currentVersion = '[^']*'/const String _currentVersion = '$VERSION'/" lib/src/cli/server.dart
 echo "  ✓ lib/src/cli/server.dart"
 
-# homebrew/flutter-skill.rb
-sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" homebrew/flutter-skill.rb
-sed -i '' "s|/v[0-9]*\.[0-9]*\.[0-9]*/|/v$VERSION/|g" homebrew/flutter-skill.rb
-sed -i '' "s/flutter_skill: \^[0-9.]*/flutter_skill: ^$VERSION/" homebrew/flutter-skill.rb
-echo "  ✓ homebrew/flutter-skill.rb"
+# packaging/homebrew/flutter-skill.rb
+sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" packaging/homebrew/flutter-skill.rb
+sed -i '' "s|/v[0-9]*\.[0-9]*\.[0-9]*/|/v$VERSION/|g" packaging/homebrew/flutter-skill.rb
+sed -i '' "s/flutter_skill: \^[0-9.]*/flutter_skill: ^$VERSION/" packaging/homebrew/flutter-skill.rb
+echo "  ✓ packaging/homebrew/flutter-skill.rb"
 
 # Step 3: Update CHANGELOG
 echo ""

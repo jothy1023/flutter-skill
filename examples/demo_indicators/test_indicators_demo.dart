@@ -3,8 +3,8 @@
 /// This script demonstrates visual indicators for test actions
 ///
 /// Usage:
-/// 1. Start this demo app: flutter run lib/demo/test_indicators_demo.dart
-/// 2. Run the demo script: dart run demo/run_demo.dart
+/// 1. Start this demo app: flutter run examples/demo_indicators/test_indicators_demo.dart
+/// 2. Run the demo script: dart run examples/demo_indicators/run_demo.dart
 /// 3. Watch the visual indicators in action!
 
 import 'package:flutter/material.dart';

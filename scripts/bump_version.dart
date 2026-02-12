@@ -7,7 +7,7 @@
 ///
 /// Updates:
 ///   - pubspec.yaml
-///   - npm/package.json
+///   - packaging/npm/package.json
 ///   - vscode-extension/package.json
 ///   - intellij-plugin/build.gradle.kts
 
@@ -38,8 +38,8 @@ void main(List<String> args) {
   // Update pubspec.yaml
   results['pubspec.yaml'] = updatePubspec(version);
 
-  // Update npm/package.json
-  results['npm/package.json'] = updatePackageJson('npm/package.json', version);
+  // Update packaging/npm/package.json
+  results['packaging/npm/package.json'] = updatePackageJson('packaging/npm/package.json', version);
 
   // Update vscode-extension/package.json
   results['vscode-extension/package.json'] =

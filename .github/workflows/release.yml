@@ -41,7 +41,7 @@ jobs:
           name: synced-docs
           path: |
             vscode-extension/README.md
-            npm/README.md
+            packaging/npm/README.md
             intellij-plugin/src/main/resources/META-INF/plugin.xml
 
   # Publish to pub.dev
@@ -84,7 +84,7 @@ jobs:
     continue-on-error: true  # Don't block if already published
     defaults:
       run:
-        working-directory: npm
+        working-directory: packaging/npm
     steps:
       - uses: actions/checkout@v4
 
