@@ -176,7 +176,8 @@ fi
 # Step 4: Show changes and confirm
 echo ""
 echo "📋 Changes to be committed:"
-git add -A
+git add -u  # Only stage modified tracked files (not untracked)
+git add .gitignore  # Include .gitignore changes
 git diff --cached --stat
 echo ""
 

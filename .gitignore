@@ -80,3 +80,10 @@ intellij-plugin/build/
 # Note: gradle/, gradlew, gradlew.bat are NOT ignored - needed for CI/CD
 .mcp.json
 node_modules
+
+# Rust build output
+target/
+
+# Generated files
+**/gen/
+**/icons/icon.png
