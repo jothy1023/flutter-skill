@@ -903,6 +903,13 @@ class FlutterSkillBinding {
     }
 
     await _dispatchTap(center);
+
+    // Fallback: directly invoke the callback if the widget supports it
+    _tryInvokeCallback(element);
+
+    // Wait for frame to pump after callback invocation
+    await Future.delayed(const Duration(milliseconds: 300));
+
     _log('Tap completed on (key: $key, text: $text)');
 
     return {
@@ -911,6 +918,31 @@ class FlutterSkillBinding {
       'target': {'key': key, 'text': text},
       'position': {'x': center.dx.round(), 'y': center.dy.round()},
     };
+  }
+
+  /// Try to directly invoke the onPressed/onTap callback of a widget.
+  /// This is a fallback for when pointer dispatch doesn't trigger the callback
+  /// (e.g., when an overlay intercepts events or hit testing fails).
+  static void _tryInvokeCallback(Element element) {
+    final widget = element.widget;
+    
+    if (widget is ElevatedButton && widget.onPressed != null) {
+      
+      widget.onPressed!();
+    } else if (widget is TextButton && widget.onPressed != null) {
+      widget.onPressed!();
+    } else if (widget is OutlinedButton && widget.onPressed != null) {
+      widget.onPressed!();
+    } else if (widget is IconButton && widget.onPressed != null) {
+      widget.onPressed!();
+    } else if (widget is FloatingActionButton && widget.onPressed != null) {
+      widget.onPressed!();
+    } else if (widget is InkWell && widget.onTap != null) {
+      widget.onTap!();
+    } else if (widget is GestureDetector && widget.onTap != null) {
+      widget.onTap!();
+    }
+    // For other widget types, the pointer dispatch should handle it
   }
 
   /// Get all keys in the widget tree
