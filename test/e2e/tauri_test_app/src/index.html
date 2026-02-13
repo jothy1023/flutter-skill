@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head><title>Tauri Test App</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  button { padding: 8px 16px; margin: 4px; font-size: 16px; }
+  input { padding: 8px; font-size: 16px; margin: 4px; }
+  .page { display: none; } .page.active { display: block; }
+  #counter { font-size: 32px; margin: 16px 0; }
+  .list-item { padding: 8px; border-bottom: 1px solid #eee; }
+</style>
+</head>
+<body>
+  <div id="home-page" class="page active">
+    <h1>Tauri Test App</h1>
+    <div id="counter">Count: 0</div>
+    <button id="increment-btn" onclick="increment()">Increment</button>
+    <button id="decrement-btn" onclick="decrement()">Decrement</button>
+    <br><br>
+    <input id="text-input" type="text" placeholder="Enter text here">
+    <button id="submit-btn" onclick="submitText()">Submit</button>
+    <div id="result"></div>
+    <br>
+    <label><input type="checkbox" id="test-checkbox" onchange="toggleCheck()"> Toggle me</label>
+    <div id="check-status">Unchecked</div>
+    <br>
+    <button id="detail-btn" onclick="goToDetail()">Go to Detail</button>
+    <br><br>
+    <div id="item-list"></div>
+  </div>
+  
+  <div id="detail-page" class="page">
+    <h1>Detail Page</h1>
+    <div id="detail-counter"></div>
+    <button id="back-btn" onclick="goHome()">Go Back</button>
+  </div>
+
+<script>
+  let count = 0;
+  const list = document.getElementById('item-list');
+  for (let i = 0; i < 20; i++) {
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.id = 'item-' + i;
+    div.textContent = 'Item ' + (i + 1);
+    list.appendChild(div);
+  }
+  function increment() { count++; updateCounter(); }
+  function decrement() { count--; updateCounter(); }
+  function updateCounter() { document.getElementById('counter').textContent = 'Count: ' + count; }
+  function submitText() {
+    const text = document.getElementById('text-input').value;
+    document.getElementById('result').textContent = 'Submitted: ' + text;
+  }
+  function toggleCheck() {
+    const checked = document.getElementById('test-checkbox').checked;
+    document.getElementById('check-status').textContent = checked ? 'Checked' : 'Unchecked';
+  }
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function goToDetail() {
+    document.getElementById('detail-counter').textContent = 'Counter: ' + count;
+    showPage('detail-page');
+  }
+  function goHome() { showPage('home-page'); }
+  
+  // Register go_back handler for flutter-skill
+  window.__flutterSkillGoBack = goHome;
+</script>
+</body>
+</html>

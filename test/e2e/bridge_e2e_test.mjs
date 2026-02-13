@@ -86,6 +86,7 @@ const KEYS = {
   electron: { increment: 'increment-btn', input: 'text-input', detail: 'detail-btn', counter: 'counter', submit: 'submit-btn', checkbox: 'test-checkbox' },
   android:  { increment: 'increment_btn', input: 'input_field', detail: 'detail_btn', counter: 'counter_text', submit: 'submit_btn', checkbox: 'test_checkbox' },
   kmp:      { increment: 'increment-btn', input: 'text-input', detail: 'detail-btn', counter: 'counter', submit: 'submit-btn', checkbox: 'test-checkbox' },
+  dotnet:   { increment: 'increment-btn', input: 'text-input', detail: 'detail-btn', counter: 'counter', submit: 'submit-btn', checkbox: 'test-checkbox' },
   default:  { increment: 'increment_btn', input: 'input_field', detail: 'detail_btn', counter: 'counter_text', submit: 'submit_btn', checkbox: 'test_checkbox' },
 };
 const K = KEYS[PLATFORM] || KEYS.default;
@@ -96,19 +97,27 @@ async function main() {
   console.log(` Platform: ${PLATFORM} | Port: ${PORT}`);
   console.log('============================================');
 
-  // HTTP health
+  // HTTP health — try the specified port, then port-1 (for split HTTP/WS servers like Tauri)
   console.log('\n--- Health Check ---');
   let health;
+  let healthPort = PORT;
   try {
     const body = await httpGet(`http://127.0.0.1:${PORT}/.flutter-skill`);
     health = JSON.parse(body);
-    console.log(`  Platform: ${health.platform || health.framework}`);
-    console.log(`  SDK: ${health.sdk_version}`);
-    console.log(`  Capabilities: ${(health.capabilities || []).join(', ')}`);
   } catch (e) {
-    console.log(`  \x1b[31mApp not running on port ${PORT}\x1b[0m: ${e.message}`);
-    process.exit(1);
+    try {
+      healthPort = PORT - 1;
+      const body = await httpGet(`http://127.0.0.1:${healthPort}/.flutter-skill`);
+      health = JSON.parse(body);
+      console.log(`  (Health on port ${healthPort}, WS on port ${PORT})`);
+    } catch (e2) {
+      console.log(`  \x1b[31mApp not running on port ${PORT}\x1b[0m: ${e.message}`);
+      process.exit(1);
+    }
   }
+  console.log(`  Platform: ${health.platform || health.framework}`);
+  console.log(`  SDK: ${health.sdk_version}`);
+  console.log(`  Capabilities: ${(health.capabilities || []).join(', ')}`);
 
   const client = new TestClient(PORT);
   await client.connect();

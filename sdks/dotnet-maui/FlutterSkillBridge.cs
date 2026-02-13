@@ -54,9 +54,15 @@ public class FlutterSkillBridge
                     // Health check endpoint
                     var health = new JsonObject
                     {
-                        ["status"] = "ok",
+                        ["framework"] = "dotnet",
+                        ["app_name"] = "dotnet-app",
                         ["platform"] = "dotnet",
-                        ["sdk_version"] = "1.0.0"
+                        ["sdk_version"] = "1.0.0",
+                        ["capabilities"] = new JsonArray(
+                            "initialize", "inspect", "tap", "enter_text", "get_text",
+                            "find_element", "wait_for_element", "scroll", "swipe",
+                            "screenshot", "go_back", "get_logs", "clear_logs"
+                        )
                     };
                     var bytes = Encoding.UTF8.GetBytes(health.ToJsonString());
                     ctx.Response.ContentType = "application/json";
@@ -109,25 +115,36 @@ public class FlutterSkillBridge
 
         try
         {
+            // Resolve key/selector/element to a single selector string
+            var selector = parms["selector"]?.GetValue<string>()
+                ?? parms["key"]?.GetValue<string>()
+                ?? parms["element"]?.GetValue<string>()
+                ?? "";
+
             var result = method switch
             {
+                "initialize" => new JsonObject { ["success"] = true, ["framework"] = GetPlatformName(), ["sdk_version"] = "1.0.0", ["platform"] = GetPlatformName() },
                 "health" => new JsonObject { ["status"] = "ok", ["platform"] = GetPlatformName() },
                 "inspect" => await HandleInspect(parms),
-                "tap" => await HandleTap(parms["selector"]?.GetValue<string>() ?? "", parms),
+                "tap" => await HandleTap(selector, parms),
                 "enter_text" => await HandleEnterText(
-                    parms["selector"]?.GetValue<string>() ?? "",
-                    parms["text"]?.GetValue<string>() ?? "", parms),
+                    selector, parms["text"]?.GetValue<string>() ?? "", parms),
                 "screenshot" => await HandleScreenshot(parms),
                 "scroll" => await HandleScroll(
                     parms["dx"]?.GetValue<int>() ?? 0,
                     parms["dy"]?.GetValue<int>() ?? 0, parms),
-                "get_text" => await HandleGetText(parms["selector"]?.GetValue<string>() ?? "", parms),
+                "swipe" => await HandleScroll(
+                    parms["dx"]?.GetValue<int>() ?? 0,
+                    parms["dy"]?.GetValue<int>() ?? 0, parms),
+                "get_text" => await HandleGetText(selector, parms),
                 "find_element" => await HandleFindElement(
-                    parms["selector"]?.GetValue<string>(),
+                    selector.Length > 0 ? selector : null,
                     parms["text"]?.GetValue<string>(), parms),
                 "wait_for_element" => await HandleWaitForElement(
-                    parms["selector"]?.GetValue<string>() ?? "",
-                    parms["timeout"]?.GetValue<int>() ?? 5000, parms),
+                    selector, parms["timeout"]?.GetValue<int>() ?? 5000, parms),
+                "go_back" => await HandleGoBack(parms),
+                "get_logs" => await HandleGetLogs(parms),
+                "clear_logs" => await HandleClearLogs(parms),
                 _ => new JsonObject { ["error"] = $"Unknown method: {method}" }
             };
             return JsonResponse(id, result: result);
@@ -175,4 +192,13 @@ public class FlutterSkillBridge
 
     protected virtual Task<JsonObject> HandleWaitForElement(string selector, int timeout, JsonObject parms)
         => Task.FromResult(new JsonObject { ["error"] = "wait_for_element not implemented" });
+
+    protected virtual Task<JsonObject> HandleGoBack(JsonObject parms)
+        => Task.FromResult(new JsonObject { ["success"] = false, ["message"] = "go_back not implemented" });
+
+    protected virtual Task<JsonObject> HandleGetLogs(JsonObject parms)
+        => Task.FromResult(new JsonObject { ["logs"] = new JsonArray() });
+
+    protected virtual Task<JsonObject> HandleClearLogs(JsonObject parms)
+        => Task.FromResult(new JsonObject { ["success"] = true });
 }

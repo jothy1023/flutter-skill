@@ -1,0 +1,12 @@
+[package]
+name = "tauri-test-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-flutter-skill = { path = "../../../../sdks/tauri" }
+tokio = { version = "1", features = ["full"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

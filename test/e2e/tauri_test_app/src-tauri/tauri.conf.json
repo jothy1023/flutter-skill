@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicepkg/tauri-plugin-ping/v2/packages/plugin/schemas/schema.json",
+  "productName": "tauri-test-app",
+  "version": "0.1.0",
+  "identifier": "com.flutterskill.tauri-test",
+  "build": {
+    "frontendDist": "../src",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tauri Test App",
+        "width": 800,
+        "height": 600,
+        "label": "main"
+      }
+    ]
+  }
+}
