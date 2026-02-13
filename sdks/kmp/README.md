@@ -1,4 +1,6 @@
-# Flutter Skill — Kotlin Multiplatform SDK
+# flutter-skill Kotlin Multiplatform SDK
+
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
 
 AI E2E testing bridge for KMP apps (Android, JVM/Desktop, iOS). JSON-RPC 2.0 over WebSocket on port 18118.
 

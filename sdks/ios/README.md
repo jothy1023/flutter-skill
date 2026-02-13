@@ -1,6 +1,8 @@
 # flutter-skill iOS SDK
 
-Lightweight bridge that lets [flutter-skill](https://github.com/ai-dashboad/flutter-skill) automate **native iOS apps** built with UIKit or SwiftUI. No external dependencies.
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
+
+Lightweight bridge that lets flutter-skill automate **native iOS apps** built with UIKit or SwiftUI. No external dependencies.
 
 ## Quick Start
 

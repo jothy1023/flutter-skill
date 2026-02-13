@@ -1,6 +1,8 @@
 # flutter-skill Web SDK
 
-Lightweight in-browser bridge that lets [flutter-skill](https://github.com/ai-dashboad/flutter-skill) automate **any web app** — React, Vue, Svelte, plain HTML, or any other framework.
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
+
+Lightweight in-browser bridge that lets flutter-skill automate **any web app** — React, Vue, Svelte, plain HTML, or any other framework.
 
 ## Quick Start
 

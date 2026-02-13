@@ -1,6 +1,6 @@
 # Flutter Skill Roadmap
 
-> AI-Powered End-to-End Testing for Flutter Apps — evolving toward a fully automated QA platform.
+> AI-Powered End-to-End Testing for Any App — evolving toward a fully automated QA platform.
 
 ---
 

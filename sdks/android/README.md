@@ -1,6 +1,8 @@
 # flutter-skill Android SDK
 
-Lightweight bridge that lets [flutter-skill](https://github.com/ai-dashboad/flutter-skill) automate **native Android apps** — Kotlin, Jetpack Compose, XML Views, or any combination.
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
+
+Lightweight bridge that lets flutter-skill automate **native Android apps** — Kotlin, Jetpack Compose, XML Views, or any combination.
 
 ## Quick Start
 

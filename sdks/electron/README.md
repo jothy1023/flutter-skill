@@ -1,4 +1,6 @@
-# Flutter Skill — Electron SDK
+# flutter-skill Electron SDK
+
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
 
 AI E2E testing bridge for Electron apps. Exposes a JSON-RPC 2.0 WebSocket server on port 18118.
 

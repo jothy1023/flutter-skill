@@ -1,6 +1,6 @@
 # Flutter Skill
 
-> **AI-Powered End-to-End Testing for Flutter Apps**
+> **AI-Powered End-to-End Testing for Any App — Flutter, iOS, Android, Web, Electron, Tauri, KMP, React Native, .NET MAUI**
 
 ![Version](https://img.shields.io/pub/v/flutter_skill.svg)
 ![npm](https://img.shields.io/npm/v/flutter-skill.svg)

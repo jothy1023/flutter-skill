@@ -1,4 +1,6 @@
-# Flutter Skill — .NET MAUI SDK
+# flutter-skill .NET MAUI SDK
+
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
 
 AI E2E testing bridge for .NET MAUI apps. JSON-RPC 2.0 over WebSocket on port 18118.
 

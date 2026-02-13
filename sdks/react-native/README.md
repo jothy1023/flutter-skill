@@ -1,6 +1,8 @@
 # flutter-skill React Native SDK
 
-Bridge SDK that lets [flutter-skill](https://github.com/ai-dashboad/flutter-skill) automate **React Native** apps. Runs an embedded HTTP + WebSocket server inside the app process so AI agents can inspect the UI, tap buttons, enter text, scroll, and more.
+> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
+
+Bridge SDK that lets flutter-skill automate **React Native** apps. Runs an embedded HTTP + WebSocket server inside the app process so AI agents can inspect the UI, tap buttons, enter text, scroll, and more.
 
 ## Quick Start
 
