@@ -1,4 +1,5 @@
 #!/usr/bin/env dart
+
 /// Unified version bumping script for all distribution channels
 ///
 /// Usage:
@@ -39,7 +40,8 @@ void main(List<String> args) {
   results['pubspec.yaml'] = updatePubspec(version);
 
   // Update packaging/npm/package.json
-  results['packaging/npm/package.json'] = updatePackageJson('packaging/npm/package.json', version);
+  results['packaging/npm/package.json'] =
+      updatePackageJson('packaging/npm/package.json', version);
 
   // Update vscode-extension/package.json
   results['vscode-extension/package.json'] =
@@ -66,7 +68,8 @@ void main(List<String> args) {
     print('\n✅ All files updated successfully!');
     print('\nNext steps:');
     print('  1. Review changes: git diff');
-    print('  2. Commit: git add -A && git commit -m "chore: Bump version to $version"');
+    print(
+        '  2. Commit: git add -A && git commit -m "chore: Bump version to $version"');
     print('  3. Tag: git tag v$version');
     print('  4. Push: git push origin main --tags');
     exit(0);
@@ -85,8 +88,8 @@ bool updatePubspec(String version) {
     }
 
     var content = file.readAsStringSync();
-    final oldVersionMatch = RegExp(r'^version:\s*(.+)$', multiLine: true)
-        .firstMatch(content);
+    final oldVersionMatch =
+        RegExp(r'^version:\s*(.+)$', multiLine: true).firstMatch(content);
 
     if (oldVersionMatch == null) {
       print('❌ Could not find version in pubspec.yaml');
@@ -117,8 +120,8 @@ bool updatePackageJson(String path, String version) {
     }
 
     var content = file.readAsStringSync();
-    final oldVersionMatch = RegExp(r'"version":\s*"([^"]+)"')
-        .firstMatch(content);
+    final oldVersionMatch =
+        RegExp(r'"version":\s*"([^"]+)"').firstMatch(content);
 
     if (oldVersionMatch == null) {
       print('❌ Could not find version in $path');

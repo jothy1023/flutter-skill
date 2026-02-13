@@ -155,8 +155,9 @@ class _HomePageState extends State<HomePage> {
         Uri.parse('https://jsonplaceholder.typicode.com/posts/1'),
       );
       final data = jsonDecode(response.body);
-      setState(() =>
-          _apiResult = 'Status: ${response.statusCode} - ${data['title']}');
+      setState(
+        () => _apiResult = 'Status: ${response.statusCode} - ${data['title']}',
+      );
     } catch (e) {
       setState(() => _apiResult = 'Error: $e');
     }
@@ -236,8 +237,7 @@ class _FormPageState extends State<FormPage> {
               key: const Key('submit_button'),
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('Submitted: ${_nameController.text}')),
+                  SnackBar(content: Text('Submitted: ${_nameController.text}')),
                 );
               },
               child: const Text('Submit Form'),

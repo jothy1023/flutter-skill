@@ -101,10 +101,7 @@ class FlutterMcpServer {
         _sendResult(id, {
           "capabilities": {"tools": {}, "resources": {}},
           "protocolVersion": "2024-11-05",
-          "serverInfo": {
-            "name": "flutter-skill",
-            "version": _currentVersion
-          },
+          "serverInfo": {"name": "flutter-skill", "version": _currentVersion},
         });
       } else if (method == 'notifications/initialized') {
         // No op

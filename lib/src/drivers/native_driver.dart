@@ -38,8 +38,8 @@ abstract class NativeDriver {
   Future<NativeResult> screenshot({bool saveToFile = true});
   Future<NativeResult> tap(double x, double y);
   Future<NativeResult> inputText(String text);
-  Future<NativeResult> swipe(double startX, double startY, double endX,
-      double endY,
+  Future<NativeResult> swipe(
+      double startX, double startY, double endX, double endY,
       {int durationMs = 300});
   Future<Map<String, bool>> checkToolAvailability();
 
@@ -65,8 +65,7 @@ abstract class NativeDriver {
     try {
       final result =
           await Process.run('xcrun', ['simctl', 'list', 'devices', 'booted']);
-      if (result.exitCode == 0 &&
-          result.stdout.toString().contains('Booted')) {
+      if (result.exitCode == 0 && result.stdout.toString().contains('Booted')) {
         return NativePlatform.iosSimulator;
       }
     } catch (_) {}
@@ -176,8 +175,7 @@ class IosSimulatorDriver extends NativeDriver {
     if (screenCoords == null) {
       return NativeResult(
         success: false,
-        message:
-            'Failed to map device coordinates to screen coordinates. '
+        message: 'Failed to map device coordinates to screen coordinates. '
             'Ensure the Simulator window is visible and not minimized.',
       );
     }

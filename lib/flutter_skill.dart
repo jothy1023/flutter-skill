@@ -65,7 +65,8 @@ class FlutterSkillBinding {
   // Test indicators
   static TestIndicatorOverlay? _indicatorOverlay;
   static bool _indicatorsEnabled = false;
-  static Offset? _lastCharacterPosition;  // Track character position for walking effect
+  static Offset?
+      _lastCharacterPosition; // Track character position for walking effect
 
   static void _registerExtensions() {
     // ==================== EXISTING EXTENSIONS ====================
@@ -1017,9 +1018,9 @@ class FlutterSkillBinding {
         startPos,
         CharacterAction.tapping,
         hint: "Tapping",
-        endPosition: position,  // Character walks from startPos to position
+        endPosition: position, // Character walks from startPos to position
       );
-      _lastCharacterPosition = position;  // Remember position for next action
+      _lastCharacterPosition = position; // Remember position for next action
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
@@ -1132,7 +1133,8 @@ class FlutterSkillBinding {
 
       // No focused field found, try system channel as last resort
       try {
-        await SystemChannels.textInput.invokeMethod('TextInput.setEditingState', {
+        await SystemChannels.textInput
+            .invokeMethod('TextInput.setEditingState', {
           'text': text,
           'selectionBase': text.length,
           'selectionExtent': text.length,
@@ -1142,7 +1144,8 @@ class FlutterSkillBinding {
         _log('Text input sent via system channel (no key, no focus)');
         return {
           'success': true,
-          'message': 'Text entered via system channel (no focused TextField found)',
+          'message':
+              'Text entered via system channel (no focused TextField found)',
           'method': 'system_channel',
           'enteredText': text,
         };
@@ -1169,8 +1172,7 @@ class FlutterSkillBinding {
 
       final similarKeys = _findSimilarKeys(key);
       if (similarKeys.isNotEmpty) {
-        suggestions
-            .add('Similar keys found: ${similarKeys.take(5).toList()}');
+        suggestions.add('Similar keys found: ${similarKeys.take(5).toList()}');
       }
 
       // Find TextField keys specifically
@@ -1186,7 +1188,8 @@ class FlutterSkillBinding {
       }
 
       suggestions.add('Use inspect() to find TextField elements');
-      suggestions.add('Or omit key to enter text into the currently focused TextField');
+      suggestions.add(
+          'Or omit key to enter text into the currently focused TextField');
 
       return {
         'success': false,
@@ -1443,7 +1446,8 @@ class FlutterSkillBinding {
 
     // Show animated character holding
     if (_indicatorsEnabled && _indicatorOverlay != null) {
-      _indicatorOverlay!.showCharacter(position, CharacterAction.holding, hint: "Long pressing");
+      _indicatorOverlay!.showCharacter(position, CharacterAction.holding,
+          hint: "Long pressing");
       await Future.delayed(const Duration(milliseconds: 200));
       _indicatorOverlay!.showLongPress(
         position,
@@ -1479,7 +1483,7 @@ class FlutterSkillBinding {
     if (_indicatorsEnabled && _indicatorOverlay != null) {
       final direction = _getSwipeDirection(delta);
       _indicatorOverlay!.showCharacter(start, CharacterAction.swiping,
-        hint: "Swiping $direction", endPosition: end);
+          hint: "Swiping $direction", endPosition: end);
       await Future.delayed(const Duration(milliseconds: 200));
       _indicatorOverlay!.showSwipe(start, end);
     }
@@ -1887,10 +1891,10 @@ class FlutterSkillBinding {
 
           // Add coordinate reliability flag
           final isReliable = offset.dx.isFinite &&
-                            offset.dy.isFinite &&
-                            (offset.dx != 0 || offset.dy != 0) &&
-                            renderObject.size.width > 0 &&
-                            renderObject.size.height > 0;
+              offset.dy.isFinite &&
+              (offset.dx != 0 || offset.dy != 0) &&
+              renderObject.size.width > 0 &&
+              renderObject.size.height > 0;
           node['coordinatesReliable'] = isReliable;
         }
 
@@ -2308,24 +2312,24 @@ enum IndicatorType { tap, swipe, longPress, textInput, hint, cursor, character }
 
 /// Character action types for animated character
 enum CharacterAction {
-  tapping,   // Character tapping/clicking
-  typing,    // Character typing
-  swiping,   // Character swiping gesture
-  holding,   // Character holding/pressing
-  dragging,  // Character dragging
-  pointing,  // Character pointing
+  tapping, // Character tapping/clicking
+  typing, // Character typing
+  swiping, // Character swiping gesture
+  holding, // Character holding/pressing
+  dragging, // Character dragging
+  pointing, // Character pointing
 }
 
 /// Character state for persistent character
 enum CharacterState {
-  idle,     // Standing still, breathing animation
-  walking,  // Moving to target
-  acting,   // Performing action
+  idle, // Standing still, breathing animation
+  walking, // Moving to target
+  acting, // Performing action
 }
 
 /// Style configuration for indicators
 enum IndicatorStyle {
-  minimal,  // Small, fast, no hints
+  minimal, // Small, fast, no hints
   standard, // Medium, normal speed, 1s hints
   detailed, // Large, slow, 2s hints + debug info
 }
@@ -2449,7 +2453,8 @@ class TestIndicatorOverlay {
   }
 
   /// Show animated character with action
-  void showCharacter(Offset position, CharacterAction action, {String? hint, Offset? endPosition}) {
+  void showCharacter(Offset position, CharacterAction action,
+      {String? hint, Offset? endPosition}) {
     _widgetKey.currentState?.addIndicator(IndicatorData(
       type: IndicatorType.character,
       position: position,
@@ -2564,14 +2569,18 @@ class _TestIndicatorWidgetState extends State<_TestIndicatorWidget>
       case IndicatorStyle.minimal:
         return const Duration(milliseconds: 200);
       case IndicatorStyle.standard:
-        return indicator.type == IndicatorType.longPress && indicator.duration != null
+        return indicator.type == IndicatorType.longPress &&
+                indicator.duration != null
             ? indicator.duration!
             : const Duration(milliseconds: 500);
       case IndicatorStyle.detailed:
-        return indicator.type == IndicatorType.longPress && indicator.duration != null
+        return indicator.type == IndicatorType.longPress &&
+                indicator.duration != null
             ? indicator.duration!
             : indicator.type == IndicatorType.character
-                ? const Duration(milliseconds: 10000)  // 10 seconds - persistent walking character
+                ? const Duration(
+                    milliseconds:
+                        10000) // 10 seconds - persistent walking character
                 : const Duration(milliseconds: 800);
     }
   }
@@ -2586,8 +2595,7 @@ class _TestIndicatorWidgetState extends State<_TestIndicatorWidget>
             _buildIndicator(context, indicator),
 
           // Render action hints at the top
-          if (_style != IndicatorStyle.minimal)
-            ..._buildActionHints(context),
+          if (_style != IndicatorStyle.minimal) ..._buildActionHints(context),
         ],
       ),
     );
@@ -2813,7 +2821,8 @@ class _SwipePainter extends CustomPainter {
     canvas.drawPath(arrowPath, paint);
   }
 
-  Path _createDashedPath(Path source, {required double dashWidth, required double dashSpace}) {
+  Path _createDashedPath(Path source,
+      {required double dashWidth, required double dashSpace}) {
     final path = Path();
     for (final metric in source.computeMetrics()) {
       double distance = 0;
@@ -2843,7 +2852,8 @@ class _SwipePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SwipePainter oldDelegate) => progress != oldDelegate.progress;
+  bool shouldRepaint(_SwipePainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }
 
 /// Long press indicator: filling circle
@@ -2930,7 +2940,8 @@ class _LongPressPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LongPressPainter oldDelegate) => progress != oldDelegate.progress;
+  bool shouldRepaint(_LongPressPainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }
 
 /// Text input indicator: glowing border
@@ -3008,8 +3019,16 @@ class _CursorIndicator extends StatelessWidget {
               opacity: opacity,
               child: CustomPaint(
                 size: Size(
-                  style == IndicatorStyle.minimal ? 24 : style == IndicatorStyle.standard ? 32 : 40,
-                  style == IndicatorStyle.minimal ? 24 : style == IndicatorStyle.standard ? 32 : 40,
+                  style == IndicatorStyle.minimal
+                      ? 24
+                      : style == IndicatorStyle.standard
+                          ? 32
+                          : 40,
+                  style == IndicatorStyle.minimal
+                      ? 24
+                      : style == IndicatorStyle.standard
+                          ? 32
+                          : 40,
                 ),
                 painter: _CursorPainter(style: style),
               ),
@@ -3127,7 +3146,8 @@ class _AnimatedCharacterIndicator extends StatelessWidget {
         } else if (animation.value < 0.6) {
           // Action phase - with anticipation and impact
           currentState = CharacterState.acting;
-          actionProgress = Curves.easeOutBack.transform((animation.value - 0.3) / 0.3);
+          actionProgress =
+              Curves.easeOutBack.transform((animation.value - 0.3) / 0.3);
         } else {
           // Idle phase - gentle breathing animation
           currentState = CharacterState.idle;
@@ -3232,7 +3252,8 @@ class _ParticleEffectPainter extends CustomPainter {
         const Color(0xFFFFEB3B),
         const Color(0xFFFF5722),
         i / 6,
-      )!.withOpacity(0.8 * (1 - progress));
+      )!
+          .withOpacity(0.8 * (1 - progress));
 
       particlePaint.color = color;
       canvas.drawCircle(Offset(x, y), 3 * (1 - progress), particlePaint);
@@ -3242,7 +3263,8 @@ class _ParticleEffectPainter extends CustomPainter {
     if (action == CharacterAction.tapping && progress > 0.5) {
       final impactProgress = (progress - 0.5) * 2;
       final impactPaint = Paint()
-        ..color = const Color(0xFFFF5722).withOpacity(0.5 * (1 - impactProgress))
+        ..color =
+            const Color(0xFFFF5722).withOpacity(0.5 * (1 - impactProgress))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
 
@@ -3315,9 +3337,8 @@ class _GameCharacterPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     // Breathing animation in idle state
-    final breatheOffset = state == CharacterState.idle
-        ? sin(globalProgress * pi * 3) * 1.5
-        : 0.0;
+    final breatheOffset =
+        state == CharacterState.idle ? sin(globalProgress * pi * 3) * 1.5 : 0.0;
 
     // Draw glow around head for added depth
     if (style != IndicatorStyle.minimal) {
@@ -3331,38 +3352,47 @@ class _GameCharacterPainter extends CustomPainter {
     // Draw based on current state
     switch (state) {
       case CharacterState.walking:
-        _drawWalkingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+        _drawWalkingCharacter(
+            canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
         break;
       case CharacterState.acting:
         // Draw action-specific animation
         switch (action) {
           case CharacterAction.tapping:
-            _drawTappingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawTappingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
           case CharacterAction.typing:
-            _drawTypingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawTypingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
           case CharacterAction.swiping:
-            _drawSwipingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawSwipingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
           case CharacterAction.holding:
-            _drawHoldingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawHoldingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
           case CharacterAction.dragging:
-            _drawDraggingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawDraggingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
           case CharacterAction.pointing:
-            _drawPointingCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+            _drawPointingCharacter(canvas, size, centerX, centerY, bodyPaint,
+                headPaint, accentPaint);
             break;
         }
         break;
       case CharacterState.idle:
-        _drawIdleCharacter(canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
+        _drawIdleCharacter(
+            canvas, size, centerX, centerY, bodyPaint, headPaint, accentPaint);
         break;
     }
   }
 
-  void _drawTappingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawTappingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Animated bounce effect
     final bounce = sin(progress * pi * 4) * 3;
 
@@ -3370,7 +3400,9 @@ class _GameCharacterPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy - 15 + bounce), 8, head);
 
     // Eyes
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 3, cy - 16 + bounce), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx + 3, cy - 16 + bounce), 1.5, eyePaint);
 
@@ -3395,7 +3427,8 @@ class _GameCharacterPainter extends CustomPainter {
     );
 
     // Tapping indicator (finger point)
-    canvas.drawCircle(Offset(cx + 12, cy + 8 + bounce - armAngle * 5), 3, accent);
+    canvas.drawCircle(
+        Offset(cx + 12, cy + 8 + bounce - armAngle * 5), 3, accent);
 
     // Legs
     canvas.drawLine(
@@ -3410,12 +3443,15 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawTypingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawTypingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Head
     canvas.drawCircle(Offset(cx, cy - 12), 8, head);
 
     // Eyes looking down
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 3, cy - 10), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx + 3, cy - 10), 1.5, eyePaint);
 
@@ -3466,7 +3502,8 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawSwipingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawSwipingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Leaning forward with swipe motion
     final swipeAngle = progress * pi * 2;
     final armX = cos(swipeAngle) * 15;
@@ -3476,7 +3513,9 @@ class _GameCharacterPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx + armX * 0.3, cy - 12), 8, head);
 
     // Eyes
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx + armX * 0.3 - 3, cy - 13), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx + armX * 0.3 + 3, cy - 13), 1.5, eyePaint);
 
@@ -3528,7 +3567,8 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawHoldingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawHoldingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Concentrated holding pose
     final pulse = 1.0 + sin(progress * pi * 6) * 0.1;
 
@@ -3536,7 +3576,9 @@ class _GameCharacterPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy - 12), 8 * pulse, head);
 
     // Focused eyes
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 3, cy - 13), 2, eyePaint);
     canvas.drawCircle(Offset(cx + 3, cy - 13), 2, eyePaint);
 
@@ -3575,7 +3617,8 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawDraggingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawDraggingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Pulling/dragging motion
     final dragX = sin(progress * pi) * 5;
 
@@ -3583,7 +3626,9 @@ class _GameCharacterPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx - dragX, cy - 12), 8, head);
 
     // Determined eyes
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - dragX - 3, cy - 13), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx - dragX + 3, cy - 13), 1.5, eyePaint);
 
@@ -3644,13 +3689,16 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawPointingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawPointingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Simple pointing pose
     // Head
     canvas.drawCircle(Offset(cx, cy - 12), 8, head);
 
     // Eyes
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 3, cy - 13), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx + 3, cy - 13), 1.5, eyePaint);
 
@@ -3701,9 +3749,11 @@ class _GameCharacterPainter extends CustomPainter {
     );
   }
 
-  void _drawWalkingCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawWalkingCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Walking animation with alternating legs
-    final walkCycle = progress * pi * 4; // Multiple walking cycles during the walk
+    final walkCycle =
+        progress * pi * 4; // Multiple walking cycles during the walk
     final bobbing = sin(walkCycle) * 2; // Vertical bobbing motion
     final leftLegSwing = sin(walkCycle) * 12;
     final rightLegSwing = sin(walkCycle + pi) * 12;
@@ -3713,7 +3763,9 @@ class _GameCharacterPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy - 12 + bobbing), 8, head);
 
     // Eyes (determined look)
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 3, cy - 13 + bobbing), 1.5, eyePaint);
     canvas.drawCircle(Offset(cx + 3, cy - 13 + bobbing), 1.5, eyePaint);
 
@@ -3770,18 +3822,24 @@ class _GameCharacterPainter extends CustomPainter {
     }
   }
 
-  void _drawIdleCharacter(Canvas canvas, Size size, double cx, double cy, Paint body, Paint head, Paint accent) {
+  void _drawIdleCharacter(Canvas canvas, Size size, double cx, double cy,
+      Paint body, Paint head, Paint accent) {
     // Idle animation with subtle breathing
     final breathing = sin(progress * pi * 2) * 1.5; // Slow breathing motion
-    final blink = (progress * 20) % 1.0 > 0.9 ? 0.5 : 1.5; // Occasional blinking
+    final blink =
+        (progress * 20) % 1.0 > 0.9 ? 0.5 : 1.5; // Occasional blinking
 
     // Head with subtle breathing
     canvas.drawCircle(Offset(cx, cy - 12 + breathing * 0.3), 8, head);
 
     // Eyes (blinking)
-    final eyePaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx - 3, cy - 13 + breathing * 0.3), blink, eyePaint);
-    canvas.drawCircle(Offset(cx + 3, cy - 13 + breathing * 0.3), blink, eyePaint);
+    final eyePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+        Offset(cx - 3, cy - 13 + breathing * 0.3), blink, eyePaint);
+    canvas.drawCircle(
+        Offset(cx + 3, cy - 13 + breathing * 0.3), blink, eyePaint);
 
     // Smile
     final smilePaint = Paint()
@@ -3790,7 +3848,8 @@ class _GameCharacterPainter extends CustomPainter {
       ..strokeWidth = 1;
     final smilePath = Path();
     smilePath.moveTo(cx - 3, cy - 10 + breathing * 0.3);
-    smilePath.quadraticBezierTo(cx, cy - 8 + breathing * 0.3, cx + 3, cy - 10 + breathing * 0.3);
+    smilePath.quadraticBezierTo(
+        cx, cy - 8 + breathing * 0.3, cx + 3, cy - 10 + breathing * 0.3);
     canvas.drawPath(smilePath, smilePaint);
 
     // Body with breathing
@@ -3851,8 +3910,10 @@ class _ActionHint extends StatelessWidget {
       animation: animation,
       builder: (context, child) {
         // Slide in from top, then fade out
-        final slideProgress = animation.value < 0.2 ? animation.value / 0.2 : 1.0;
-        final fadeProgress = animation.value > 0.8 ? (1.0 - animation.value) / 0.2 : 1.0;
+        final slideProgress =
+            animation.value < 0.2 ? animation.value / 0.2 : 1.0;
+        final fadeProgress =
+            animation.value > 0.8 ? (1.0 - animation.value) / 0.2 : 1.0;
         final opacity = fadeProgress * 0.95;
 
         return Transform.translate(
@@ -3862,7 +3923,8 @@ class _ActionHint extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(8),

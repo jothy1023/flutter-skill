@@ -42,7 +42,8 @@ Future<void> saveScreenshot(BridgeDriver driver, String label) async {
       if (!dir.existsSync()) dir.createSync(recursive: true);
       final file = File('${dir.path}/web_step${_step}_$label.png');
       file.writeAsBytesSync(bytes);
-      print('  📸 Screenshot saved: ${file.path} (${(bytes.length / 1024).toStringAsFixed(1)} KB)');
+      print(
+          '  📸 Screenshot saved: ${file.path} (${(bytes.length / 1024).toStringAsFixed(1)} KB)');
     }
   } catch (e) {
     print('  ⚠️  Screenshot failed: $e');
@@ -71,7 +72,8 @@ Future<void> main() async {
     check('Framework = web', info.framework == 'web', info.framework);
     check('Has inspect capability', info.capabilities.contains('inspect'));
     check('Has tap capability', info.capabilities.contains('tap'));
-    check('Has screenshot capability', info.capabilities.contains('screenshot'));
+    check(
+        'Has screenshot capability', info.capabilities.contains('screenshot'));
 
     // ── Step 2: Connect ──
     stepHeader('Connect BridgeDriver');
@@ -97,12 +99,12 @@ Future<void> main() async {
       print('    [$tag] id=$id text="$shortText"');
     }
 
-    final hasHelloBtn = elements.any((e) =>
-        e['testId'] == 'hello-btn' || e['id'] == 'btn-hello');
+    final hasHelloBtn = elements
+        .any((e) => e['testId'] == 'hello-btn' || e['id'] == 'btn-hello');
     check('Found hello button', hasHelloBtn);
 
-    final hasNameField = elements.any((e) =>
-        e['testId'] == 'name-field' || e['id'] == 'name-input');
+    final hasNameField = elements
+        .any((e) => e['testId'] == 'name-field' || e['id'] == 'name-input');
     check('Found name input', hasNameField);
 
     // ── Step 5: Tap "Say Hello" button ──
@@ -112,7 +114,8 @@ Future<void> main() async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final outputAfterTap = await driver.getText(key: 'output');
-    check('Output changed', outputAfterTap == 'Hello clicked!', '"$outputAfterTap"');
+    check('Output changed', outputAfterTap == 'Hello clicked!',
+        '"$outputAfterTap"');
     await saveScreenshot(driver, 'after_tap_hello');
 
     // ── Step 6: Enter Text ──
@@ -129,7 +132,8 @@ Future<void> main() async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final greetOutput = await driver.getText(key: 'output');
-    check('Greeting correct', greetOutput == 'Hello, Flutter Skill!', '"$greetOutput"');
+    check('Greeting correct', greetOutput == 'Hello, Flutter Skill!',
+        '"$greetOutput"');
     await saveScreenshot(driver, 'after_greet');
 
     // ── Step 8: Tap counter button ──

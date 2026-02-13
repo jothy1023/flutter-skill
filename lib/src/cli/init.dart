@@ -98,7 +98,8 @@ ProjectPlatform _detectPlatform(String path) {
       final content = jsonDecode(packageJson.readAsStringSync()) as Map;
       final deps = content['dependencies'] as Map? ?? {};
       final devDeps = content['devDependencies'] as Map? ?? {};
-      if (deps.containsKey('react-native') || devDeps.containsKey('react-native')) {
+      if (deps.containsKey('react-native') ||
+          devDeps.containsKey('react-native')) {
         return ProjectPlatform.reactNative;
       }
     } catch (_) {}
@@ -158,7 +159,8 @@ Future<void> _setupFlutter(String path) async {
 
   if (!content.contains('flutter_skill:')) {
     final result = await Process.run(
-      'flutter', ['pub', 'add', 'flutter_skill'],
+      'flutter',
+      ['pub', 'add', 'flutter_skill'],
       workingDirectory: path,
     );
     if (result.exitCode != 0) {
@@ -233,8 +235,8 @@ Future<void> _setupIOS(String path) async {
     final importRegex = RegExp(r'(import \w+\n)(?!import)');
     final match = importRegex.firstMatch(content);
     if (match != null) {
-      content = content.replaceRange(
-          match.end, match.end, 'import FlutterSkill\n');
+      content =
+          content.replaceRange(match.end, match.end, 'import FlutterSkill\n');
       changed = true;
     }
   }
@@ -243,8 +245,7 @@ Future<void> _setupIOS(String path) async {
     // Add start call
     if (content.contains('didFinishLaunchingWithOptions')) {
       // UIKit AppDelegate
-      final launchRegex =
-          RegExp(r'didFinishLaunchingWithOptions[^{]*\{');
+      final launchRegex = RegExp(r'didFinishLaunchingWithOptions[^{]*\{');
       final match = launchRegex.firstMatch(content);
       if (match != null) {
         content = content.replaceRange(match.end, match.end,
@@ -307,8 +308,8 @@ Future<void> _setupAndroid(String path) async {
       final importRegex = RegExp(r'(import [^\n]+\n)(?!import)');
       final match = importRegex.firstMatch(content);
       if (match != null) {
-        content = content.replaceRange(
-            match.end, match.end, 'import com.flutterskill.FlutterSkillBridge\n');
+        content = content.replaceRange(match.end, match.end,
+            'import com.flutterskill.FlutterSkillBridge\n');
         changed = true;
       }
     }
@@ -385,7 +386,11 @@ Future<void> _setupWeb(String path) async {
   print('📦 Setting up Web SDK...');
 
   // Find index.html
-  final candidates = ['$path/index.html', '$path/web/index.html', '$path/public/index.html'];
+  final candidates = [
+    '$path/index.html',
+    '$path/web/index.html',
+    '$path/public/index.html'
+  ];
   File? htmlFile;
   for (final c in candidates) {
     final f = File(c);
@@ -398,7 +403,8 @@ Future<void> _setupWeb(String path) async {
   if (htmlFile == null) {
     print('   ℹ️  index.html not found.');
     print('   Add manually before </body>:');
-    print('   <script src="https://unpkg.com/flutter-skill/flutter-skill.js"></script>');
+    print(
+        '   <script src="https://unpkg.com/flutter-skill/flutter-skill.js"></script>');
     print('   <script>FlutterSkill.start();</script>');
     return;
   }
@@ -466,8 +472,8 @@ Future<void> _configureMCP() async {
       print('   ⚠️  Could not parse existing settings');
     }
   } else {
-    claudeSettings.writeAsStringSync(
-        const JsonEncoder.withIndent('  ').convert(config));
+    claudeSettings
+        .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(config));
     print('   ✅ Claude Code MCP configured');
   }
 }
@@ -487,8 +493,8 @@ Future<bool> _addMCPConfig(File configFile, String agentName) async {
       'args': ['server'],
     };
     content['mcpServers'] = servers;
-    configFile.writeAsStringSync(
-        const JsonEncoder.withIndent('  ').convert(content));
+    configFile
+        .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(content));
     print('   ✅ $agentName MCP configured');
     return true;
   } catch (_) {

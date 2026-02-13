@@ -41,8 +41,7 @@ class BridgeDiscovery {
       final client = HttpClient();
       client.connectionTimeout = const Duration(milliseconds: 500);
 
-      final request =
-          await client.get('127.0.0.1', port, bridgeHealthPath);
+      final request = await client.get('127.0.0.1', port, bridgeHealthPath);
       final response = await request.close().timeout(
             const Duration(milliseconds: 800),
           );

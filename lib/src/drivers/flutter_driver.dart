@@ -89,7 +89,8 @@ Error details: $e''');
     if (_reconnecting) return false;
     _reconnecting = true;
     try {
-      print('DEBUG: VM Service connection lost, attempting reconnect to $wsUri');
+      print(
+          'DEBUG: VM Service connection lost, attempting reconnect to $wsUri');
       // Tear down the old connection
       try {
         await _service?.dispose();
@@ -146,8 +147,7 @@ URI: $wsUri''');
         );
         return response.json ?? {};
       }
-      throw Exception(
-          '❌ VM Service connection lost and reconnection failed.\n'
+      throw Exception('❌ VM Service connection lost and reconnection failed.\n'
           'URI: $wsUri\n'
           'Original error: $e\n\n'
           'Try: scan_and_connect() or connect_app(uri: "ws://...")');
@@ -448,8 +448,7 @@ URI: $wsUri''');
           "external": allocationProfile.memoryUsage?.externalUsage ?? 0,
         };
       }
-      throw Exception(
-          '❌ VM Service connection lost and reconnection failed.\n'
+      throw Exception('❌ VM Service connection lost and reconnection failed.\n'
           'URI: $wsUri\n'
           'Original error: $e');
     }
@@ -483,8 +482,7 @@ URI: $wsUri''');
         await _service!.reloadSources(_isolateId!);
         return;
       }
-      throw Exception(
-          '❌ VM Service connection lost and reconnection failed.\n'
+      throw Exception('❌ VM Service connection lost and reconnection failed.\n'
           'URI: $wsUri\n'
           'Original error: $e');
     }
@@ -502,8 +500,7 @@ URI: $wsUri''');
         await _service!.reloadSources(_isolateId!);
         return;
       }
-      throw Exception(
-          '❌ VM Service connection lost and reconnection failed.\n'
+      throw Exception('❌ VM Service connection lost and reconnection failed.\n'
           'URI: $wsUri\n'
           'Original error: $e');
     }
@@ -560,19 +557,18 @@ URI: $wsUri''');
     }
 
     // 3. All methods failed
-    throw ArgumentError(
-      '\n❌ No running Flutter apps found\n\n'
-      'Please try:\n'
-      '  1. Launch app: flutter_skill launch -d <device>\n'
-      '  2. Or manually: flutter run -d <device>\n'
-      '  3. Or provide URI: flutter_skill inspect ws://...\n'
-    );
+    throw ArgumentError('\n❌ No running Flutter apps found\n\n'
+        'Please try:\n'
+        '  1. Launch app: flutter_skill launch -d <device>\n'
+        '  2. Or manually: flutter run -d <device>\n'
+        '  3. Or provide URI: flutter_skill inspect ws://...\n');
   }
 
   // ==================== TEST INDICATORS ====================
 
   /// Enable test indicators with optional style
-  Future<Map<String, dynamic>> enableTestIndicators({String style = 'standard'}) async {
+  Future<Map<String, dynamic>> enableTestIndicators(
+      {String style = 'standard'}) async {
     return await _call('ext.flutter.flutter_skill.enableIndicators', {
       'style': style,
     });
@@ -632,7 +628,8 @@ URI: $wsUri''');
   }
 
   /// Get manually logged HTTP requests from the app
-  Future<Map<String, dynamic>> getHttpRequests({int limit = 50, int offset = 0}) async {
+  Future<Map<String, dynamic>> getHttpRequests(
+      {int limit = 50, int offset = 0}) async {
     return await _call('ext.flutter.flutter_skill.getHttpRequests', {
       'limit': limit.toString(),
       'offset': offset.toString(),

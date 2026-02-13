@@ -10,7 +10,8 @@ Future<void> runReportError(List<String> args) async {
   final token = Platform.environment['GITHUB_TOKEN'];
   if (token == null) {
     stderr.writeln('⚠️  GITHUB_TOKEN environment variable not set.');
-    stderr.writeln('To enable auto-reporting, set your GitHub personal access token:');
+    stderr.writeln(
+        'To enable auto-reporting, set your GitHub personal access token:');
     stderr.writeln('  export GITHUB_TOKEN=your_token_here');
     stderr.writeln('');
     stderr.writeln('Or manually create an issue at:');

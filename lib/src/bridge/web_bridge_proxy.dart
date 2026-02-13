@@ -70,7 +70,8 @@ class WebBridgeProxy {
     final pages = jsonDecode(body) as List<dynamic>;
     final page = pages.firstWhere(
       (p) => p['type'] == 'page',
-      orElse: () => throw Exception('No inspectable page found on CDP port $cdpPort'),
+      orElse: () =>
+          throw Exception('No inspectable page found on CDP port $cdpPort'),
     );
 
     final wsUrl = page['webSocketDebuggerUrl'] as String;
@@ -101,8 +102,7 @@ class WebBridgeProxy {
         if (json.containsKey('error')) {
           completer.completeError(Exception(jsonEncode(json['error'])));
         } else {
-          completer.complete(
-              (json['result'] as Map<String, dynamic>?) ?? {});
+          completer.complete((json['result'] as Map<String, dynamic>?) ?? {});
         }
       }
     } catch (_) {}
@@ -151,8 +151,7 @@ class WebBridgeProxy {
       'returnByValue': true,
     });
 
-    final alreadyLoaded =
-        checkResult['result']?['value'] == true;
+    final alreadyLoaded = checkResult['result']?['value'] == true;
     if (alreadyLoaded) return;
 
     // Read the SDK script — try common locations

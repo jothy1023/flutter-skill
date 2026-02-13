@@ -38,8 +38,12 @@ void main() {
       );
       final after = DateTime.now();
 
-      expect(session.createdAt.isAfter(before.subtract(const Duration(seconds: 1))), isTrue);
-      expect(session.createdAt.isBefore(after.add(const Duration(seconds: 1))), isTrue);
+      expect(
+          session.createdAt
+              .isAfter(before.subtract(const Duration(seconds: 1))),
+          isTrue);
+      expect(session.createdAt.isBefore(after.add(const Duration(seconds: 1))),
+          isTrue);
     });
 
     test('should convert to JSON correctly', () {
@@ -77,15 +81,17 @@ void main() {
 
       final json = session.toJson();
 
-      expect(json.keys, containsAll([
-        'id',
-        'name',
-        'project_path',
-        'device_id',
-        'port',
-        'vm_service_uri',
-        'created_at',
-      ]));
+      expect(
+          json.keys,
+          containsAll([
+            'id',
+            'name',
+            'project_path',
+            'device_id',
+            'port',
+            'vm_service_uri',
+            'created_at',
+          ]));
     });
   });
 
@@ -236,9 +242,27 @@ void main() {
 
     test('should handle active session switching', () {
       final sessions = <String, SessionInfo>{
-        's1': SessionInfo(id: 's1', name: 'S1', projectPath: '/s1', deviceId: 'd1', port: 50001, vmServiceUri: 'ws://s1'),
-        's2': SessionInfo(id: 's2', name: 'S2', projectPath: '/s2', deviceId: 'd2', port: 50002, vmServiceUri: 'ws://s2'),
-        's3': SessionInfo(id: 's3', name: 'S3', projectPath: '/s3', deviceId: 'd3', port: 50003, vmServiceUri: 'ws://s3'),
+        's1': SessionInfo(
+            id: 's1',
+            name: 'S1',
+            projectPath: '/s1',
+            deviceId: 'd1',
+            port: 50001,
+            vmServiceUri: 'ws://s1'),
+        's2': SessionInfo(
+            id: 's2',
+            name: 'S2',
+            projectPath: '/s2',
+            deviceId: 'd2',
+            port: 50002,
+            vmServiceUri: 'ws://s2'),
+        's3': SessionInfo(
+            id: 's3',
+            name: 'S3',
+            projectPath: '/s3',
+            deviceId: 'd3',
+            port: 50003,
+            vmServiceUri: 'ws://s3'),
       };
 
       String? activeSessionId = 's1';
@@ -261,8 +285,20 @@ void main() {
 
     test('should update active session when closing active session', () {
       final sessions = <String, SessionInfo>{
-        's1': SessionInfo(id: 's1', name: 'S1', projectPath: '/s1', deviceId: 'd1', port: 50001, vmServiceUri: 'ws://s1'),
-        's2': SessionInfo(id: 's2', name: 'S2', projectPath: '/s2', deviceId: 'd2', port: 50002, vmServiceUri: 'ws://s2'),
+        's1': SessionInfo(
+            id: 's1',
+            name: 'S1',
+            projectPath: '/s1',
+            deviceId: 'd1',
+            port: 50001,
+            vmServiceUri: 'ws://s1'),
+        's2': SessionInfo(
+            id: 's2',
+            name: 'S2',
+            projectPath: '/s2',
+            deviceId: 'd2',
+            port: 50002,
+            vmServiceUri: 'ws://s2'),
       };
 
       String? activeSessionId = 's1';
@@ -281,7 +317,13 @@ void main() {
 
     test('should set active session to null when closing last session', () {
       final sessions = <String, SessionInfo>{
-        's1': SessionInfo(id: 's1', name: 'S1', projectPath: '/s1', deviceId: 'd1', port: 50001, vmServiceUri: 'ws://s1'),
+        's1': SessionInfo(
+            id: 's1',
+            name: 'S1',
+            projectPath: '/s1',
+            deviceId: 'd1',
+            port: 50001,
+            vmServiceUri: 'ws://s1'),
       };
 
       String? activeSessionId = 's1';
@@ -402,8 +444,12 @@ void main() {
       );
       final after = DateTime.now();
 
-      expect(session.createdAt.isAfter(before.subtract(const Duration(seconds: 1))), isTrue);
-      expect(session.createdAt.isBefore(after.add(const Duration(seconds: 1))), isTrue);
+      expect(
+          session.createdAt
+              .isAfter(before.subtract(const Duration(seconds: 1))),
+          isTrue);
+      expect(session.createdAt.isBefore(after.add(const Duration(seconds: 1))),
+          isTrue);
     });
 
     test('should preserve custom creation time', () {

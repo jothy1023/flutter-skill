@@ -66,7 +66,8 @@ class _DemoHomePageState extends State<DemoHomePage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      const Icon(Icons.visibility, size: 48, color: Colors.blue),
+                      const Icon(Icons.visibility,
+                          size: 48, color: Colors.blue),
                       const SizedBox(height: 8),
                       const Text(
                         'Visual Indicators Demo',

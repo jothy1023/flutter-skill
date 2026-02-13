@@ -42,8 +42,7 @@ class BridgeDriver implements AppDriver {
   @override
   Future<void> connect() async {
     try {
-      _ws = await WebSocket.connect(_wsUri)
-          .timeout(const Duration(seconds: 5));
+      _ws = await WebSocket.connect(_wsUri).timeout(const Duration(seconds: 5));
       _connected = true;
 
       _ws!.listen(
@@ -230,7 +229,8 @@ class BridgeDriver implements AppDriver {
       const Duration(seconds: 30),
       onTimeout: () {
         _pending.remove(id);
-        throw TimeoutException('Bridge call "$method" timed out', const Duration(seconds: 30));
+        throw TimeoutException(
+            'Bridge call "$method" timed out', const Duration(seconds: 30));
       },
     );
   }
@@ -249,8 +249,7 @@ class BridgeDriver implements AppDriver {
             data: err['data'],
           ));
         } else {
-          completer
-              .complete((json['result'] as Map<String, dynamic>?) ?? {});
+          completer.complete((json['result'] as Map<String, dynamic>?) ?? {});
         }
       }
       // Ignore notifications (no id) for now
@@ -278,8 +277,7 @@ class BridgeDriver implements AppDriver {
     _reconnecting = true;
     try {
       await disconnect();
-      _ws = await WebSocket.connect(_wsUri)
-          .timeout(const Duration(seconds: 3));
+      _ws = await WebSocket.connect(_wsUri).timeout(const Duration(seconds: 3));
       _connected = true;
       _ws!.listen(
         _onMessage,

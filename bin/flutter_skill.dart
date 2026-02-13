@@ -27,7 +27,8 @@ void main(List<String> args) async {
     print('  --version    Show version');
     print('');
     print('Quick Start:');
-    print('  flutter-skill demo                Try it now — no project needed!');
+    print(
+        '  flutter-skill demo                Try it now — no project needed!');
     print('  flutter-skill init ./my_app       Auto-setup any project');
     print('  flutter-skill launch ./my_app     Launch and connect to your app');
     print('');

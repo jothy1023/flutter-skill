@@ -85,8 +85,7 @@ Future<void> runAct(List<String> args) async {
         break;
 
       case 'get_text':
-        if (param1 == null)
-          throw ArgumentError('get_text requires a key');
+        if (param1 == null) throw ArgumentError('get_text requires a key');
         final text = await client.getTextValue(param1);
         print(text ?? '(null)');
         break;
@@ -102,7 +101,8 @@ Future<void> runAct(List<String> args) async {
         if (param1 == null)
           throw ArgumentError('wait_for_element requires a key or text');
         final timeout = param2 != null ? int.tryParse(param2) ?? 5000 : 5000;
-        final appeared = await client.waitForElement(key: param1, timeout: timeout);
+        final appeared =
+            await client.waitForElement(key: param1, timeout: timeout);
         print(appeared ? 'Found "$param1"' : 'Timeout waiting for "$param1"');
         if (!appeared) exit(1);
         break;
@@ -114,7 +114,8 @@ Future<void> runAct(List<String> args) async {
 
       case 'swipe':
         final direction = param1 ?? 'up';
-        final distance = param2 != null ? double.tryParse(param2) ?? 300 : 300.0;
+        final distance =
+            param2 != null ? double.tryParse(param2) ?? 300 : 300.0;
         await client.swipe(direction: direction, distance: distance);
         print('Swiped $direction by $distance');
         break;

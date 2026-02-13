@@ -19,7 +19,6 @@ class ProcessBasedDiscovery {
         if (line.contains('development-service') &&
             line.contains('--vm-service-uri=') &&
             line.contains('--bind-port=')) {
-
           final app = _parseDevServiceLine(line);
           if (app != null) {
             apps.add(app);
@@ -28,7 +27,7 @@ class ProcessBasedDiscovery {
       }
 
       // 3. Find devtools processes (they have DTD URI)
-      final dtdUris = <int, String>{};  // port -> dtdUri
+      final dtdUris = <int, String>{}; // port -> dtdUri
       for (final line in lines) {
         if (line.contains('devtools') && line.contains('--dtd-uri')) {
           final match = RegExp(r'--dtd-uri\s+(ws://[^\s]+)').firstMatch(line);
@@ -52,7 +51,6 @@ class ProcessBasedDiscovery {
       // 5. Try to find app project paths and device info
       await _enrichWithProjectPaths(apps, lines);
       await _enrichWithDeviceInfo(apps, lines);
-
     } catch (e) {
       print('Discovery failed: $e');
     }
@@ -64,7 +62,8 @@ class ProcessBasedDiscovery {
   static FlutterApp? _parseDevServiceLine(String line) {
     try {
       // Extract VM Service URI
-      final vmMatch = RegExp(r'--vm-service-uri=(http://[^\s]+)').firstMatch(line);
+      final vmMatch =
+          RegExp(r'--vm-service-uri=(http://[^\s]+)').firstMatch(line);
       if (vmMatch == null) return null;
 
       var vmServiceUri = vmMatch.group(1)!;
@@ -108,10 +107,10 @@ class ProcessBasedDiscovery {
       if (app.pid > 0) {
         try {
           final result = await Process.run('lsof', [
-            '-a',           // AND logic
-            '-p', '${app.pid}',  // Process ID
-            '-d', 'cwd',    // Current working directory
-            '-Fn',          // Output format: n = name (path)
+            '-a', // AND logic
+            '-p', '${app.pid}', // Process ID
+            '-d', 'cwd', // Current working directory
+            '-Fn', // Output format: n = name (path)
           ]);
 
           if (result.exitCode == 0) {
@@ -166,7 +165,8 @@ class ProcessBasedDiscovery {
       if (app.pid > 0) {
         try {
           // Get parent process ID
-          final result = await Process.run('ps', ['-o', 'ppid=', '-p', '${app.pid}']);
+          final result =
+              await Process.run('ps', ['-o', 'ppid=', '-p', '${app.pid}']);
           if (result.exitCode == 0) {
             final ppidStr = (result.stdout as String).trim();
             final ppid = int.tryParse(ppidStr);
@@ -183,7 +183,8 @@ class ProcessBasedDiscovery {
                   if (line.contains('${app.pid}')) {
                     if (line.contains('iPhone') || line.contains('iOS')) {
                       app.deviceId = 'iOS Simulator';
-                    } else if (line.contains('Android') || line.contains('emulator')) {
+                    } else if (line.contains('Android') ||
+                        line.contains('emulator')) {
                       app.deviceId = 'Android Emulator';
                     }
                     break;
@@ -228,10 +229,11 @@ class ProcessBasedDiscovery {
 
     // Step 2: If exact match with device, return immediately
     if (exactMatches.isNotEmpty && deviceId != null) {
-      final deviceMatches = exactMatches.where((app) =>
-        app.deviceId != null &&
-        app.deviceId!.toLowerCase().contains(deviceId.toLowerCase())
-      ).toList();
+      final deviceMatches = exactMatches
+          .where((app) =>
+              app.deviceId != null &&
+              app.deviceId!.toLowerCase().contains(deviceId.toLowerCase()))
+          .toList();
 
       if (deviceMatches.length == 1) {
         return deviceMatches.first;
@@ -255,17 +257,19 @@ class ProcessBasedDiscovery {
     final prefixMatches = <FlutterApp>[];
     for (final app in apps) {
       if (app.projectPath != null &&
-          (cwd.startsWith(app.projectPath!) || app.projectPath!.startsWith(cwd))) {
+          (cwd.startsWith(app.projectPath!) ||
+              app.projectPath!.startsWith(cwd))) {
         prefixMatches.add(app);
       }
     }
 
     // Step 5: Prefix match with device
     if (prefixMatches.isNotEmpty && deviceId != null) {
-      final deviceMatches = prefixMatches.where((app) =>
-        app.deviceId != null &&
-        app.deviceId!.toLowerCase().contains(deviceId.toLowerCase())
-      ).toList();
+      final deviceMatches = prefixMatches
+          .where((app) =>
+              app.deviceId != null &&
+              app.deviceId!.toLowerCase().contains(deviceId.toLowerCase()))
+          .toList();
 
       if (deviceMatches.length == 1) {
         return deviceMatches.first;
@@ -285,10 +289,11 @@ class ProcessBasedDiscovery {
 
     // Step 7: No directory match, try device-only match
     if (deviceId != null) {
-      final deviceMatches = apps.where((app) =>
-        app.deviceId != null &&
-        app.deviceId!.toLowerCase().contains(deviceId.toLowerCase())
-      ).toList();
+      final deviceMatches = apps
+          .where((app) =>
+              app.deviceId != null &&
+              app.deviceId!.toLowerCase().contains(deviceId.toLowerCase()))
+          .toList();
 
       if (deviceMatches.length == 1) {
         return deviceMatches.first;
@@ -313,7 +318,8 @@ class ProcessBasedDiscovery {
         apps.every((app) => app.projectPath == apps.first.projectPath);
 
     if (sameLocation) {
-      print('\n🔍 Found ${apps.length} Flutter apps running in the same location:\n');
+      print(
+          '\n🔍 Found ${apps.length} Flutter apps running in the same location:\n');
       print('   ${apps.first.projectPath}\n');
     } else {
       print('\n🔍 Found ${apps.length} running Flutter apps:\n');

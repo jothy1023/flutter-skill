@@ -93,7 +93,8 @@ class MyApp extends StatelessWidget {
   print('[PASS] Test 1: flutter_skill.dart launch produced URI: $uri');
 
   // 3. Test "flutter_skill.dart inspect" (CLI Interaction)
-  print('\n[TEST 2] Testing flutter_skill.dart inspect against running mock...');
+  print(
+      '\n[TEST 2] Testing flutter_skill.dart inspect against running mock...');
   final inspectProcess = await Process.start('dart', [
     'run',
     'bin/flutter_skill.dart',
@@ -117,7 +118,8 @@ class MyApp extends StatelessWidget {
     exit(1);
   }
 
-  print('[PASS] Test 2: flutter_skill.dart inspect exited with $inspectExitCode');
+  print(
+      '[PASS] Test 2: flutter_skill.dart inspect exited with $inspectExitCode');
 
   if (!inspectStdout.toString().contains('login_btn')) {
     print(

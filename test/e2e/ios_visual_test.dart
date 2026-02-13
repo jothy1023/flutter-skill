@@ -42,7 +42,8 @@ Future<void> saveScreenshot(BridgeDriver driver, String label) async {
       if (!dir.existsSync()) dir.createSync(recursive: true);
       final file = File('${dir.path}/ios_step${_step}_$label.png');
       file.writeAsBytesSync(bytes);
-      print('  📸 Screenshot saved: ${file.path} (${(bytes.length / 1024).toStringAsFixed(1)} KB)');
+      print(
+          '  📸 Screenshot saved: ${file.path} (${(bytes.length / 1024).toStringAsFixed(1)} KB)');
     }
   } catch (e) {
     print('  ⚠️  Screenshot failed: $e');
@@ -68,11 +69,13 @@ Future<void> main() async {
     }
 
     final info = discovered.first;
-    check('Framework = ios-native', info.framework == 'ios-native', info.framework);
+    check('Framework = ios-native', info.framework == 'ios-native',
+        info.framework);
     check('Platform = ios', info.platform == 'ios', info.platform);
     check('Has inspect capability', info.capabilities.contains('inspect'));
     check('Has tap capability', info.capabilities.contains('tap'));
-    check('Has screenshot capability', info.capabilities.contains('screenshot'));
+    check(
+        'Has screenshot capability', info.capabilities.contains('screenshot'));
 
     // ── Step 2: Connect ──
     stepHeader('Connect BridgeDriver');
@@ -141,8 +144,10 @@ Future<void> main() async {
     await Future.delayed(const Duration(milliseconds: 500));
 
     final greetOutput = await driver.getText(key: 'output');
-    check('Greeting shows response',
-        greetOutput != null && greetOutput.startsWith('Hello'), '"$greetOutput"');
+    check(
+        'Greeting shows response',
+        greetOutput != null && greetOutput.startsWith('Hello'),
+        '"$greetOutput"');
     await saveScreenshot(driver, 'after_greet');
 
     // ── Step 8: Tap Counter ──

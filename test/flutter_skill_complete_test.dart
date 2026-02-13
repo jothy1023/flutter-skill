@@ -21,7 +21,8 @@ Future<void> main() async {
     final elements = await client.getInteractiveElements();
     print('   Found ${elements.length} interactive elements:');
     for (final elem in elements) {
-      print('   - ${elem['type']}: ${elem['key']} ${elem['text'] != null ? '"${elem['text']}"' : ""}');
+      print(
+          '   - ${elem['type']}: ${elem['key']} ${elem['text'] != null ? '"${elem['text']}"' : ""}');
     }
     print('');
 
@@ -30,7 +31,8 @@ Future<void> main() async {
     final tree = await client.getWidgetTree(maxDepth: 5);
     final treeStr = tree.toString();
     print('   Widget Tree (first 5 levels):');
-    print('   ${treeStr.substring(0, treeStr.length > 500 ? 500 : treeStr.length)}...\n');
+    print(
+        '   ${treeStr.substring(0, treeStr.length > 500 ? 500 : treeStr.length)}...\n');
 
     // 4. Get text content
     print('4. Getting all text content (getTextContent)...');

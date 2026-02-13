@@ -15,7 +15,8 @@ void main() {
 
     test('Lock file is created when server starts', () async {
       // Simulate lock acquisition
-      await lockFile.writeAsString('${pid}\n${DateTime.now().toIso8601String()}');
+      await lockFile
+          .writeAsString('${pid}\n${DateTime.now().toIso8601String()}');
 
       expect(await lockFile.exists(), isTrue);
 
@@ -25,7 +26,8 @@ void main() {
 
     test('Lock file age check logic', () async {
       // Create a fresh lock
-      await lockFile.writeAsString('99999\n${DateTime.now().toIso8601String()}');
+      await lockFile
+          .writeAsString('99999\n${DateTime.now().toIso8601String()}');
 
       // Check lock age logic
       final stat = await lockFile.stat();

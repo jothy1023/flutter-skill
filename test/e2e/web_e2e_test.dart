@@ -88,8 +88,7 @@ Future<void> main() async {
     final chromePath =
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
-    final testUrl =
-        'http://127.0.0.1:$fileServerPort/web_test_page.html';
+    final testUrl = 'http://127.0.0.1:$fileServerPort/web_test_page.html';
 
     chromeProcess = await Process.start(chromePath, [
       '--remote-debugging-port=$cdpPort',
@@ -202,16 +201,14 @@ Future<void> main() async {
     // 8. Test: enter_text
     // ------------------------------------------------------------------
     print('\n═══ Step 8: Enter Text ═══');
-    final enterResult =
-        await driver.enterText('name-field', 'Flutter Skill');
+    final enterResult = await driver.enterText('name-field', 'Flutter Skill');
     check('Enter text returned success', enterResult['success'] == true);
 
     // Tap greet button to verify text was entered
     await driver.tap(key: 'greet-btn');
     await Future.delayed(const Duration(milliseconds: 200));
     final greetOutput = await driver.getText(key: 'output');
-    check(
-        'Text entry worked (greet shows name)',
+    check('Text entry worked (greet shows name)',
         greetOutput == 'Hello, Flutter Skill!');
     print('  Output: $greetOutput');
 
@@ -230,7 +227,8 @@ Future<void> main() async {
     // ------------------------------------------------------------------
     print('\n═══ Step 10: Screenshot ═══');
     final screenshot = await driver.takeScreenshot();
-    check('Screenshot returned data', screenshot != null && screenshot.isNotEmpty);
+    check('Screenshot returned data',
+        screenshot != null && screenshot.isNotEmpty);
     if (screenshot != null) {
       // Verify it's valid base64 PNG
       try {

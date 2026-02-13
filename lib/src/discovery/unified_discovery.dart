@@ -30,7 +30,8 @@ class UnifiedDiscovery {
     // Strategy -1: Bridge discovery (cross-framework!)
     // ═══════════════════════════════════════
     if (verbose) {
-      print('📋 Strategy B: Bridge discovery (ports $bridgePortRangeStart-$bridgePortRangeEnd)...');
+      print(
+          '📋 Strategy B: Bridge discovery (ports $bridgePortRangeStart-$bridgePortRangeEnd)...');
     }
 
     try {
@@ -45,7 +46,8 @@ class UnifiedDiscovery {
           success: true,
           bridgeUri: app.wsUri,
           discoveryMethod: 'bridge',
-          message: 'Discovered via bridge protocol (${app.framework} on ${app.platform})',
+          message:
+              'Discovered via bridge protocol (${app.framework} on ${app.platform})',
         );
       }
 
@@ -62,7 +64,8 @@ class UnifiedDiscovery {
     // Strategy 0: Process-based discovery (most elegant!)
     // ═══════════════════════════════════════
     if (verbose) {
-      print('📋 Strategy 0: Process-based smart discovery (no port scanning)...');
+      print(
+          '📋 Strategy 0: Process-based smart discovery (no port scanning)...');
     }
 
     try {
@@ -74,7 +77,8 @@ class UnifiedDiscovery {
 
         if (app != null) {
           if (verbose) {
-            print('   ✅ Found ${apps.length} app(s), selected: ${app.description}\n');
+            print(
+                '   ✅ Found ${apps.length} app(s), selected: ${app.description}\n');
           }
 
           return DiscoveryResult(
@@ -100,7 +104,8 @@ class UnifiedDiscovery {
     // Strategy 1: Parallel port check (fast fallback)
     // ═══════════════════════════════════════
     if (verbose) {
-      print('📋 Strategy 1: Checking common ports in parallel (50000-50005)...');
+      print(
+          '📋 Strategy 1: Checking common ports in parallel (50000-50005)...');
     }
 
     final commonPorts = [50000, 50001, 50002, 50003, 50004, 50005];
@@ -145,7 +150,8 @@ class UnifiedDiscovery {
     try {
       final dtdResult = await DtdServiceDiscovery.discover(
         portStart: 40000,
-        portEnd: 65535,  // Extended to full port range to include DTD (usually 60000-65535)
+        portEnd:
+            65535, // Extended to full port range to include DTD (usually 60000-65535)
       );
 
       if (dtdResult.success && dtdResult.vmServiceUri != null) {

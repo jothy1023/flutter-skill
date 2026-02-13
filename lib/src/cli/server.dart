@@ -52,7 +52,8 @@ Future<void> runServer(List<String> args) async {
   final lockFile = await _acquireLock();
   if (lockFile == null) {
     stderr.writeln('ERROR: Another flutter-skill server is already running.');
-    stderr.writeln('If you believe this is an error, delete: ~/.flutter_skill.lock');
+    stderr.writeln(
+        'If you believe this is an error, delete: ~/.flutter_skill.lock');
     exit(1);
   }
 
@@ -132,8 +133,6 @@ class FlutterMcpServer {
           ? _clients.values.first
           : null;
 
-
-
   Process? _flutterProcess;
 
   // Native platform drivers (for interacting with native OS views)
@@ -185,10 +184,7 @@ class FlutterMcpServer {
         _sendResult(id, {
           "capabilities": {"tools": {}, "resources": {}},
           "protocolVersion": "2024-11-05",
-          "serverInfo": {
-            "name": "flutter-skill",
-            "version": currentVersion
-          },
+          "serverInfo": {"name": "flutter-skill", "version": currentVersion},
         });
       } else if (method == 'notifications/initialized') {
         // No op
@@ -282,7 +278,8 @@ If closing the active session, the next session becomes active automatically."""
       // Connection
       {
         "name": "connect_app",
-        "description": """Connect to a running Flutter App VM Service using specific URI.
+        "description":
+            """Connect to a running Flutter App VM Service using specific URI.
 
 [USE WHEN]
 • You have a specific VM Service URI (ws://...)
@@ -309,11 +306,13 @@ Omitting session_id in other tools will use the active session.""",
             },
             "project_path": {
               "type": "string",
-              "description": "Optional: Project path for auto-fix configuration check"
+              "description":
+                  "Optional: Project path for auto-fix configuration check"
             },
             "session_id": {
               "type": "string",
-              "description": "Optional session ID (auto-generated if not provided)"
+              "description":
+                  "Optional session ID (auto-generated if not provided)"
             },
             "name": {
               "type": "string",
@@ -385,7 +384,8 @@ Omitting session_id in other tools will use the active session.""",
             },
             "session_id": {
               "type": "string",
-              "description": "Optional session ID (auto-generated if not provided)"
+              "description":
+                  "Optional session ID (auto-generated if not provided)"
             },
             "name": {
               "type": "string",
@@ -433,11 +433,13 @@ Omitting session_id in other tools will use the active session.""",
             },
             "project_path": {
               "type": "string",
-              "description": "Optional: Project path for auto-fix configuration check"
+              "description":
+                  "Optional: Project path for auto-fix configuration check"
             },
             "session_id": {
               "type": "string",
-              "description": "Optional session ID (auto-generated if not provided)"
+              "description":
+                  "Optional session ID (auto-generated if not provided)"
             },
             "name": {
               "type": "string",
@@ -493,7 +495,8 @@ Omitting session_id in other tools will use the active session.""",
       },
       {
         "name": "get_connection_status",
-        "description": "Get current connection status and app info. If session_id is provided, gets status for that specific session; otherwise uses active session.",
+        "description":
+            "Get current connection status and app info. If session_id is provided, gets status for that specific session; otherwise uses active session.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -549,7 +552,8 @@ All action tools support optional session_id parameter. If omitted, uses the act
             },
             "current_page_only": {
               "type": "boolean",
-              "description": "Filter to only show elements on the current visible page (excludes elements with negative coordinates or not visible). Default: true"
+              "description":
+                  "Filter to only show elements on the current visible page (excludes elements with negative coordinates or not visible). Default: true"
             },
           },
         },
@@ -682,7 +686,8 @@ Option 2: Tap a TextField first, then enter_text(text: "value") without key - en
           "properties": {
             "key": {
               "type": "string",
-              "description": "TextField key (optional - if omitted, enters text into the currently focused TextField)"
+              "description":
+                  "TextField key (optional - if omitted, enters text into the currently focused TextField)"
             },
             "text": {"type": "string", "description": "Text to enter"},
           },
@@ -859,7 +864,8 @@ By default, saves screenshot to a temporary file and returns file path. Optional
           "properties": {
             "save_to_file": {
               "type": "boolean",
-              "description": "Save to file and return path (default: true, recommended)",
+              "description":
+                  "Save to file and return path (default: true, recommended)",
               "default": true
             },
             "quality": {
@@ -869,14 +875,16 @@ By default, saves screenshot to a temporary file and returns file path. Optional
             },
             "max_width": {
               "type": "integer",
-              "description": "Maximum width in pixels (default: 800, null for original size)"
+              "description":
+                  "Maximum width in pixels (default: 800, null for original size)"
             },
           },
         },
       },
       {
         "name": "screenshot_region",
-        "description": "Take a screenshot of a specific screen region. Defaults to saving as file to prevent token overflow.",
+        "description":
+            "Take a screenshot of a specific screen region. Defaults to saving as file to prevent token overflow.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -892,7 +900,8 @@ By default, saves screenshot to a temporary file and returns file path. Optional
             "height": {"type": "number", "description": "Height of region"},
             "save_to_file": {
               "type": "boolean",
-              "description": "Save to temp file instead of returning base64 (default: true)"
+              "description":
+                  "Save to temp file instead of returning base64 (default: true)"
             },
           },
           "required": ["x", "y", "width", "height"],
@@ -992,20 +1001,23 @@ Each request includes: method, url, status_code, duration_ms, response_body (tru
           "properties": {
             "limit": {
               "type": "integer",
-              "description": "Maximum number of requests to return (default: 20)"
+              "description":
+                  "Maximum number of requests to return (default: 20)"
             },
           },
         },
       },
       {
         "name": "enable_network_monitoring",
-        "description": "Enable HTTP/network request monitoring. Call once before using get_network_requests.",
+        "description":
+            "Enable HTTP/network request monitoring. Call once before using get_network_requests.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "enable": {
               "type": "boolean",
-              "description": "Enable (true) or disable (false) monitoring. Default: true"
+              "description":
+                  "Enable (true) or disable (false) monitoring. Default: true"
             },
           },
         },
@@ -1050,15 +1062,15 @@ This captures the ENTIRE device screen, not just the Flutter app content.""",
           "properties": {
             "save_to_file": {
               "type": "boolean",
-              "description":
-                  "Save to file and return path (default: true)"
+              "description": "Save to file and return path (default: true)"
             },
           },
         },
       },
       {
         "name": "native_tap",
-        "description": """Tap at device coordinates using OS-level input (bypasses Flutter).
+        "description":
+            """Tap at device coordinates using OS-level input (bypasses Flutter).
 
 [USE WHEN]
 • Interacting with native dialogs (photo picker, permission "Allow", share sheet)
@@ -1109,10 +1121,7 @@ This captures the ENTIRE device screen, not just the Flutter app content.""",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "text": {
-              "type": "string",
-              "description": "Text to enter"
-            },
+            "text": {"type": "string", "description": "Text to enter"},
           },
           "required": ["text"],
         },
@@ -1198,7 +1207,8 @@ Detailed diagnostic report with:
           "properties": {
             "project_path": {
               "type": "string",
-              "description": "Path to Flutter project (default: current directory)"
+              "description":
+                  "Path to Flutter project (default: current directory)"
             },
             "auto_fix": {
               "type": "boolean",
@@ -1222,7 +1232,8 @@ Detailed diagnostic report with:
       // Test Indicators
       {
         "name": "enable_test_indicators",
-        "description": "Enable visual indicators for test actions (tap, swipe, long press, text input)",
+        "description":
+            "Enable visual indicators for test actions (tap, swipe, long press, text input)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1233,7 +1244,8 @@ Detailed diagnostic report with:
             },
             "style": {
               "type": "string",
-              "description": "Indicator style: minimal (fast, small), standard (default), detailed (slow, large with debug info)",
+              "description":
+                  "Indicator style: minimal (fast, small), standard (default), detailed (slow, large with debug info)",
               "enum": ["minimal", "standard", "detailed"],
               "default": "standard"
             },
@@ -1668,7 +1680,8 @@ Detailed diagnostic report with:
 
       // Update active session
       if (_activeSessionId == sessionId) {
-        _activeSessionId = _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
+        _activeSessionId =
+            _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
       }
 
       return {
@@ -1718,7 +1731,8 @@ Detailed diagnostic report with:
           _clients[sessionId] = client;
           _sessions[sessionId] = SessionInfo(
             id: sessionId,
-            name: args['name'] as String? ?? 'Connection ${_sessions.length + 1}',
+            name:
+                args['name'] as String? ?? 'Connection ${_sessions.length + 1}',
             projectPath: args['project_path'] as String? ?? 'unknown',
             deviceId: args['device_id'] as String? ?? 'unknown',
             port: int.tryParse(uri.split(':').last.split('/').first) ?? 0,
@@ -1843,7 +1857,8 @@ Detailed diagnostic report with:
               _clients[sessionId] = client;
               _sessions[sessionId] = SessionInfo(
                 id: sessionId,
-                name: args['name'] as String? ?? 'App on ${deviceId ?? 'device'}',
+                name:
+                    args['name'] as String? ?? 'App on ${deviceId ?? 'device'}',
                 projectPath: projectPath,
                 deviceId: deviceId?.toString() ?? 'unknown',
                 port: int.tryParse(uri.split(':').last.split('/').first) ?? 0,
@@ -1855,7 +1870,8 @@ Detailed diagnostic report with:
 
               completer.complete("Launched and connected to $uri");
             }).catchError((e) {
-              completer.completeError("Found VM Service URI but failed to connect: $e");
+              completer.completeError(
+                  "Found VM Service URI but failed to connect: $e");
             });
             return; // Found VM Service URI, skip DTD check
           }
@@ -1915,7 +1931,8 @@ Detailed diagnostic report with:
               "quick_fixes": _getQuickFixes(errorMessage, projectPath),
             });
           } else {
-            completer.completeError("Flutter app exited normally but no connection established");
+            completer.completeError(
+                "Flutter app exited normally but no connection established");
           }
         }
         _flutterProcess = null;
@@ -2020,7 +2037,8 @@ Detailed diagnostic report with:
         _clients[sessionId] = driver;
         _sessions[sessionId] = SessionInfo(
           id: sessionId,
-          name: args['name'] as String? ?? '${bridgeApp.framework} app (bridge)',
+          name:
+              args['name'] as String? ?? '${bridgeApp.framework} app (bridge)',
           projectPath: args['project_path'] as String? ?? 'unknown',
           deviceId: bridgeApp.platform,
           port: bridgeApp.port,
@@ -2041,7 +2059,11 @@ Detailed diagnostic report with:
       // Fall back to VM Service discovery (Flutter)
       final vmServices = await _scanVmServices(portStart, portEnd);
       if (vmServices.isEmpty) {
-        return {"success": false, "message": "No running apps found (checked bridge ports and VM Service ports)"};
+        return {
+          "success": false,
+          "message":
+              "No running apps found (checked bridge ports and VM Service ports)"
+        };
       }
 
       // Connect to the first one
@@ -2059,7 +2081,8 @@ Detailed diagnostic report with:
       _clients[sessionId] = client;
       _sessions[sessionId] = SessionInfo(
         id: sessionId,
-        name: args['name'] as String? ?? 'Scanned connection ${_sessions.length + 1}',
+        name: args['name'] as String? ??
+            'Scanned connection ${_sessions.length + 1}',
         projectPath: args['project_path'] as String? ?? 'unknown',
         deviceId: args['device_id'] as String? ?? 'unknown',
         port: int.tryParse(uri.split(':').last.split('/').first) ?? 0,
@@ -2097,7 +2120,8 @@ Detailed diagnostic report with:
 
         // Update active session
         if (_activeSessionId == sessionId) {
-          _activeSessionId = _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
+          _activeSessionId =
+              _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
         }
       }
 
@@ -2124,7 +2148,8 @@ Detailed diagnostic report with:
 
         // Update active session
         if (_activeSessionId == sessionId) {
-          _activeSessionId = _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
+          _activeSessionId =
+              _sessions.keys.isNotEmpty ? _sessions.keys.first : null;
         }
 
         return {
@@ -2197,16 +2222,20 @@ Detailed diagnostic report with:
         };
 
         if (!hasDependency) {
-          diagnosticResult['issues'].add("Missing flutter_skill dependency in pubspec.yaml");
+          diagnosticResult['issues']
+              .add("Missing flutter_skill dependency in pubspec.yaml");
           if (autoFix) {
             try {
               await runSetup(projectPath);
-              diagnosticResult['fixes_applied'].add("Added flutter_skill dependency to pubspec.yaml");
+              diagnosticResult['fixes_applied']
+                  .add("Added flutter_skill dependency to pubspec.yaml");
             } catch (e) {
-              diagnosticResult['fixes_applied'].add("Failed to add dependency: $e");
+              diagnosticResult['fixes_applied']
+                  .add("Failed to add dependency: $e");
             }
           } else {
-            diagnosticResult['recommendations'].add("Run: flutter pub add flutter_skill");
+            diagnosticResult['recommendations']
+                .add("Run: flutter pub add flutter_skill");
           }
         }
       } else {
@@ -2214,15 +2243,18 @@ Detailed diagnostic report with:
           "status": "not_found",
           "message": "pubspec.yaml not found - not a Flutter project?",
         };
-        diagnosticResult['issues'].add("pubspec.yaml not found at $projectPath");
+        diagnosticResult['issues']
+            .add("pubspec.yaml not found at $projectPath");
       }
 
       // Check lib/main.dart
       final mainFile = File('$projectPath/lib/main.dart');
       if (mainFile.existsSync()) {
         final mainContent = mainFile.readAsStringSync();
-        final hasImport = mainContent.contains('package:flutter_skill/flutter_skill.dart');
-        final hasInit = mainContent.contains('FlutterSkillBinding.ensureInitialized()');
+        final hasImport =
+            mainContent.contains('package:flutter_skill/flutter_skill.dart');
+        final hasInit =
+            mainContent.contains('FlutterSkillBinding.ensureInitialized()');
 
         diagnosticResult['checks']['main_dart'] = {
           "has_import": hasImport,
@@ -2234,18 +2266,25 @@ Detailed diagnostic report with:
         };
 
         if (!hasImport || !hasInit) {
-          if (!hasImport) diagnosticResult['issues'].add("Missing flutter_skill import in lib/main.dart");
-          if (!hasInit) diagnosticResult['issues'].add("Missing FlutterSkillBinding initialization in lib/main.dart");
+          if (!hasImport)
+            diagnosticResult['issues']
+                .add("Missing flutter_skill import in lib/main.dart");
+          if (!hasInit)
+            diagnosticResult['issues'].add(
+                "Missing FlutterSkillBinding initialization in lib/main.dart");
 
           if (autoFix) {
             try {
               await runSetup(projectPath);
-              diagnosticResult['fixes_applied'].add("Added FlutterSkillBinding initialization to lib/main.dart");
+              diagnosticResult['fixes_applied'].add(
+                  "Added FlutterSkillBinding initialization to lib/main.dart");
             } catch (e) {
-              diagnosticResult['fixes_applied'].add("Failed to update main.dart: $e");
+              diagnosticResult['fixes_applied']
+                  .add("Failed to update main.dart: $e");
             }
           } else {
-            diagnosticResult['recommendations'].add("Add to main.dart: FlutterSkillBinding.ensureInitialized()");
+            diagnosticResult['recommendations'].add(
+                "Add to main.dart: FlutterSkillBinding.ensureInitialized()");
           }
         }
       } else {
@@ -2259,7 +2298,8 @@ Detailed diagnostic report with:
       // Check running Flutter processes
       try {
         final result = await Process.run('pgrep', ['-f', 'flutter']);
-        final hasRunningFlutter = result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
+        final hasRunningFlutter =
+            result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
 
         diagnosticResult['checks']['running_processes'] = {
           "flutter_running": hasRunningFlutter,
@@ -2269,7 +2309,8 @@ Detailed diagnostic report with:
         };
 
         if (!hasRunningFlutter) {
-          diagnosticResult['recommendations'].add("Start your Flutter app with: flutter_skill launch .");
+          diagnosticResult['recommendations']
+              .add("Start your Flutter app with: flutter_skill launch .");
         }
       } catch (e) {
         diagnosticResult['checks']['running_processes'] = {
@@ -2298,7 +2339,9 @@ Detailed diagnostic report with:
       final fixCount = (diagnosticResult['fixes_applied'] as List).length;
 
       diagnosticResult['summary'] = {
-        "status": issueCount == 0 ? "healthy" : (fixCount > 0 ? "fixed" : "needs_attention"),
+        "status": issueCount == 0
+            ? "healthy"
+            : (fixCount > 0 ? "fixed" : "needs_attention"),
         "issues_found": issueCount,
         "fixes_applied": fixCount,
         "message": issueCount == 0
@@ -2401,10 +2444,8 @@ Detailed diagnostic report with:
       }
 
       final toolCheck = await driver.checkToolAvailability();
-      final missingTools = toolCheck.entries
-          .where((e) => !e.value)
-          .map((e) => e.key)
-          .toList();
+      final missingTools =
+          toolCheck.entries.where((e) => !e.value).map((e) => e.key).toList();
       if (missingTools.isNotEmpty) {
         return {
           "success": false,
@@ -2412,12 +2453,13 @@ Detailed diagnostic report with:
             "code": "E502",
             "message": "Missing required tools: ${missingTools.join(', ')}",
           },
-          "suggestions":
-              driver.platform == NativePlatform.iosSimulator
-                  ? ["Ensure Xcode command line tools are installed: xcode-select --install"]
-                  : [
-                      "Install Android platform tools: brew install android-platform-tools"
-                    ],
+          "suggestions": driver.platform == NativePlatform.iosSimulator
+              ? [
+                  "Ensure Xcode command line tools are installed: xcode-select --install"
+                ]
+              : [
+                  "Install Android platform tools: brew install android-platform-tools"
+                ],
         };
       }
 
@@ -2459,8 +2501,8 @@ Detailed diagnostic report with:
       final endX = (args['end_x'] as num).toDouble();
       final endY = (args['end_y'] as num).toDouble();
       final duration = args['duration'] as int? ?? 300;
-      final result = await driver.swipe(startX, startY, endX, endY,
-          durationMs: duration);
+      final result =
+          await driver.swipe(startX, startY, endX, endY, durationMs: duration);
       return result.toJson();
     }
 
@@ -2553,8 +2595,7 @@ Detailed diagnostic report with:
 
       case 'scroll_to':
         final fc = _asFlutterClient(client!, 'scroll_to');
-        final result =
-            await fc.scrollTo(key: args['key'], text: args['text']);
+        final result = await fc.scrollTo(key: args['key'], text: args['text']);
         if (result['success'] != true) {
           return {
             "success": false,
@@ -2582,8 +2623,8 @@ Detailed diagnostic report with:
         return success ? "Swiped ${args['direction']}" : "Swipe failed";
       case 'drag':
         final fc = _asFlutterClient(client!, 'drag');
-        final success = await fc
-            .drag(fromKey: args['from_key'], toKey: args['to_key']);
+        final success =
+            await fc.drag(fromKey: args['from_key'], toKey: args['to_key']);
         return success ? "Dragged" : "Drag failed";
 
       // State & Validation
@@ -2614,7 +2655,8 @@ Detailed diagnostic report with:
         // Default to lower quality and max width to prevent token overflow
         final quality = (args['quality'] as num?)?.toDouble() ?? 0.5;
         final maxWidth = args['max_width'] as int? ?? 800;
-        final saveToFile = args['save_to_file'] ?? true;  // Default to saving as file
+        final saveToFile =
+            args['save_to_file'] ?? true; // Default to saving as file
 
         final imageBase64 =
             await client!.takeScreenshot(quality: quality, maxWidth: maxWidth);
@@ -2654,7 +2696,8 @@ Detailed diagnostic report with:
             "image": imageBase64,
             "quality": quality,
             "max_width": maxWidth,
-            "warning": "Returning base64 data. Consider using save_to_file=true for large images."
+            "warning":
+                "Returning base64 data. Consider using save_to_file=true for large images."
           };
         }
 
@@ -2694,7 +2737,8 @@ Detailed diagnostic report with:
           "success": true,
           "image": image,
           "region": {"x": x, "y": y, "width": width, "height": height},
-          "warning": "Returning base64 data. Consider using save_to_file=true for large regions."
+          "warning":
+              "Returning base64 data. Consider using save_to_file=true for large regions."
         };
 
       case 'screenshot_element':
@@ -2714,7 +2758,8 @@ Detailed diagnostic report with:
         if (targetKey == null) {
           return {
             "error": "Element not found",
-            "message": "No element found with key or text: ${args['key'] ?? args['text']}",
+            "message":
+                "No element found with key or text: ${args['key'] ?? args['text']}",
           };
         }
 
@@ -2772,10 +2817,7 @@ Detailed diagnostic report with:
         };
       case 'clear_logs':
         await client!.clearLogs();
-        return {
-          "success": true,
-          "message": "Logs cleared successfully"
-        };
+        return {"success": true, "message": "Logs cleared successfully"};
       case 'get_performance':
         final fc = _asFlutterClient(client!, 'get_performance');
         return await fc.getPerformance();
@@ -2816,15 +2858,18 @@ Detailed diagnostic report with:
                 'uri': r['uri'],
                 'status_code': r['response']?['statusCode'],
                 'start_time': r['startTime'] != null
-                    ? DateTime.fromMicrosecondsSinceEpoch(r['startTime']).toIso8601String()
+                    ? DateTime.fromMicrosecondsSinceEpoch(r['startTime'])
+                        .toIso8601String()
                     : null,
                 'end_time': r['endTime'] != null
-                    ? DateTime.fromMicrosecondsSinceEpoch(r['endTime']).toIso8601String()
+                    ? DateTime.fromMicrosecondsSinceEpoch(r['endTime'])
+                        .toIso8601String()
                     : null,
                 'duration_ms': (r['endTime'] != null && r['startTime'] != null)
                     ? ((r['endTime'] - r['startTime']) / 1000).round()
                     : null,
-                'content_type': r['response']?['headers']?['content-type']?.toString(),
+                'content_type':
+                    r['response']?['headers']?['content-type']?.toString(),
               };
             }
             return r;
@@ -2836,7 +2881,8 @@ Detailed diagnostic report with:
             "requests": formatted,
             "total": allRequests.length,
             "returned": formatted.length,
-            "message": "${formatted.length} of ${allRequests.length} HTTP requests"
+            "message":
+                "${formatted.length} of ${allRequests.length} HTTP requests"
           };
         }
 
@@ -2846,16 +2892,14 @@ Detailed diagnostic report with:
           "success": true,
           "source": "manual_log",
           ...manualRequests,
-          "hint": "For automatic HTTP capture, call enable_network_monitoring() first"
+          "hint":
+              "For automatic HTTP capture, call enable_network_monitoring() first"
         };
 
       case 'clear_network_requests':
         final fc = _asFlutterClient(client!, 'clear_network_requests');
         await fc.clearHttpRequests();
-        return {
-          "success": true,
-          "message": "Network request history cleared"
-        };
+        return {"success": true, "message": "Network request history cleared"};
 
       // === NEW: Batch Operations ===
       case 'execute_batch':
@@ -2885,8 +2929,8 @@ Detailed diagnostic report with:
         final endX = (args['end_x'] as num).toDouble();
         final endY = (args['end_y'] as num).toDouble();
         final duration = args['duration'] ?? 300;
-        await fc
-            .swipeCoordinates(startX, startY, endX, endY, duration: duration);
+        await fc.swipeCoordinates(startX, startY, endX, endY,
+            duration: duration);
         return {"success": true, "action": "swipe_coordinates"};
 
       case 'edge_swipe':
@@ -2894,8 +2938,8 @@ Detailed diagnostic report with:
         final edge = args['edge'] as String;
         final direction = args['direction'] as String;
         final distance = (args['distance'] as num?)?.toDouble() ?? 200;
-        final result = await fc
-            .edgeSwipe(edge: edge, direction: direction, distance: distance);
+        final result = await fc.edgeSwipe(
+            edge: edge, direction: direction, distance: distance);
         return result;
 
       case 'gesture':
@@ -2985,8 +3029,8 @@ Detailed diagnostic report with:
             break;
 
           case 'enter_text':
-            final enterResult = await client
-                .enterText(action['key'], action['text'] ?? action['value']);
+            final enterResult = await client.enterText(
+                action['key'], action['text'] ?? action['value']);
             if (enterResult['success'] != true) {
               throw Exception(enterResult['message'] ?? "TextField not found");
             }
@@ -3307,8 +3351,9 @@ Detailed diagnostic report with:
   }
 
   /// Assert element visibility
-  Future<Map<String, dynamic>> _assertVisible(Map<String, dynamic> args,
-      FlutterSkillClient client, {required bool shouldBeVisible}) async {
+  Future<Map<String, dynamic>> _assertVisible(
+      Map<String, dynamic> args, FlutterSkillClient client,
+      {required bool shouldBeVisible}) async {
     final key = args['key'] as String?;
     final text = args['text'] as String?;
     final timeout = args['timeout'] ?? 5000;

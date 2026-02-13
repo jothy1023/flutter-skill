@@ -1,4 +1,5 @@
 #!/usr/bin/env dart
+
 /// Comprehensive E2E test for bridge-protocol SDKs.
 /// Tests all actions via WebSocket JSON-RPC 2.0.
 ///
@@ -54,8 +55,7 @@ class BridgeTestClient {
     });
     _ws!.add(request);
 
-    return completer.future.timeout(const Duration(seconds: 15),
-        onTimeout: () {
+    return completer.future.timeout(const Duration(seconds: 15), onTimeout: () {
       _pending.remove(id);
       throw TimeoutException('$method timed out');
     });
@@ -234,7 +234,8 @@ void main(List<String> args) async {
       'direction': 'down',
       'distance': 300,
     });
-    assert(r['result']?['success'] == true || r['result'] != null, 'Scroll failed: $r');
+    assert(r['result']?['success'] == true || r['result'] != null,
+        'Scroll failed: $r');
   });
   await Future.delayed(const Duration(milliseconds: 300));
 
@@ -243,7 +244,8 @@ void main(List<String> args) async {
       'direction': 'up',
       'distance': 300,
     });
-    assert(r['result']?['success'] == true || r['result'] != null, 'Scroll failed: $r');
+    assert(r['result']?['success'] == true || r['result'] != null,
+        'Scroll failed: $r');
   });
   await Future.delayed(const Duration(milliseconds: 300));
 
@@ -291,7 +293,8 @@ void main(List<String> args) async {
       'direction': 'up',
       'distance': 400,
     });
-    assert(r['result']?['success'] == true || r['result'] != null, 'Swipe failed: $r');
+    assert(r['result']?['success'] == true || r['result'] != null,
+        'Swipe failed: $r');
   });
   await Future.delayed(const Duration(milliseconds: 300));
 
@@ -300,7 +303,8 @@ void main(List<String> args) async {
       'direction': 'down',
       'distance': 400,
     });
-    assert(r['result']?['success'] == true || r['result'] != null, 'Swipe failed: $r');
+    assert(r['result']?['success'] == true || r['result'] != null,
+        'Swipe failed: $r');
   });
   await Future.delayed(const Duration(milliseconds: 300));
 

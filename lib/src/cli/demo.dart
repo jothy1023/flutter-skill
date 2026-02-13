@@ -38,7 +38,8 @@ Future<void> runDemo(List<String> args) async {
   // Add flutter_skill dependency
   print('📦 Adding flutter_skill...');
   final addResult = await Process.run(
-    'flutter', ['pub', 'add', 'flutter_skill'],
+    'flutter',
+    ['pub', 'add', 'flutter_skill'],
     workingDirectory: projectPath,
   );
 
@@ -69,7 +70,8 @@ Future<void> runDemo(List<String> args) async {
 
   // Launch with flutter-skill
   final process = await Process.start(
-    'flutter', ['run'],
+    'flutter',
+    ['run'],
     workingDirectory: projectPath,
     mode: ProcessStartMode.inheritStdio,
   );

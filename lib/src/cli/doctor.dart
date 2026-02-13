@@ -28,7 +28,8 @@ Future<void> runDoctor(List<String> args) async {
     _printOk('Runtime: Native binary (fast startup)');
     okCount++;
   } else {
-    _printInfo('Runtime: Dart VM (slower startup, consider installing native binary)');
+    _printInfo(
+        'Runtime: Dart VM (slower startup, consider installing native binary)');
     okCount++;
   }
 
@@ -86,7 +87,8 @@ Future<void> runDoctor(List<String> args) async {
     _printOk('adb (Android Emulator)');
     okCount++;
   } else {
-    _printWarn('adb not found (needed for Android Emulator native interaction)');
+    _printWarn(
+        'adb not found (needed for Android Emulator native interaction)');
     print('         Install: Android SDK Platform Tools');
     warnCount++;
   }
@@ -143,7 +145,8 @@ Future<void> runDoctor(List<String> args) async {
           okCount++;
         } else {
           _printWarn('Cursor MCP: not configured');
-          print('         Add flutter-skill to mcpServers in ~/.cursor/mcp.json');
+          print(
+              '         Add flutter-skill to mcpServers in ~/.cursor/mcp.json');
           warnCount++;
         }
       } catch (_) {
