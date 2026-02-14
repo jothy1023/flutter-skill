@@ -150,10 +150,306 @@ async fn handle_method<R: Runtime>(
             eval_js_with_result(window, js, 5000, result_tx).await
         }
 
+        "inspect_interactive" => {
+            let js = r#"
+                (function() {
+                    var elements = [];
+                    var refCounts = {};
+
+                    // Semantic ref generation - similar to Web SDK implementation
+                    function generateSemanticRefId(el, elementType) {
+                        // Map element types to semantic roles
+                        var role = {
+                            button: "button",
+                            text_field: "input",
+                            checkbox: "toggle",
+                            switch: "toggle",
+                            radio: "toggle",
+                            slider: "slider",
+                            dropdown: "select",
+                            link: "link",
+                            list_item: "item",
+                            tab: "item"
+                        }[elementType] || "element";
+
+                        // Extract content with priority: data-testid > aria-label > text > placeholder > title
+                        var content = el.getAttribute("data-testid") ||
+                                     el.getAttribute("aria-label") ||
+                                     (el.textContent && el.textContent.trim()) ||
+                                     el.getAttribute("placeholder") ||
+                                     el.getAttribute("title") ||
+                                     null;
+
+                        if (content) {
+                            // Clean and format content (replace spaces with underscores, remove special chars)
+                            content = content.replace(/\s+/g, '_')
+                                            .replace(/[^\w]/g, '')
+                                            .substring(0, 30);
+                            if (content.length > 27) {
+                                content = content.substring(0, 27) + '...';
+                            }
+
+                            var baseRef = role + ':' + content;
+                            var count = refCounts[baseRef] || 0;
+                            refCounts[baseRef] = count + 1;
+
+                            return count === 0 ? baseRef : baseRef + '[' + count + ']';
+                        } else {
+                            // No content - use role + index fallback
+                            var count = refCounts[role] || 0;
+                            refCounts[role] = count + 1;
+                            return role + '[' + count + ']';
+                        }
+                    }
+
+                    function getElementType(el) {
+                        var tag = el.tagName.toLowerCase();
+                        var type = el.type ? el.type.toLowerCase() : "";
+                        var role = el.getAttribute("role") || "";
+
+                        if (tag === "button" || role === "button" || el.onclick) return "button";
+                        if (tag === "input") {
+                            if (["checkbox", "radio"].includes(type)) return type;
+                            if (["text", "email", "password", "search", "number", "tel", "url"].includes(type)) return "text_field";
+                            if (type === "range") return "slider";
+                            return "button";
+                        }
+                        if (tag === "textarea") return "text_field";
+                        if (tag === "select") return "dropdown";
+                        if (tag === "a") return "link";
+                        if (role === "listitem" || tag === "li") return "list_item";
+                        if (role === "tab") return "tab";
+                        if (el.matches('[role="button"]')) return "button";
+                        
+                        return "button"; // Default for interactive elements
+                    }
+
+                    function getActions(elementType) {
+                        switch (elementType) {
+                            case "text_field":
+                                return ["tap", "enter_text"];
+                            case "slider":
+                                return ["tap", "swipe"];
+                            default:
+                                return ["tap", "long_press"];
+                        }
+                    }
+
+                    function getValue(el, elementType) {
+                        switch (elementType) {
+                            case "text_field":
+                                return el.value || "";
+                            case "checkbox":
+                            case "radio":
+                                return el.checked;
+                            case "slider":
+                                return parseFloat(el.value) || 0;
+                            case "dropdown":
+                                return el.value || "";
+                            default:
+                                return null;
+                        }
+                    }
+
+                    // Walk DOM and collect interactive elements
+                    function walkInteractive(el) {
+                        if (!el || el.nodeType !== 1) return;
+                        
+                        var style = window.getComputedStyle(el);
+                        if (style.display === 'none' || style.visibility === 'hidden') return;
+                        
+                        // Check if element is interactive
+                        var isInteractive = el.matches('button, input, select, textarea, a, [role="button"], [onclick], [role="tab"]') ||
+                                           el.hasAttribute('onclick') ||
+                                           el.style.cursor === 'pointer';
+
+                        if (isInteractive) {
+                            var elementType = getElementType(el);
+                            var refId = generateSemanticRefId(el, elementType);
+                            var rect = el.getBoundingClientRect();
+
+                            var element = {
+                                ref: refId,
+                                type: el.tagName + (el.type ? "[" + el.type + "]" : ""),
+                                actions: getActions(elementType),
+                                enabled: !el.disabled && !el.readOnly,
+                                bounds: {
+                                    x: Math.round(rect.x),
+                                    y: Math.round(rect.y),
+                                    w: Math.round(rect.width),
+                                    h: Math.round(rect.height),
+                                }
+                            };
+
+                            // Add optional fields
+                            var text = (el.textContent || el.value || "").trim();
+                            if (text && text.length > 0) {
+                                element.text = text.substring(0, 100);
+                            }
+
+                            var label = el.getAttribute("aria-label") || el.getAttribute("title");
+                            if (label && label.trim().length > 0) {
+                                element.label = label.trim();
+                            }
+
+                            var value = getValue(el, elementType);
+                            if (value !== null) {
+                                element.value = value;
+                            }
+
+                            elements.push(element);
+                        }
+
+                        // Recurse through children
+                        for (var i = 0; i < el.children.length; i++) {
+                            walkInteractive(el.children[i]);
+                        }
+                    }
+
+                    walkInteractive(document.body);
+
+                    // Generate summary
+                    var counts = Object.keys(refCounts).reduce(function(total, key) {
+                        return total + refCounts[key];
+                    }, 0);
+                    
+                    var summary = counts === 0 ? 
+                        "No interactive elements found" : 
+                        counts + " interactive elements found";
+
+                    return {
+                        elements: elements,
+                        summary: summary
+                    };
+                })()
+            "#;
+            eval_js_with_result(window, js, 5000, result_tx).await
+        }
+
         "tap" => {
+            let ref_id = params.get("ref").and_then(|v| v.as_str());
             let sel = resolve_selector(&params);
             let text_match = params.get("text").and_then(|v| v.as_str());
-            let js = if let Some(s) = sel {
+            
+            let js = if let Some(r) = ref_id {
+                // Handle semantic ref ID - need to regenerate elements and find by ref
+                format!(
+                    r#"(function() {{
+                        // Re-use the inspect_interactive logic to find element by ref
+                        {inspect_interactive_code}
+                        
+                        // Find element with matching ref
+                        var targetElement = null;
+                        for (var i = 0; i < elements.length; i++) {{
+                            if (elements[i].ref === {ref}) {{
+                                targetElement = elements[i];
+                                break;
+                            }}
+                        }}
+                        
+                        if (!targetElement) {{
+                            return {{success: false, message: 'Ref not found'}};
+                        }}
+                        
+                        // Find DOM element at center position
+                        var centerX = targetElement.bounds.x + targetElement.bounds.w / 2;
+                        var centerY = targetElement.bounds.y + targetElement.bounds.h / 2;
+                        var el = document.elementFromPoint(centerX, centerY);
+                        
+                        if (!el) {{
+                            return {{success: false, message: 'Element not found at position'}};
+                        }}
+                        
+                        el.click();
+                        return {{success: true}};
+                    }})()"#,
+                    inspect_interactive_code = r#"
+                        var elements = [];
+                        var refCounts = {};
+                        
+                        function generateSemanticRefId(el, elementType) {
+                            var role = {
+                                button: "button", text_field: "input", checkbox: "toggle",
+                                switch: "toggle", radio: "toggle", slider: "slider",
+                                dropdown: "select", link: "link", list_item: "item", tab: "item"
+                            }[elementType] || "element";
+
+                            var content = el.getAttribute("data-testid") ||
+                                         el.getAttribute("aria-label") ||
+                                         (el.textContent && el.textContent.trim()) ||
+                                         el.getAttribute("placeholder") ||
+                                         el.getAttribute("title") ||
+                                         null;
+
+                            if (content) {
+                                content = content.replace(/\s+/g, '_')
+                                                .replace(/[^\w]/g, '')
+                                                .substring(0, 30);
+                                if (content.length > 27) {
+                                    content = content.substring(0, 27) + '...';
+                                }
+                                var baseRef = role + ':' + content;
+                                var count = refCounts[baseRef] || 0;
+                                refCounts[baseRef] = count + 1;
+                                return count === 0 ? baseRef : baseRef + '[' + count + ']';
+                            } else {
+                                var count = refCounts[role] || 0;
+                                refCounts[role] = count + 1;
+                                return role + '[' + count + ']';
+                            }
+                        }
+
+                        function getElementType(el) {
+                            var tag = el.tagName.toLowerCase();
+                            var type = el.type ? el.type.toLowerCase() : "";
+                            var role = el.getAttribute("role") || "";
+
+                            if (tag === "button" || role === "button" || el.onclick) return "button";
+                            if (tag === "input") {
+                                if (["checkbox", "radio"].includes(type)) return type;
+                                if (["text", "email", "password", "search", "number", "tel", "url"].includes(type)) return "text_field";
+                                if (type === "range") return "slider";
+                                return "button";
+                            }
+                            if (tag === "textarea") return "text_field";
+                            if (tag === "select") return "dropdown";
+                            if (tag === "a") return "link";
+                            if (role === "listitem" || tag === "li") return "list_item";
+                            if (role === "tab") return "tab";
+                            if (el.matches('[role="button"]')) return "button";
+                            return "button";
+                        }
+
+                        function walkInteractive(el) {
+                            if (!el || el.nodeType !== 1) return;
+                            var style = window.getComputedStyle(el);
+                            if (style.display === 'none' || style.visibility === 'hidden') return;
+                            
+                            var isInteractive = el.matches('button, input, select, textarea, a, [role="button"], [onclick], [role="tab"]') ||
+                                               el.hasAttribute('onclick') || el.style.cursor === 'pointer';
+
+                            if (isInteractive) {
+                                var elementType = getElementType(el);
+                                var refId = generateSemanticRefId(el, elementType);
+                                var rect = el.getBoundingClientRect();
+
+                                elements.push({
+                                    ref: refId,
+                                    bounds: {
+                                        x: Math.round(rect.x), y: Math.round(rect.y),
+                                        w: Math.round(rect.width), h: Math.round(rect.height)
+                                    }
+                                });
+                            }
+                            for (var i = 0; i < el.children.length; i++) {
+                                walkInteractive(el.children[i]);
+                            }
+                        }
+                        walkInteractive(document.body);
+                    "#,
+                    ref = serde_json::to_string(r).unwrap()
+                )
+            } else if let Some(s) = sel {
                 format!(
                     "(function() {{ var el = document.querySelector({s}); if(!el) return {{success:false,message:'Not found'}}; el.click(); return {{success:true}}; }})()",
                     s = serde_json::to_string(&s).unwrap()
@@ -164,19 +460,151 @@ async fn handle_method<R: Runtime>(
                     t = serde_json::to_string(t).unwrap()
                 )
             } else {
-                return Err("Missing key/selector/text".into());
+                return Err("Missing ref/key/selector/text".into());
             };
             eval_js_with_result(window, &js, 5000, result_tx).await
         }
 
         "enter_text" => {
-            let sel = resolve_selector(&params).ok_or("Missing key/selector")?;
+            let ref_id = params.get("ref").and_then(|v| v.as_str());
+            let sel = resolve_selector(&params);
             let text = params.get("text").and_then(|v| v.as_str()).unwrap_or("");
-            let js = format!(
-                "(function() {{ var e=document.querySelector({s}); if(!e) return {{success:false,message:'Not found'}}; e.focus(); e.value={t}; e.dispatchEvent(new Event('input',{{bubbles:true}})); e.dispatchEvent(new Event('change',{{bubbles:true}})); return {{success:true}}; }})()",
-                s = serde_json::to_string(&sel).unwrap(),
-                t = serde_json::to_string(text).unwrap()
-            );
+            
+            let js = if let Some(r) = ref_id {
+                // Handle semantic ref ID - need to regenerate elements and find by ref
+                format!(
+                    r#"(function() {{
+                        // Re-use the inspect_interactive logic to find element by ref
+                        {inspect_interactive_code}
+                        
+                        // Find element with matching ref
+                        var targetElement = null;
+                        for (var i = 0; i < elements.length; i++) {{
+                            if (elements[i].ref === {ref}) {{
+                                targetElement = elements[i];
+                                break;
+                            }}
+                        }}
+                        
+                        if (!targetElement) {{
+                            return {{success: false, message: 'Ref not found'}};
+                        }}
+                        
+                        // Find DOM element at center position
+                        var centerX = targetElement.bounds.x + targetElement.bounds.w / 2;
+                        var centerY = targetElement.bounds.y + targetElement.bounds.h / 2;
+                        var el = document.elementFromPoint(centerX, centerY);
+                        
+                        if (!el) {{
+                            return {{success: false, message: 'Element not found at position'}};
+                        }}
+                        
+                        if (!el.matches('input, textarea, [contenteditable]')) {{
+                            return {{success: false, message: 'Element is not a text input'}};
+                        }}
+                        
+                        el.focus();
+                        el.value = {text};
+                        el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                        el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        return {{success: true}};
+                    }})()"#,
+                    inspect_interactive_code = r#"
+                        var elements = [];
+                        var refCounts = {};
+                        
+                        function generateSemanticRefId(el, elementType) {
+                            var role = {
+                                button: "button", text_field: "input", checkbox: "toggle",
+                                switch: "toggle", radio: "toggle", slider: "slider",
+                                dropdown: "select", link: "link", list_item: "item", tab: "item"
+                            }[elementType] || "element";
+
+                            var content = el.getAttribute("data-testid") ||
+                                         el.getAttribute("aria-label") ||
+                                         (el.textContent && el.textContent.trim()) ||
+                                         el.getAttribute("placeholder") ||
+                                         el.getAttribute("title") ||
+                                         null;
+
+                            if (content) {
+                                content = content.replace(/\s+/g, '_')
+                                                .replace(/[^\w]/g, '')
+                                                .substring(0, 30);
+                                if (content.length > 27) {
+                                    content = content.substring(0, 27) + '...';
+                                }
+                                var baseRef = role + ':' + content;
+                                var count = refCounts[baseRef] || 0;
+                                refCounts[baseRef] = count + 1;
+                                return count === 0 ? baseRef : baseRef + '[' + count + ']';
+                            } else {
+                                var count = refCounts[role] || 0;
+                                refCounts[role] = count + 1;
+                                return role + '[' + count + ']';
+                            }
+                        }
+
+                        function getElementType(el) {
+                            var tag = el.tagName.toLowerCase();
+                            var type = el.type ? el.type.toLowerCase() : "";
+                            var role = el.getAttribute("role") || "";
+
+                            if (tag === "button" || role === "button" || el.onclick) return "button";
+                            if (tag === "input") {
+                                if (["checkbox", "radio"].includes(type)) return type;
+                                if (["text", "email", "password", "search", "number", "tel", "url"].includes(type)) return "text_field";
+                                if (type === "range") return "slider";
+                                return "button";
+                            }
+                            if (tag === "textarea") return "text_field";
+                            if (tag === "select") return "dropdown";
+                            if (tag === "a") return "link";
+                            if (role === "listitem" || tag === "li") return "list_item";
+                            if (role === "tab") return "tab";
+                            if (el.matches('[role="button"]')) return "button";
+                            return "button";
+                        }
+
+                        function walkInteractive(el) {
+                            if (!el || el.nodeType !== 1) return;
+                            var style = window.getComputedStyle(el);
+                            if (style.display === 'none' || style.visibility === 'hidden') return;
+                            
+                            var isInteractive = el.matches('button, input, select, textarea, a, [role="button"], [onclick], [role="tab"]') ||
+                                               el.hasAttribute('onclick') || el.style.cursor === 'pointer';
+
+                            if (isInteractive) {
+                                var elementType = getElementType(el);
+                                var refId = generateSemanticRefId(el, elementType);
+                                var rect = el.getBoundingClientRect();
+
+                                elements.push({
+                                    ref: refId,
+                                    bounds: {
+                                        x: Math.round(rect.x), y: Math.round(rect.y),
+                                        w: Math.round(rect.width), h: Math.round(rect.height)
+                                    }
+                                });
+                            }
+                            for (var i = 0; i < el.children.length; i++) {
+                                walkInteractive(el.children[i]);
+                            }
+                        }
+                        walkInteractive(document.body);
+                    "#,
+                    ref = serde_json::to_string(r).unwrap(),
+                    text = serde_json::to_string(text).unwrap()
+                )
+            } else if let Some(s) = sel {
+                format!(
+                    "(function() {{ var e=document.querySelector({s}); if(!e) return {{success:false,message:'Not found'}}; e.focus(); e.value={t}; e.dispatchEvent(new Event('input',{{bubbles:true}})); e.dispatchEvent(new Event('change',{{bubbles:true}})); return {{success:true}}; }})()",
+                    s = serde_json::to_string(&s).unwrap(),
+                    t = serde_json::to_string(text).unwrap()
+                )
+            } else {
+                return Err("Missing ref/key/selector".into());
+            };
             eval_js_with_result(window, &js, 5000, result_tx).await
         }
 

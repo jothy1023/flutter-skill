@@ -102,22 +102,42 @@ object ViewTraversal {
         val elements = mutableListOf<Map<String, Any?>>()
         val refCounts = mutableMapOf<String, Int>()
 
-        fun generateRefId(baseType: String): String {
-            val refPrefix = when (baseType) {
-                "button" -> "btn"
-                "text_field" -> "tf"
-                "checkbox", "switch" -> "sw"
-                "slider" -> "sl"
-                "tab" -> "tab"
-                "dropdown" -> "dd"
-                "link" -> "lnk"
-                "list_item" -> "item"
-                else -> "elem"
+        fun generateSemanticRef(role: String, content: String?, refCounts: MutableMap<String, Int>): String {
+            // Clean content: spaces to underscores, remove special chars, truncate to 30 chars
+            val sanitized = content?.let { c ->
+                c.trim()
+                    .replace(Regex("\\s+"), "_")
+                    .replace(Regex("[^\\w]"), "")
+                    .take(30)
+                    .takeIf { it.isNotEmpty() }
             }
 
-            val count = refCounts[refPrefix] ?: 0
-            refCounts[refPrefix] = count + 1
-            return "${refPrefix}_$count"
+            val base = if (sanitized != null) "${role}:${sanitized}" else role
+            val count = refCounts[base] ?: 0
+            refCounts[base] = count + 1
+
+            return if (count == 0) base else "${base}[${count}]"
+        }
+
+        fun generateRefId(baseType: String, view: View): String {
+            // Map base types to semantic roles
+            val role = when (baseType) {
+                "button" -> "button"
+                "text_field" -> "input"
+                "checkbox", "switch", "toggle" -> "toggle"
+                "slider" -> "slider"
+                "dropdown" -> "select"
+                "link" -> "link"
+                "list_item" -> "item"
+                else -> "element"
+            }
+
+            // Extract content with priority: contentDescription -> text -> id name
+            val content = view.contentDescription?.toString()
+                ?: extractText(view)
+                ?: getViewResourceId(view)
+
+            return generateSemanticRef(role, content, refCounts)
         }
 
         fun getElementType(view: View, className: String): String = when {
@@ -183,7 +203,7 @@ object ViewTraversal {
                 val className = view.javaClass.simpleName
                 val elementType = getElementType(view, className)
                 val baseType = getBaseType(elementType)
-                val refId = generateRefId(baseType)
+                val refId = generateRefId(baseType, view)
 
                 val element = mutableMapOf<String, Any?>(
                     "ref" to refId,

@@ -15,6 +15,179 @@ class DesktopBridge(private val rootFrame: Frame? = null) : PlatformBridge {
         return rootFrame ?: Frame.getFrames().firstOrNull() ?: throw IllegalStateException("No AWT Frame")
     }
 
+    override suspend fun inspectInteractive(): JsonElement {
+        val elements = mutableListOf<JsonElement>()
+        val refCounts = mutableMapOf<String, Int>()
+
+        fun generateSemanticRef(role: String, content: String?, refCounts: MutableMap<String, Int>): String {
+            // Clean content: spaces to underscores, remove special chars, truncate to 30 chars
+            val sanitized = content?.trim()
+                ?.replace(Regex("\\s+"), "_")
+                ?.replace(Regex("[^\\w]"), "")
+                ?.take(30)
+                ?.takeIf { it.isNotEmpty() }
+
+            val base = if (sanitized != null) "${role}:${sanitized}" else role
+            val count = refCounts[base] ?: 0
+            refCounts[base] = count + 1
+
+            return if (count == 0) base else "${base}[${count}]"
+        }
+
+        fun getElementType(comp: Component): String = when (comp) {
+            is JButton -> "button"
+            is JTextField -> "input"
+            is JCheckBox -> "toggle"
+            is JSlider -> "slider"
+            is JComboBox<*> -> "select"
+            else -> "element"
+        }
+
+        fun extractContent(comp: Component): String? = when (comp) {
+            is JLabel -> comp.text
+            is JButton -> comp.text
+            is JTextField -> comp.text ?: comp.name
+            is JCheckBox -> comp.text
+            else -> comp.name
+        }
+
+        fun getActions(elementType: String): List<String> = when (elementType) {
+            "input" -> listOf("tap", "enter_text")
+            "slider" -> listOf("tap", "swipe")
+            else -> listOf("tap")
+        }
+
+        fun getValue(comp: Component, elementType: String): Any? = when (elementType) {
+            "input" -> (comp as? JTextField)?.text ?: ""
+            "toggle" -> (comp as? JCheckBox)?.isSelected ?: false
+            "slider" -> (comp as? JSlider)?.value ?: 0
+            else -> null
+        }
+
+        fun walkInteractive(comp: Component) {
+            val isInteractive = comp is JButton || comp is JTextField || 
+                               comp is JCheckBox || comp is JSlider || comp is JComboBox<*>
+
+            if (isInteractive) {
+                val elementType = getElementType(comp)
+                val role = elementType
+                val content = extractContent(comp)
+                val refId = generateSemanticRef(role, content, refCounts)
+
+                val element = buildJsonObject {
+                    put("ref", refId)
+                    put("type", comp.javaClass.simpleName)
+                    put("actions", JsonArray(getActions(elementType).map { JsonPrimitive(it) }))
+                    put("enabled", comp.isEnabled)
+                    put("bounds", buildJsonObject {
+                        put("x", comp.x)
+                        put("y", comp.y)
+                        put("w", comp.width)
+                        put("h", comp.height)
+                    })
+
+                    // Optional fields
+                    val text = extractContent(comp)
+                    if (!text.isNullOrEmpty()) {
+                        put("text", text)
+                    }
+
+                    val value = getValue(comp, elementType)
+                    if (value != null) {
+                        put("value", when (value) {
+                            is String -> JsonPrimitive(value)
+                            is Boolean -> JsonPrimitive(value)
+                            is Int -> JsonPrimitive(value)
+                            else -> JsonPrimitive(value.toString())
+                        })
+                    }
+                }
+
+                elements.add(element)
+            }
+
+            if (comp is Container) {
+                for (child in comp.components) {
+                    walkInteractive(child)
+                }
+            }
+        }
+
+        walkInteractive(getRoot())
+
+        // Generate summary
+        val counts = refCounts.entries.map { (_, count) -> count }.sum()
+        val summary = if (counts == 0) {
+            "No interactive elements found"
+        } else {
+            "$counts interactive elements found"
+        }
+
+        return buildJsonObject {
+            put("elements", JsonArray(elements))
+            put("summary", summary)
+        }
+    }
+
+    override suspend fun tapRef(refId: String): JsonElement {
+        // Re-generate interactive data to find element by ref
+        val interactiveData = inspectInteractive().jsonObject
+        val elements = interactiveData["elements"]?.jsonArray ?: return buildJsonObject { put("error", "no elements") }
+        
+        val targetElement = elements.find { 
+            it.jsonObject["ref"]?.jsonPrimitive?.content == refId 
+        }?.jsonObject ?: return buildJsonObject { put("error", "ref not found") }
+
+        val bounds = targetElement["bounds"]?.jsonObject
+        val x = bounds?.get("x")?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val y = bounds["y"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val w = bounds["w"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val h = bounds["h"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+
+        // Find component at center position
+        val centerX = x + w / 2
+        val centerY = y + h / 2
+        val root = getRoot()
+        val comp = root.findComponentAt(centerX, centerY)
+
+        if (comp is AbstractButton) {
+            SwingUtilities.invokeLater { comp.doClick() }
+        } else if (comp != null) {
+            val robot = Robot()
+            robot.mouseMove(centerX, centerY)
+            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK)
+            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK)
+        }
+
+        return buildJsonObject { put("tapped", true) }
+    }
+
+    override suspend fun enterTextRef(refId: String, text: String): JsonElement {
+        // Re-generate interactive data to find element by ref
+        val interactiveData = inspectInteractive().jsonObject
+        val elements = interactiveData["elements"]?.jsonArray ?: return buildJsonObject { put("error", "no elements") }
+        
+        val targetElement = elements.find { 
+            it.jsonObject["ref"]?.jsonPrimitive?.content == refId 
+        }?.jsonObject ?: return buildJsonObject { put("error", "ref not found") }
+
+        val bounds = targetElement["bounds"]?.jsonObject
+        val x = bounds?.get("x")?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val y = bounds["y"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val w = bounds["w"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+        val h = bounds["h"]?.jsonPrimitive?.int ?: return buildJsonObject { put("error", "no bounds") }
+
+        // Find component at center position
+        val centerX = x + w / 2
+        val centerY = y + h / 2
+        val root = getRoot()
+        val comp = root.findComponentAt(centerX, centerY) as? JTextField
+            ?: return buildJsonObject { put("error", "not a text field") }
+
+        SwingUtilities.invokeLater { comp.text = text }
+        return buildJsonObject { put("entered", true) }
+    }
+
     override suspend fun inspect(): JsonElement {
         return walkComponent(getRoot(), 0)
     }

@@ -691,32 +691,51 @@ public final class FlutterSkillBridge: @unchecked Sendable {
         var refCounts: [String: Int] = [:]
         var elements: [[String: Any]] = []
 
-        func generateRefId(baseType: String) -> String {
-            let refPrefix: String
+        func generateSemanticRef(role: String, content: String?, refCounts: inout [String: Int]) -> String {
+            // Clean content: spaces to underscores, remove special chars, truncate to 30 chars
+            let sanitized = content?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\\s+", with: "_", options: .regularExpression)
+                .replacingOccurrences(of: "[^\\w]", with: "", options: .regularExpression)
+                .prefix(30)
+                .takeIf { !$0.isEmpty }
+                .map(String.init)
+
+            let base = sanitized != nil ? "\(role):\(sanitized!)" : role
+            let count = refCounts[base] ?? 0
+            refCounts[base] = count + 1
+
+            return count == 0 ? base : "\(base)[\(count)]"
+        }
+
+        func generateRefId(baseType: String, view: UIView) -> String {
+            // Map base types to semantic roles
+            let role: String
             switch baseType {
             case "button":
-                refPrefix = "btn"
+                role = "button"
             case "text_field":
-                refPrefix = "tf"
-            case "checkbox", "switch":
-                refPrefix = "sw"
+                role = "input"
+            case "switch":
+                role = "toggle"
             case "slider":
-                refPrefix = "sl"
+                role = "slider"
             case "tab":
-                refPrefix = "tab"
-            case "dropdown":
-                refPrefix = "dd"
+                role = "select"
             case "link":
-                refPrefix = "lnk"
+                role = "link"
             case "list_item":
-                refPrefix = "item"
+                role = "item"
             default:
-                refPrefix = "elem"
+                role = "element"
             }
 
-            let count = refCounts[refPrefix] ?? 0
-            refCounts[refPrefix] = count + 1
-            return "\(refPrefix)_\(count)"
+            // Extract content with priority: accessibilityLabel -> title -> text -> placeholder
+            let content = view.accessibilityLabel
+                ?? (view as? UIButton)?.titleLabel?.text
+                ?? extractText(from: view).takeIf { !$0.isEmpty }
+                ?? (view as? UITextField)?.placeholder
+
+            return generateSemanticRef(role: role, content: content, refCounts: &refCounts)
         }
 
         func getElementType(view: UIView) -> String {
@@ -802,7 +821,7 @@ public final class FlutterSkillBridge: @unchecked Sendable {
             if isInteractive {
                 let elementType = getElementType(view: view)
                 let baseType = getBaseType(elementType: elementType)
-                let refId = generateRefId(baseType: baseType)
+                let refId = generateRefId(baseType: baseType, view: view)
 
                 let frame = view.superview?.convert(view.frame, to: window) ?? view.frame
                 var element: [String: Any] = [
@@ -842,7 +861,11 @@ public final class FlutterSkillBridge: @unchecked Sendable {
             if entry.onTap != nil || entry.onSetText != nil {
                 let elementType = entry.onSetText != nil ? "text_field" : "button"
                 let baseType = getBaseType(elementType: elementType)
-                let refId = generateRefId(baseType: baseType)
+                
+                // Create a synthetic semantic ref for SwiftUI elements
+                let role = baseType == "text_field" ? "input" : "button"
+                let content = entry.text() ?? entry.label
+                let refId = generateSemanticRef(role: role, content: content, refCounts: &refCounts)
 
                 var element: [String: Any] = [
                     "ref": refId,
@@ -1643,6 +1666,20 @@ extension Bundle {
         return object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? "Unknown App"
+    }
+}
+
+// MARK: - String Helper
+
+extension String {
+    func takeIf(_ predicate: (String) -> Bool) -> String? {
+        return predicate(self) ? self : nil
+    }
+}
+
+extension Substring {
+    func takeIf(_ predicate: (Substring) -> Bool) -> Substring? {
+        return predicate(self) ? self : nil
     }
 }
 
