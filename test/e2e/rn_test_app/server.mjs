@@ -47,8 +47,31 @@ const methods = {
   
   inspect: () => ({ elements: buildElements() }),
   
+  inspect_interactive: () => {
+    const elements = buildElements();
+    // Transform elements into interactive format with refs
+    const interactiveElements = elements.map((el, index) => ({
+      ...el,
+      ref: `ref:${el.key}`,
+      actions: el.clickable ? ['tap'] : el.type === 'text_field' ? ['tap', 'enter_text'] : [],
+      index: index,
+      xpath: `//*[@key='${el.key}']`,
+      interactable: el.clickable || el.type === 'text_field'
+    }));
+    return { 
+      elements: interactiveElements, 
+      interactiveMode: true, 
+      refFormat: "key-based",
+      totalElements: elements.length 
+    };
+  },
+  
   tap: (p) => {
-    const key = p.key || p.selector;
+    let key = p.key || p.selector;
+    // Handle ref format: "ref:key" -> "key"
+    if (key && key.startsWith('ref:')) {
+      key = key.substring(4);
+    }
     const el = key ? findByKey(key) : (p.text ? findByText(p.text) : null);
     if (!el) return { success: false, message: 'Element not found' };
     logs.push(`Tapped: ${el.key}`);
