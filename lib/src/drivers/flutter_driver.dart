@@ -468,6 +468,21 @@ URI: $wsUri''');
     return [];
   }
 
+  /// Get interactive elements with enhanced structure including actions and selectors
+  Future<Map<String, dynamic>> getInteractiveElementsStructured() async {
+    final result = await _call('ext.flutter.flutter_skill.interactiveStructured');
+    
+    if (result.containsKey('data')) {
+      return result['data'] as Map<String, dynamic>;
+    }
+    
+    // Return empty structured result if no data
+    return {
+      'elements': <Map<String, dynamic>>[],
+      'summary': 'No interactive elements found',
+    };
+  }
+
   // ==================== EXISTING HELPERS ====================
 
   Future<void> hotReload() async {

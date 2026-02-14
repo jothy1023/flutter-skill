@@ -559,6 +559,72 @@ All action tools support optional session_id parameter. If omitted, uses the act
         },
       },
       {
+        "name": "inspect_interactive",
+        "description": """⚡ ENHANCED UI DISCOVERY TOOL ⚡
+
+[TRIGGER KEYWORDS]
+interactive elements | structured inspect | enhanced inspect | ui elements with actions | elements with selectors | actionable elements | smart inspect
+
+[PRIMARY PURPOSE]
+Discover interactive UI elements with enhanced data structure including:
+• Available actions for each element (["tap", "long_press", "enter_text"])
+• Reliable selectors for targeting elements
+• Current state information (enabled, value, visible)
+• Filtered results showing only actionable elements
+
+[USE WHEN]
+• You need structured element data for automation
+• Building element interaction strategies
+• Need reliable selectors instead of coordinates
+• Want to see only actionable elements (filter out text/images)
+
+[OUTPUT FORMAT]
+Returns structured data:
+{
+  "elements": [
+    {
+      "type": "ElevatedButton", 
+      "text": "Submit",
+      "selector": {"by": "text", "value": "Submit"},
+      "actions": ["tap", "long_press"],
+      "bounds": {"x": 100, "y": 200, "width": 120, "height": 48},
+      "enabled": true,
+      "visible": true
+    },
+    {
+      "type": "TextField",
+      "label": "Email",
+      "selector": {"by": "key", "value": "email_field"},
+      "actions": ["tap", "enter_text"],
+      "currentValue": "",
+      "enabled": true,
+      "visible": true
+    }
+  ],
+  "summary": "Found 5 interactive elements: 2 buttons, 2 text fields, 1 switch"
+}
+
+[ADVANTAGES OVER inspect()]
+• Structured element data with actions array
+• Reliable selectors for each element  
+• State information (enabled, current value)
+• Only returns interactive elements (no static text/images)
+• Better for automated workflows
+
+[MULTI-SESSION]
+All action tools support optional session_id parameter. If omitted, uses the active session.
+""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "session_id": {
+              "type": "string",
+              "description": "Optional session ID (defaults to active session)"
+            },
+          },
+        },
+      },
+      {
         "name": "get_widget_tree",
         "description": "Get the full widget tree structure",
         "inputSchema": {
@@ -2528,6 +2594,9 @@ Detailed diagnostic report with:
           return filtered;
         }
         return elements;
+      case 'inspect_interactive':
+        final fc = _asFlutterClient(client!, 'inspect_interactive');
+        return await fc.getInteractiveElementsStructured();
       case 'get_widget_tree':
         final fc = _asFlutterClient(client!, 'get_widget_tree');
         final maxDepth = args['max_depth'] ?? 10;

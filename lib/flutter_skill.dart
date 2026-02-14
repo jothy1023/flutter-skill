@@ -84,6 +84,19 @@ class FlutterSkillBinding {
       }
     });
 
+    // 1b. Interactive Elements Structured (Enhanced inspect)
+    developer.registerExtension('ext.flutter.flutter_skill.interactiveStructured',
+        (method, parameters) async {
+      try {
+        final elements = _findInteractiveElementsStructured();
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode({'type': 'Success', 'data': elements}),
+        );
+      } catch (e, stack) {
+        return _errorResponse(e, stack);
+      }
+    });
+
     // 2. Tap
     developer.registerExtension('ext.flutter.flutter_skill.tap',
         (method, parameters) async {
@@ -1765,6 +1778,322 @@ class FlutterSkillBinding {
     }
 
     return results;
+  }
+
+  /// Enhanced interactive elements discovery for better automation.
+  /// Returns structured data with actions, selectors, and state information.
+  static Map<String, dynamic> _findInteractiveElementsStructured() {
+    final elements = <Map<String, dynamic>>[];
+    final elementCounts = <String, int>{};
+
+    void visit(Element element) {
+      final widget = element.widget;
+      String? type;
+      String? text;
+      String? key;
+      String? label;
+      String? tooltip;
+      List<String> actions = [];
+      Map<String, dynamic>? selector;
+      Map<String, dynamic> state = {};
+
+      // Get widget key
+      if (widget.key is ValueKey<String>) {
+        key = (widget.key as ValueKey<String>).value;
+      }
+
+      // Identify widget type and available actions
+      if (widget is ElevatedButton ||
+          widget is TextButton ||
+          widget is OutlinedButton ||
+          widget is IconButton ||
+          widget is FloatingActionButton) {
+        type = widget.runtimeType.toString();
+        text = _extractTextFrom(element);
+        actions = ['tap', 'long_press'];
+        
+        // Determine best selector
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else if (text != null && text.isNotEmpty) {
+          selector = {'by': 'text', 'value': text};
+        } else {
+          // Fallback to type-based selector with index
+          final index = elementCounts[type] ?? 0;
+          selector = {'by': 'type', 'value': type, 'index': index};
+        }
+
+        // Get button state
+        bool enabled = true;
+        if (widget is ElevatedButton) {
+          enabled = widget.onPressed != null;
+        } else if (widget is TextButton) {
+          enabled = widget.onPressed != null;
+        } else if (widget is OutlinedButton) {
+          enabled = widget.onPressed != null;
+        } else if (widget is IconButton) {
+          enabled = widget.onPressed != null;
+        } else if (widget is FloatingActionButton) {
+          enabled = widget.onPressed != null;
+        }
+        state['enabled'] = enabled;
+        
+      } else if (widget is TextField || widget is TextFormField) {
+        type = widget.runtimeType.toString();
+        actions = ['tap', 'enter_text'];
+        
+        // Get field label/hint
+        if (widget is TextField) {
+          label = widget.decoration?.labelText ?? 
+                  widget.decoration?.hintText;
+        } else if (widget is TextFormField) {
+          // TextFormField doesn't have direct decoration access
+          // We'll extract label from child TextField if possible
+          label = 'Text Field'; // Default label for TextFormField
+        }
+        
+        // Determine best selector
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else if (label != null && label.isNotEmpty) {
+          selector = {'by': 'label', 'value': label};
+        } else {
+          final index = elementCounts['TextField'] ?? 0;
+          selector = {'by': 'type', 'value': 'TextField', 'index': index};
+        }
+
+        // Get current text value
+        final currentValue = _getTextFieldValueByElement(element);
+        state['currentValue'] = currentValue ?? '';
+        state['enabled'] = true; // TextFields are typically enabled
+        
+      } else if (widget is Checkbox) {
+        type = 'Checkbox';
+        actions = ['tap'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else {
+          final index = elementCounts['Checkbox'] ?? 0;
+          selector = {'by': 'type', 'value': 'Checkbox', 'index': index};
+        }
+        
+        state['checked'] = widget.value ?? false;
+        state['enabled'] = widget.onChanged != null;
+        
+      } else if (widget is Switch) {
+        type = 'Switch';
+        actions = ['tap'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else {
+          final index = elementCounts['Switch'] ?? 0;
+          selector = {'by': 'type', 'value': 'Switch', 'index': index};
+        }
+        
+        state['value'] = widget.value;
+        state['enabled'] = widget.onChanged != null;
+        
+      } else if (widget is Slider) {
+        type = 'Slider';
+        actions = ['tap', 'swipe'];  // Can tap to set value or swipe to adjust
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else {
+          final index = elementCounts['Slider'] ?? 0;
+          selector = {'by': 'type', 'value': 'Slider', 'index': index};
+        }
+        
+        state['value'] = widget.value;
+        state['min'] = widget.min;
+        state['max'] = widget.max;
+        state['enabled'] = widget.onChanged != null;
+        
+      } else if (widget is DropdownButton) {
+        type = 'DropdownButton';
+        actions = ['tap'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else {
+          final index = elementCounts['DropdownButton'] ?? 0;
+          selector = {'by': 'type', 'value': 'DropdownButton', 'index': index};
+        }
+        
+        // Get current value if available
+        state['value'] = widget.value?.toString() ?? '';
+        state['enabled'] = widget.onChanged != null;
+        
+      } else if (widget is InkWell && widget.onTap != null) {
+        type = 'InkWell';
+        text = _extractTextFrom(element);
+        actions = ['tap', 'long_press'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else if (text != null && text.isNotEmpty) {
+          selector = {'by': 'text', 'value': text};
+        } else {
+          final index = elementCounts['InkWell'] ?? 0;
+          selector = {'by': 'type', 'value': 'InkWell', 'index': index};
+        }
+        
+        state['enabled'] = true;
+        
+      } else if (widget is GestureDetector && widget.onTap != null) {
+        type = 'GestureDetector';
+        text = _extractTextFrom(element);
+        actions = ['tap', 'long_press'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else if (text != null && text.isNotEmpty) {
+          selector = {'by': 'text', 'value': text};
+        } else {
+          final index = elementCounts['GestureDetector'] ?? 0;
+          selector = {'by': 'type', 'value': 'GestureDetector', 'index': index};
+        }
+        
+        state['enabled'] = true;
+        
+      } else if (widget is ListTile) {
+        type = 'ListTile';
+        text = _extractTextFrom(element);
+        actions = ['tap', 'long_press'];
+        
+        if (key != null) {
+          selector = {'by': 'key', 'value': key};
+        } else if (text != null && text.isNotEmpty) {
+          selector = {'by': 'text', 'value': text};
+        } else {
+          final index = elementCounts['ListTile'] ?? 0;
+          selector = {'by': 'type', 'value': 'ListTile', 'index': index};
+        }
+        
+        state['enabled'] = widget.enabled;
+      }
+
+      // Extract tooltip
+      if (widget is Tooltip) {
+        tooltip = widget.message;
+      }
+
+      // If this is an interactive element, add it to results
+      if (type != null && selector != null) {
+        // Update element count for this type
+        final typeKey = type.contains('Button') ? 'Button' : type;
+        elementCounts[typeKey] = (elementCounts[typeKey] ?? 0) + 1;
+
+        final elementEntry = <String, dynamic>{
+          'type': type,
+          'selector': selector,
+          'actions': actions,
+        };
+
+        // Add optional fields
+        if (text != null && text.isNotEmpty) elementEntry['text'] = text;
+        if (label != null && label.isNotEmpty) elementEntry['label'] = label;
+        if (tooltip != null) elementEntry['tooltip'] = tooltip;
+        if (key != null) elementEntry['key'] = key; // For debugging/reference
+
+        // Add bounds and visibility info
+        final renderObject = element.renderObject;
+        if (renderObject is RenderBox && renderObject.hasSize) {
+          final offset = renderObject.localToGlobal(Offset.zero);
+          
+          // Helper function to safely convert double to int
+          int safeRound(double value) {
+            if (!value.isFinite) return 0;
+            return value.round();
+          }
+
+          elementEntry['bounds'] = {
+            'x': safeRound(offset.dx),
+            'y': safeRound(offset.dy),
+            'width': safeRound(renderObject.size.width),
+            'height': safeRound(renderObject.size.height),
+          };
+
+          final isVisible = renderObject.size.width > 0 && 
+                           renderObject.size.height > 0 &&
+                           offset.dx.isFinite && 
+                           offset.dy.isFinite;
+          state['visible'] = isVisible;
+        } else {
+          state['visible'] = false;
+        }
+
+        // Merge state information
+        elementEntry.addAll(state);
+
+        elements.add(elementEntry);
+      }
+
+      // Continue traversing children
+      element.visitChildren(visit);
+    }
+
+    final binding = WidgetsBinding.instance;
+    // ignore: invalid_use_of_protected_member
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
+    }
+
+    // Generate summary
+    final buttonCount = elementCounts['Button'] ?? 0;
+    final textFieldCount = (elementCounts['TextField'] ?? 0) + 
+                          (elementCounts['TextFormField'] ?? 0);
+    final checkboxCount = elementCounts['Checkbox'] ?? 0;
+    final switchCount = elementCounts['Switch'] ?? 0;
+    final sliderCount = elementCounts['Slider'] ?? 0;
+    final dropdownCount = elementCounts['DropdownButton'] ?? 0;
+    final inkWellCount = elementCounts['InkWell'] ?? 0;
+    final gestureCount = elementCounts['GestureDetector'] ?? 0;
+    final listTileCount = elementCounts['ListTile'] ?? 0;
+
+    final summaryParts = <String>[];
+    if (buttonCount > 0) summaryParts.add('$buttonCount buttons');
+    if (textFieldCount > 0) summaryParts.add('$textFieldCount text fields');
+    if (checkboxCount > 0) summaryParts.add('$checkboxCount checkboxes');
+    if (switchCount > 0) summaryParts.add('$switchCount switches');
+    if (sliderCount > 0) summaryParts.add('$sliderCount sliders');
+    if (dropdownCount > 0) summaryParts.add('$dropdownCount dropdowns');
+    if (inkWellCount > 0) summaryParts.add('$inkWellCount tappable areas');
+    if (gestureCount > 0) summaryParts.add('$gestureCount gesture detectors');
+    if (listTileCount > 0) summaryParts.add('$listTileCount list items');
+
+    final summary = summaryParts.isEmpty 
+        ? 'No interactive elements found'
+        : 'Found ${elements.length} interactive elements: ${summaryParts.join(', ')}';
+
+    return {
+      'elements': elements,
+      'summary': summary,
+    };
+  }
+
+  /// Helper method to get TextField value by Element (used by structured inspect)
+  static String? _getTextFieldValueByElement(Element element) {
+    EditableTextState? editableTextState;
+    
+    void findEditable(Element e) {
+      if (editableTextState != null) return;
+      if (e is StatefulElement && e.state is EditableTextState) {
+        editableTextState = e.state as EditableTextState;
+        return;
+      }
+      e.visitChildren(findEditable);
+    }
+
+    findEditable(element);
+
+    if (editableTextState != null) {
+      return editableTextState!.textEditingValue.text;
+    }
+
+    return null;
   }
 
   static Map<String, dynamic> _getWidgetTree({int maxDepth = 10}) {

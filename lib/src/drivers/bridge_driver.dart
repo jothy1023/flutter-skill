@@ -108,6 +108,12 @@ class BridgeDriver implements AppDriver {
   }
 
   @override
+  Future<Map<String, dynamic>> getInteractiveElementsStructured() async {
+    final result = await _call('inspect_interactive', {});
+    return result.cast<String, dynamic>();
+  }
+
+  @override
   Future<String?> takeScreenshot({double quality = 1.0, int? maxWidth}) async {
     final result = await _call('screenshot', {
       'quality': quality,

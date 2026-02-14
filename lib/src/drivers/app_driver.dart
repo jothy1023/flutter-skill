@@ -29,6 +29,9 @@ abstract class AppDriver {
   /// Return a list of interactive elements visible on screen.
   Future<List<dynamic>> getInteractiveElements({bool includePositions = true});
 
+  /// Return interactive elements with enhanced structure including actions and selectors.
+  Future<Map<String, dynamic>> getInteractiveElementsStructured();
+
   /// Capture a screenshot and return the base-64 encoded image data.
   Future<String?> takeScreenshot({double quality = 1.0, int? maxWidth});
 
