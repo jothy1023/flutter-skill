@@ -28,15 +28,10 @@
 ---
 
 <p align="center">
-  <strong>🎬 AI tests a full TikTok clone — 28 actions, zero test code</strong>
-</p>
-
-<p align="center">
-  <video src="https://github.com/ai-dashboad/flutter-skill/releases/download/v0.7.5/demo-tiktok.mp4" controls autoplay muted loop width="720">
-    <a href="https://github.com/ai-dashboad/flutter-skill/releases/download/v0.7.5/demo-tiktok.mp4">
-      <img src="assets/demo-cover.jpg" alt="▶️ Watch Demo Video" width="720">
-    </a>
-  </video>
+  <a href="https://github.com/ai-dashboad/flutter-skill/releases/download/v0.7.5/demo-tiktok.mp4">
+    <img src="assets/demo-cover.jpg" alt="▶️ Watch: AI tests a full TikTok clone — 28 actions, zero test code" width="720">
+  </a>
+  <br><strong>🎬 AI tests a full TikTok clone — 28 actions, zero test code (click to watch)</strong>
 </p>
 
 ```
@@ -175,7 +170,7 @@ Button("Submit") { submit() }.flutterSkillButton("submitBtn")
 
 **Android (Kotlin)** — Gradle:
 ```kotlin
-implementation("com.flutterskill:flutter-skill:0.7.4")
+implementation("com.flutterskill:flutter-skill:0.7.5")
 FlutterSkillBridge.start(this)
 ```
 
