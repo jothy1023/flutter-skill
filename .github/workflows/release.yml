@@ -525,16 +525,18 @@ jobs:
     needs: [prepare, create-release]
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Post to Discord (if webhook configured)
-        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        if: env.DISCORD_WEBHOOK_URL != ''
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           curl -H "Content-Type: application/json" \
             -d "{\"content\": \"🚀 **Flutter Skill v${VERSION}** released!\\n\\nAI agents → Flutter apps bridge via Dart VM Service\\n\\n📦 Install:\\n\`npm i -g flutter-skill\`\\n\`brew install ai-dashboad/flutter-skill/flutter-skill\`\\n\\n🔗 https://github.com/ai-dashboad/flutter-skill/releases/tag/v${VERSION}\"}" \
-            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+            "$DISCORD_WEBHOOK_URL"
 
       - name: Summary
         run: |
