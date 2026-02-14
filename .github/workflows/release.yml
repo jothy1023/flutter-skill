@@ -483,6 +483,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Publish to Open VSX Registry
+  publish-openvsx:
+    needs: [prepare, sync-docs]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: vscode-extension
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download synced docs
+        uses: actions/download-artifact@v4
+        with:
+          name: synced-docs
+          path: .
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install ovsx
+        run: npm install -g @vscode/vsce ovsx
+
+      - name: Package extension
+        run: vsce package
+
+      - name: Publish to Open VSX
+        run: ovsx publish *.vsix -p ${{ secrets.OVSX_TOKEN }}
+
   # Publish to MCP Registry
   publish-mcp-registry:
     needs: [prepare, publish-npm]  # Wait for npm publish first
