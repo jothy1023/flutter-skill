@@ -30,7 +30,103 @@
   // Helpers
   // ---------------------------------------------------------------
 
-  /** Find the best element matching key (data-testid / id), visible text, or semantic ref. */
+  /** Collect all semantics roots (shadow DOMs under flt-glass-pane, etc.) */
+  function getFlutterSemanticsRoots() {
+    var roots = [];
+    // Flutter 3.x: flt-glass-pane with shadow root containing flt-semantics
+    var glassPane = document.querySelector('flt-glass-pane');
+    if (glassPane && glassPane.shadowRoot) {
+      roots.push(glassPane.shadowRoot);
+    }
+    // Flutter 3.22+: may use <flutter-view> with shadow root
+    var flutterViews = document.querySelectorAll('flutter-view');
+    for (var i = 0; i < flutterViews.length; i++) {
+      if (flutterViews[i].shadowRoot) roots.push(flutterViews[i].shadowRoot);
+    }
+    // Also search the main document (HTML renderer or older Flutter)
+    roots.push(document);
+    return roots;
+  }
+
+  /** Query across all Flutter semantics roots (including shadow DOMs). */
+  function querySemanticsAll(selector) {
+    var roots = getFlutterSemanticsRoots();
+    var results = [];
+    for (var i = 0; i < roots.length; i++) {
+      try {
+        var nodes = roots[i].querySelectorAll(selector);
+        for (var j = 0; j < nodes.length; j++) results.push(nodes[j]);
+      } catch (e) { /* selector may not be supported in shadow root */ }
+    }
+    return results;
+  }
+
+  /** Query first match across all Flutter semantics roots. */
+  function querySemantics(selector) {
+    var roots = getFlutterSemanticsRoots();
+    for (var i = 0; i < roots.length; i++) {
+      try {
+        var el = roots[i].querySelector(selector);
+        if (el) return el;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  /** Call the Dart-side bridge if available (for Flutter Web apps with FlutterSkillBinding). */
+  function callDartBridge(method, params) {
+    if (typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      try {
+        var result = window.__FLUTTER_SKILL_DART_CALL__(method, JSON.stringify(params));
+        return JSON.parse(result);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /** Find a Flutter semantics element by key name. */
+  function findFlutterSemanticsElement(key) {
+    // 1. flt-semantics-identifier attribute (Flutter 3.19+)
+    var el = querySemantics('[flt-semantics-identifier="' + key + '"]');
+    if (el) return el;
+
+    // 2. aria-label matching the key
+    el = querySemantics('[aria-label="' + key + '"]');
+    if (el) return el;
+
+    // 3. id attribute matching the key (some Flutter versions)
+    el = querySemantics('[id="' + key + '"]');
+    if (el) return el;
+
+    // 4. data-semantics-identifier (alternative attribute name)
+    el = querySemantics('[data-semantics-identifier="' + key + '"]');
+    if (el) return el;
+
+    // 5. Walk all flt-semantics nodes and check various attributes
+    var semanticsNodes = querySemanticsAll('flt-semantics, [role]');
+    for (var i = 0; i < semanticsNodes.length; i++) {
+      var node = semanticsNodes[i];
+      // Check aria-label with flexible matching (key may have underscores, label may have spaces)
+      var label = node.getAttribute('aria-label') || '';
+      var normalizedKey = key.replace(/_/g, ' ');
+      if (label === key || label === normalizedKey ||
+          label.toLowerCase() === key.toLowerCase() ||
+          label.toLowerCase() === normalizedKey.toLowerCase()) {
+        return node;
+      }
+      // Check any attribute containing the key
+      if (node.getAttribute('flt-semantics-identifier') === key ||
+          node.getAttribute('data-key') === key) {
+        return node;
+      }
+    }
+
+    return null;
+  }
+
+  /** Find the best element matching key (data-testid / id / Flutter semantics), visible text, or semantic ref. */
   function findElement(params) {
     if (params.selector) {
       var el = document.querySelector(params.selector);
@@ -43,17 +139,22 @@
     }
     
     if (params.key) {
-      // data-testid first, then id
+      // Standard web: data-testid first, then id
       var el =
         document.querySelector('[data-testid="' + params.key + '"]') ||
         document.getElementById(params.key);
-      return el || null;
+      if (el) return el;
+
+      // Flutter Web: search semantics tree (shadow DOM, flt-semantics nodes)
+      el = findFlutterSemanticsElement(params.key);
+      if (el) return el;
+
+      return null;
     }
     if (params.text) {
-      // Walk visible elements looking for matching text
-      var all = document.querySelectorAll(
-        "button, a, input, textarea, select, [role=button], label, span, p, h1, h2, h3, h4, h5, h6, li, td, th, div"
-      );
+      // Walk visible elements looking for matching text (including Flutter semantics)
+      var allSelectors = "button, a, input, textarea, select, [role=button], label, span, p, h1, h2, h3, h4, h5, h6, li, td, th, div";
+      var all = document.querySelectorAll(allSelectors);
       for (var i = 0; i < all.length; i++) {
         var node = all[i];
         if (
@@ -61,6 +162,16 @@
           node.textContent &&
           node.textContent.trim().indexOf(params.text) !== -1
         ) {
+          return node;
+        }
+      }
+      // Also search Flutter semantics tree for text
+      var semanticsNodes = querySemanticsAll('flt-semantics, [role]');
+      for (var i = 0; i < semanticsNodes.length; i++) {
+        var node = semanticsNodes[i];
+        var label = node.getAttribute('aria-label') || '';
+        var text = node.textContent || '';
+        if (label.indexOf(params.text) !== -1 || text.indexOf(params.text) !== -1) {
           return node;
         }
       }
@@ -140,14 +251,37 @@
     return document.elementFromPoint(centerX, centerY);
   }
 
+  /** Check if an element is a Flutter semantics node. */
+  function isFlutterSemanticsElement(el) {
+    if (!el || !el.tagName) return false;
+    var tag = el.tagName.toLowerCase();
+    return tag === 'flt-semantics' || tag === 'flt-semantics-container' ||
+           tag === 'flt-semantics-img' || tag === 'flt-semantics-text-field' ||
+           (el.getRootNode && el.getRootNode() !== document);
+  }
+
+  /** Dispatch tap events at the center of an element (for Flutter semantics). */
+  function dispatchTapOnElement(el) {
+    var rect = el.getBoundingClientRect();
+    var cx = rect.x + rect.width / 2;
+    var cy = rect.y + rect.height / 2;
+    var opts = { clientX: cx, clientY: cy, bubbles: true, composed: true };
+    el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    el.dispatchEvent(new PointerEvent('pointerup', opts));
+    el.dispatchEvent(new MouseEvent('click', opts));
+  }
+
   /** Build an element descriptor object. */
   function describeElement(el) {
     var rect = el.getBoundingClientRect();
+    var text = (el.textContent || "").trim().substring(0, 200);
+    if (!text) text = (el.getAttribute('aria-label') || "").substring(0, 200);
+    var id = el.id || el.getAttribute('flt-semantics-identifier') || null;
     return {
       tag: el.tagName.toLowerCase(),
-      id: el.id || null,
-      testId: el.getAttribute("data-testid") || null,
-      text: (el.textContent || "").trim().substring(0, 200),
+      id: id,
+      testId: el.getAttribute("data-testid") || el.getAttribute("flt-semantics-identifier") || null,
+      text: text,
       type: el.getAttribute("type") || null,
       role: el.getAttribute("role") || null,
       bounds: {
@@ -156,7 +290,7 @@
         width: Math.round(rect.width),
         height: Math.round(rect.height),
       },
-      visible: el.offsetParent !== null,
+      visible: el.offsetParent !== null || isFlutterSemanticsElement(el),
     };
   }
 
@@ -177,9 +311,23 @@
       "[data-testid], [onclick]";
     var nodes = document.querySelectorAll(selectors);
     var elements = [];
+    var seen = new Set();
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (el.offsetParent === null && el.tagName !== "INPUT") continue; // hidden
+      seen.add(el);
+      elements.push(describeElement(el));
+    }
+    // Also include Flutter semantics elements from shadow DOM
+    var semanticsNodes = querySemanticsAll('[role], flt-semantics, [aria-label]');
+    for (var i = 0; i < semanticsNodes.length; i++) {
+      var el = semanticsNodes[i];
+      if (seen.has(el)) continue;
+      // Only include elements with meaningful content
+      var label = el.getAttribute('aria-label');
+      var role = el.getAttribute('role');
+      if (!label && !role) continue;
+      seen.add(el);
       elements.push(describeElement(el));
     }
     return { elements: elements };
@@ -280,10 +428,21 @@
       "[role=textbox], [role=checkbox], [role=radio], [role=tab], [role=switch], " +
       "[role=slider], [onclick], li[onclick]";
     var nodes = document.querySelectorAll(selectors);
+    // Also gather Flutter semantics interactive elements
+    var semanticsInteractive = querySemanticsAll(
+      '[role=button], [role=textbox], [role=checkbox], [role=radio], [role=tab], ' +
+      '[role=switch], [role=slider], [role=link], flt-semantics[aria-label]'
+    );
+    var allNodes = [];
+    var seen = new Set();
+    for (var i = 0; i < nodes.length; i++) { allNodes.push(nodes[i]); seen.add(nodes[i]); }
+    for (var i = 0; i < semanticsInteractive.length; i++) {
+      if (!seen.has(semanticsInteractive[i])) { allNodes.push(semanticsInteractive[i]); seen.add(semanticsInteractive[i]); }
+    }
 
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (el.offsetParent !== null || el.tagName === "INPUT") { // visible or input
+    for (var i = 0; i < allNodes.length; i++) {
+      var el = allNodes[i];
+      if (el.offsetParent !== null || el.tagName === "INPUT" || isFlutterSemanticsElement(el)) { // visible or input or semantics
         var elementType = getElementType(el);
         var refId = generateSemanticRefId(el, elementType);
         var rect = el.getBoundingClientRect();
@@ -330,33 +489,95 @@
   };
 
   methods.tap = function (params) {
+    // Try Dart bridge first for key-based lookups (Flutter Web)
+    if (params.key && typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      var dartResult = callDartBridge('tap', params);
+      if (dartResult && dartResult.success) return dartResult;
+    }
     var el = findElement(params);
     if (!el) return { success: false, message: "Element not found" };
-    el.click();
+    // For Flutter semantics elements, dispatch pointer events at center of bounds
+    // since .click() may not propagate through the canvas
+    if (isFlutterSemanticsElement(el)) {
+      dispatchTapOnElement(el);
+    } else {
+      el.click();
+    }
     return { success: true, message: "Tapped" };
   };
 
   methods.enter_text = function (params) {
+    // Try Dart bridge first for key-based lookups (Flutter Web)
+    if (params.key && typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      var dartResult = callDartBridge('enter_text', params);
+      if (dartResult && dartResult.success) return dartResult;
+    }
     var el = findElement({ 
       key: params.key, 
       selector: params.selector,
-      ref: params.ref 
+      ref: params.ref,
+      text: params.text_locator || undefined
     });
     if (!el) return { success: false, message: "Element not found" };
+
+    // For Flutter semantics text fields, find the actual input inside or nearby
+    if (isFlutterSemanticsElement(el)) {
+      // Flutter creates real <input> or <textarea> elements for text fields
+      var realInput = el.querySelector('input, textarea');
+      if (!realInput) {
+        // Try sibling or nearby input in the semantics tree
+        var parent = el.parentElement;
+        if (parent) realInput = parent.querySelector('input, textarea');
+      }
+      if (!realInput) {
+        // Try finding input in the shadow root near this element
+        var root = el.getRootNode();
+        if (root && root !== document) {
+          var inputs = root.querySelectorAll('input, textarea');
+          // Find the closest input by position
+          var rect = el.getBoundingClientRect();
+          var cx = rect.x + rect.width / 2;
+          var cy = rect.y + rect.height / 2;
+          var bestDist = Infinity;
+          for (var i = 0; i < inputs.length; i++) {
+            var ir = inputs[i].getBoundingClientRect();
+            var dx = (ir.x + ir.width / 2) - cx;
+            var dy = (ir.y + ir.height / 2) - cy;
+            var d = dx * dx + dy * dy;
+            if (d < bestDist) { bestDist = d; realInput = inputs[i]; }
+          }
+        }
+      }
+      if (realInput) {
+        el = realInput;
+      } else {
+        // Last resort: tap to focus, then type via keyboard events
+        dispatchTapOnElement(el);
+        // Small delay would be needed but we're synchronous — try dispatching input events
+        return { success: true, message: "Tapped text field (no real input found)" };
+      }
+    }
+
     // Focus and set value — pick the correct prototype for React/Vue change detection
     el.focus();
-    var proto =
-      el.tagName === "TEXTAREA"
-        ? window.HTMLTextAreaElement.prototype
-        : window.HTMLInputElement.prototype;
-    var nativeSetter = Object.getOwnPropertyDescriptor(proto, "value");
-    if (nativeSetter && nativeSetter.set) {
-      nativeSetter.set.call(el, params.text);
+    var tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") {
+      var proto =
+        tag === "TEXTAREA"
+          ? window.HTMLTextAreaElement.prototype
+          : window.HTMLInputElement.prototype;
+      var nativeSetter = Object.getOwnPropertyDescriptor(proto, "value");
+      if (nativeSetter && nativeSetter.set) {
+        nativeSetter.set.call(el, params.text);
+      } else {
+        el.value = params.text;
+      }
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
     } else {
-      el.value = params.text;
+      // Non-input element: try setting textContent
+      el.textContent = params.text;
     }
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
     return { success: true, message: "Text entered" };
   };
 
@@ -429,21 +650,45 @@
   };
 
   methods.find_element = function (params) {
+    // Try Dart bridge first for key-based lookups (Flutter Web)
+    if (params.key && typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      var dartResult = callDartBridge('find_element', params);
+      if (dartResult && dartResult.found) return dartResult;
+    }
     var el = findElement(params);
     if (!el) return { found: false };
     return { found: true, element: describeElement(el) };
   };
 
   methods.get_text = function (params) {
+    // Try Dart bridge first for key-based lookups (Flutter Web)
+    if (params.key && typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      var dartResult = callDartBridge('get_text', params);
+      if (dartResult && dartResult.text != null) return dartResult;
+    }
     var el = findElement(params);
     if (!el) return { text: null };
     if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
       return { text: el.value };
     }
-    return { text: (el.textContent || "").trim() };
+    // For Flutter semantics elements, prefer aria-label over textContent
+    var text = (el.textContent || "").trim();
+    if (!text) {
+      text = el.getAttribute('aria-label') || '';
+    }
+    // For flt-semantics nodes, also check aria-valuenow/aria-valuetext
+    if (!text && el.tagName && el.tagName.toLowerCase() === 'flt-semantics') {
+      text = el.getAttribute('aria-valuetext') || el.getAttribute('aria-valuenow') || '';
+    }
+    return { text: text };
   };
 
   methods.wait_for_element = function (params) {
+    // Try Dart bridge first for key-based lookups (Flutter Web)
+    if (params.key && typeof window.__FLUTTER_SKILL_DART_CALL__ === 'function') {
+      var dartResult = callDartBridge('wait_for_element', params);
+      if (dartResult && dartResult.found) return dartResult;
+    }
     // Synchronous check — the proxy can retry with polling
     var el = findElement(params);
     return { found: !!el };
