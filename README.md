@@ -28,11 +28,10 @@
 ---
 
 <p align="center">
-  <a href="https://github.com/ai-dashboad/flutter-skill/releases/download/v0.7.5/demo-tiktok.mp4">
-    <img src="assets/demo-cover.jpg" alt="▶️ Watch: AI tests a full TikTok clone — 28 actions, zero test code" width="720">
-  </a>
-  <br><strong>🎬 AI tests a full TikTok clone — 28 actions, zero test code (click to watch)</strong>
+  <strong>🎬 AI tests a full TikTok clone — 28 actions, zero test code</strong>
 </p>
+
+https://github.com/user-attachments/assets/d4617c73-043f-424c-9a9a-1a61d4c2d3c6
 
 ```
 You: "Test the login flow — enter test@example.com and password123, tap Login, verify Dashboard"
