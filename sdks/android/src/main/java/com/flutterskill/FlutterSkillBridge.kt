@@ -395,17 +395,30 @@ object FlutterSkillBridge {
     // ---------------------------------------------------------------
 
     private fun handleJsonRpc(text: String): String {
-        return try {
-            val request = JSONObject(text)
-            val id = request.opt("id")
-            val method = request.optString("method", "")
-            val params = request.optJSONObject("params") ?: JSONObject()
+        val request: JSONObject
+        try {
+            request = JSONObject(text)
+        } catch (e: Exception) {
+            Log.e(TAG, "JSON-RPC parse error: ${e.message}")
+            return buildRpcError(null, -32700, "Parse error: ${e.message}")
+        }
 
+        val id = request.opt("id")
+        val method = request.optString("method", "")
+
+        if (method.isEmpty()) {
+            return buildRpcError(id, -32600, "Invalid request")
+        }
+
+        return try {
+            val params = request.optJSONObject("params") ?: JSONObject()
             val result = dispatchMethod(method, params)
             buildRpcResponse(id, result)
+        } catch (e: NoSuchMethodException) {
+            buildRpcError(id, -32601, e.message ?: "Method not found")
         } catch (e: Exception) {
             Log.e(TAG, "JSON-RPC error: ${e.message}")
-            buildRpcError(null, -32603, "Internal error: ${e.message}")
+            buildRpcError(id, -32603, "Internal error: ${e.message}")
         }
     }
 
@@ -444,7 +457,7 @@ object FlutterSkillBridge {
             "get_logs"            -> handleGetLogs()
             "clear_logs"          -> handleClearLogs()
             "go_back"             -> handleGoBack()
-            else -> throw IllegalArgumentException("Unknown method: $method")
+            else -> throw NoSuchMethodException("Method not found: $method")
         }
     }
 
