@@ -74,7 +74,7 @@ object ViewTraversal {
     /**
      * Determine if a view is considered interactive (clickable, editable, etc.)
      */
-    private fun isInteractiveView(view: View): Boolean {
+    fun isInteractiveView(view: View): Boolean {
         // Clickable or long-clickable views
         if (view.isClickable || view.isLongClickable) return true
 
@@ -92,6 +92,164 @@ object ViewTraversal {
         if (view.tag is String) return true
 
         return false
+    }
+
+    /**
+     * Collect interactive elements with ref ID system for Android
+     * Returns a pair of (elements, summary)
+     */
+    fun collectInteractiveElementsStructured(root: View): Pair<List<Map<String, Any?>>, String> {
+        val elements = mutableListOf<Map<String, Any?>>()
+        val refCounts = mutableMapOf<String, Int>()
+
+        fun generateRefId(baseType: String): String {
+            val refPrefix = when (baseType) {
+                "button" -> "btn"
+                "text_field" -> "tf"
+                "checkbox", "switch" -> "sw"
+                "slider" -> "sl"
+                "tab" -> "tab"
+                "dropdown" -> "dd"
+                "link" -> "lnk"
+                "list_item" -> "item"
+                else -> "elem"
+            }
+
+            val count = refCounts[refPrefix] ?: 0
+            refCounts[refPrefix] = count + 1
+            return "${refPrefix}_$count"
+        }
+
+        fun getElementType(view: View, className: String): String = when {
+            view is EditText -> "text_field"
+            view is CheckBox -> "checkbox"
+            view is RadioButton -> "radio"
+            view is Switch -> "switch"
+            view is ToggleButton -> "toggle"
+            view is Button -> "button"
+            view is ImageButton -> "button"
+            view is SeekBar -> "slider"
+            view is RatingBar -> "rating"
+            view is Spinner -> "dropdown"
+            view is ImageView -> "image"
+            view is TextView -> "text"
+            className.contains("FloatingActionButton") -> "button"
+            className.contains("Chip") -> "chip"
+            className.contains("Card") -> "card"
+            className.contains("Tab") -> "tab"
+            view.isClickable -> "clickable"
+            else -> "view"
+        }
+
+        fun getBaseType(elementType: String): String = when (elementType) {
+            "button" -> "button"
+            "text_field" -> "text_field"
+            "checkbox", "switch", "toggle" -> "switch"
+            "slider" -> "slider"
+            "tab" -> "tab"
+            "dropdown" -> "dropdown"
+            "chip", "card", "clickable" -> "button"
+            else -> "button"
+        }
+
+        fun getActions(elementType: String): List<String> = when (elementType) {
+            "text_field" -> listOf("tap", "enter_text")
+            "slider" -> listOf("tap", "swipe")
+            else -> listOf("tap", "long_press")
+        }
+
+        fun getValue(view: View, elementType: String): Any? = when (elementType) {
+            "text_field" -> (view as? EditText)?.text?.toString() ?: ""
+            "checkbox" -> (view as? CheckBox)?.isChecked ?: false
+            "switch" -> when (view) {
+                is Switch -> view.isChecked
+                is ToggleButton -> view.isChecked
+                else -> false
+            }
+            "slider" -> (view as? SeekBar)?.progress ?: 0
+            "dropdown" -> (view as? Spinner)?.selectedItem?.toString() ?: ""
+            else -> null
+        }
+
+        fun walkView(view: View) {
+            // Skip invisible views
+            if (view.visibility != View.VISIBLE) return
+
+            val isInteractive = isInteractiveView(view)
+
+            if (isInteractive) {
+                val location = IntArray(2)
+                view.getLocationOnScreen(location)
+                val className = view.javaClass.simpleName
+                val elementType = getElementType(view, className)
+                val baseType = getBaseType(elementType)
+                val refId = generateRefId(baseType)
+
+                val element = mutableMapOf<String, Any?>(
+                    "ref" to refId,
+                    "type" to elementType,
+                    "actions" to getActions(elementType),
+                    "enabled" to view.isEnabled,
+                    "bounds" to mapOf(
+                        "x" to location[0],
+                        "y" to location[1],
+                        "w" to view.width,
+                        "h" to view.height,
+                    )
+                )
+
+                // Add optional fields
+                val text = extractText(view)
+                if (text != null && text.isNotEmpty()) {
+                    element["text"] = text
+                }
+
+                val contentDescription = view.contentDescription?.toString()
+                if (contentDescription != null && contentDescription.isNotEmpty()) {
+                    element["label"] = contentDescription
+                }
+
+                val value = getValue(view, elementType)
+                if (value != null) {
+                    element["value"] = value
+                }
+
+                elements.add(element)
+            }
+
+            // Recurse into children
+            if (view is ViewGroup) {
+                for (child in view.children) {
+                    walkView(child)
+                }
+            }
+        }
+
+        walkView(root)
+
+        // Generate summary
+        val counts = refCounts.entries
+        val summaryParts = counts.map { (prefix, count) ->
+            when (prefix) {
+                "btn" -> "$count button${if (count == 1) "" else "s"}"
+                "tf" -> "$count text field${if (count == 1) "" else "s"}"
+                "sw" -> "$count switch${if (count == 1) "" else "es"}"
+                "sl" -> "$count slider${if (count == 1) "" else "s"}"
+                "dd" -> "$count dropdown${if (count == 1) "" else "s"}"
+                "item" -> "$count list item${if (count == 1) "" else "s"}"
+                "lnk" -> "$count link${if (count == 1) "" else "s"}"
+                "tab" -> "$count tab${if (count == 1) "" else "s"}"
+                else -> "$count element${if (count == 1) "" else "s"}"
+            }
+        }
+
+        val summary = if (summaryParts.isEmpty()) {
+            "No interactive elements found"
+        } else {
+            "${elements.size} interactive: ${summaryParts.joinToString(", ")}"
+        }
+
+        return Pair(elements, summary)
     }
 
     /**

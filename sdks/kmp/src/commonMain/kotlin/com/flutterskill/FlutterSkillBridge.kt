@@ -28,8 +28,11 @@ data class JsonRpcResponse(
 
 interface PlatformBridge {
     suspend fun inspect(): JsonElement
+    suspend fun inspectInteractive(): JsonElement
     suspend fun tap(selector: String): JsonElement
+    suspend fun tapRef(refId: String): JsonElement
     suspend fun enterText(selector: String, text: String): JsonElement
+    suspend fun enterTextRef(refId: String, text: String): JsonElement
     suspend fun screenshot(): JsonElement
     suspend fun scroll(dx: Int, dy: Int): JsonElement
     suspend fun getText(selector: String): JsonElement
@@ -82,11 +85,24 @@ class FlutterSkillBridge(
             when (req.method) {
                 "health" -> buildJsonObject { put("status", "ok"); put("platform", "kmp") }
                 "inspect" -> platformBridge.inspect()
-                "tap" -> platformBridge.tap(params["selector"]?.jsonPrimitive?.content ?: "")
-                "enter_text" -> platformBridge.enterText(
-                    params["selector"]?.jsonPrimitive?.content ?: "",
-                    params["text"]?.jsonPrimitive?.content ?: ""
-                )
+                "inspect_interactive" -> platformBridge.inspectInteractive()
+                "tap" -> {
+                    val refId = params["ref"]?.jsonPrimitive?.contentOrNull
+                    if (refId != null) {
+                        platformBridge.tapRef(refId)
+                    } else {
+                        platformBridge.tap(params["selector"]?.jsonPrimitive?.content ?: "")
+                    }
+                }
+                "enter_text" -> {
+                    val refId = params["ref"]?.jsonPrimitive?.contentOrNull
+                    val text = params["text"]?.jsonPrimitive?.content ?: ""
+                    if (refId != null) {
+                        platformBridge.enterTextRef(refId, text)
+                    } else {
+                        platformBridge.enterText(params["selector"]?.jsonPrimitive?.content ?: "", text)
+                    }
+                }
                 "screenshot" -> platformBridge.screenshot()
                 "scroll" -> platformBridge.scroll(
                     params["dx"]?.jsonPrimitive?.int ?: 0,

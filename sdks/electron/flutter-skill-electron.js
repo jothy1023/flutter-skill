@@ -28,7 +28,7 @@ class FlutterSkillElectron {
           platform: 'electron',
           sdk_version: SDK_VERSION,
           capabilities: [
-            'initialize', 'inspect', 'tap', 'enter_text', 'get_text',
+            'initialize', 'inspect', 'inspect_interactive', 'tap', 'enter_text', 'get_text',
             'find_element', 'wait_for_element', 'scroll', 'swipe',
             'screenshot', 'go_back', 'get_logs', 'clear_logs',
           ],
@@ -89,6 +89,84 @@ class FlutterSkillElectron {
     return null;
   }
 
+  // Generate JavaScript code to find element by ref ID
+  _getRefResolutionScript() {
+    return `
+      function findElementByRef(targetRef) {
+        const refCounts = {};
+        let foundElement = null;
+        
+        function generateRefId(baseType) {
+          let refPrefix;
+          switch (baseType) {
+            case 'button': refPrefix = 'btn'; break;
+            case 'text_field': refPrefix = 'tf'; break;
+            case 'checkbox':
+            case 'switch': refPrefix = 'sw'; break;
+            case 'slider': refPrefix = 'sl'; break;
+            case 'tab': refPrefix = 'tab'; break;
+            case 'dropdown': refPrefix = 'dd'; break;
+            case 'link': refPrefix = 'lnk'; break;
+            case 'list_item': refPrefix = 'item'; break;
+            default: refPrefix = 'elem';
+          }
+          
+          const count = refCounts[refPrefix] || 0;
+          refCounts[refPrefix] = count + 1;
+          return refPrefix + '_' + count;
+        }
+        
+        function getElementType(el) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'button' || el.matches('[role="button"]') || el.onclick) return 'button';
+          if (tag === 'input') {
+            const t = el.type.toLowerCase();
+            if (t === 'checkbox') return 'checkbox';
+            if (t === 'radio') return 'radio';
+            if (['text', 'email', 'password', 'search', 'number', 'tel', 'url'].includes(t)) return 'text_field';
+            if (t === 'range') return 'slider';
+            return 'button';
+          }
+          if (tag === 'textarea') return 'text_field';
+          if (tag === 'select') return 'dropdown';
+          if (tag === 'a' && el.href) return 'link';
+          if (el.matches('[role="tab"]') || el.closest('[role="tablist"]')) return 'tab';
+          if (el.matches('[role="listitem"]') || el.matches('li')) return 'list_item';
+          if (el.matches('[role="switch"]')) return 'switch';
+          if (el.matches('[role="slider"]')) return 'slider';
+          return 'button';
+        }
+        
+        function walk(el) {
+          if (!el || el.nodeType !== 1 || foundElement) return;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden') return;
+
+          const isInteractive = el.matches('button, input, select, textarea, a[href], [role="button"], [onclick], [role="tab"], [role="switch"], [role="slider"], li[onclick]') || 
+                                el.onclick != null;
+
+          if (isInteractive) {
+            const type = getElementType(el);
+            const ref = generateRefId(type);
+            
+            if (ref === targetRef) {
+              foundElement = el;
+              return;
+            }
+          }
+
+          for (const child of el.children) {
+            walk(child);
+            if (foundElement) return;
+          }
+        }
+
+        walk(document.body);
+        return foundElement;
+      }
+    `;
+  }
+
   async _handle(method, params) {
     const win = this._getWindow();
 
@@ -103,6 +181,9 @@ class FlutterSkillElectron {
 
       case 'inspect':
         return this._inspect(win);
+
+      case 'inspect_interactive':
+        return this._inspectInteractive(win);
 
       case 'tap':
         return this._tap(win, params);
@@ -201,17 +282,199 @@ class FlutterSkillElectron {
     return { elements };
   }
 
+  async _inspectInteractive(win) {
+    if (!win) return { elements: [], summary: 'No window available' };
+    
+    const result = await win.webContents.executeJavaScript(`
+      (function() {
+        const elements = [];
+        const refCounts = {};
+        
+        // Generate ref ID according to the unified ref system
+        function generateRefId(baseType) {
+          let refPrefix;
+          switch (baseType) {
+            case 'button':
+              refPrefix = 'btn';
+              break;
+            case 'text_field':
+              refPrefix = 'tf';
+              break;
+            case 'checkbox':
+            case 'switch':
+              refPrefix = 'sw';
+              break;
+            case 'slider':
+              refPrefix = 'sl';
+              break;
+            case 'tab':
+              refPrefix = 'tab';
+              break;
+            case 'dropdown':
+              refPrefix = 'dd';
+              break;
+            case 'link':
+              refPrefix = 'lnk';
+              break;
+            case 'list_item':
+              refPrefix = 'item';
+              break;
+            default:
+              refPrefix = 'elem';
+          }
+          
+          const count = refCounts[refPrefix] || 0;
+          refCounts[refPrefix] = count + 1;
+          return refPrefix + '_' + count;
+        }
+        
+        function getElementType(el) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'button' || el.matches('[role="button"]') || el.onclick) return 'button';
+          if (tag === 'input') {
+            const t = el.type.toLowerCase();
+            if (t === 'checkbox') return 'checkbox';
+            if (t === 'radio') return 'radio';
+            if (['text', 'email', 'password', 'search', 'number', 'tel', 'url'].includes(t)) return 'text_field';
+            if (t === 'range') return 'slider';
+            return 'button'; // For other input types like submit, button
+          }
+          if (tag === 'textarea') return 'text_field';
+          if (tag === 'select') return 'dropdown';
+          if (tag === 'a' && el.href) return 'link';
+          if (el.matches('[role="tab"]') || el.closest('[role="tablist"]')) return 'tab';
+          if (el.matches('[role="listitem"]') || el.matches('li')) return 'list_item';
+          if (el.matches('[role="switch"]')) return 'switch';
+          if (el.matches('[role="slider"]')) return 'slider';
+          return 'button'; // Fallback for clickable elements
+        }
+        
+        function getActions(el, type) {
+          const actions = [];
+          if (type === 'text_field') {
+            actions.push('tap', 'enter_text');
+          } else if (type === 'slider') {
+            actions.push('tap', 'swipe');
+          } else {
+            actions.push('tap');
+            if (el.matches('button, [role="button"], a') || el.onclick) {
+              actions.push('long_press');
+            }
+          }
+          return actions;
+        }
+        
+        function getValue(el, type) {
+          if (type === 'text_field') {
+            return el.value || '';
+          } else if (type === 'checkbox' || type === 'switch') {
+            return el.checked || false;
+          } else if (type === 'dropdown') {
+            return el.value || el.selectedOptions[0]?.text || '';
+          } else if (type === 'slider') {
+            return parseFloat(el.value) || 0;
+          }
+          return undefined;
+        }
+        
+        function walk(el) {
+          if (!el || el.nodeType !== 1) return;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden') return;
+
+          const tag = el.tagName.toLowerCase();
+          const isInteractive = el.matches('button, input, select, textarea, a[href], [role="button"], [onclick], [role="tab"], [role="switch"], [role="slider"], li[onclick]') || 
+                                el.onclick != null;
+
+          if (isInteractive) {
+            const type = getElementType(el);
+            const rect = el.getBoundingClientRect();
+            const text = (el.textContent || el.value || el.alt || el.title || '').trim();
+            const label = el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('title') || '';
+            
+            // Generate ref ID
+            const ref = generateRefId(type);
+            
+            const element = {
+              ref: ref,
+              type: el.tagName + (el.type ? '[' + el.type + ']' : ''),
+              text: text.slice(0, 100) || null,
+              actions: getActions(el, type),
+              enabled: !el.disabled && !el.readOnly,
+              bounds: {
+                x: Math.round(rect.x),
+                y: Math.round(rect.y),
+                w: Math.round(rect.width),
+                h: Math.round(rect.height)
+              }
+            };
+
+            // Add optional fields
+            if (label) element.label = label;
+            const value = getValue(el, type);
+            if (value !== undefined) element.value = value;
+
+            elements.push(element);
+          }
+
+          // Recursively walk children
+          for (const child of el.children) {
+            walk(child);
+          }
+        }
+
+        walk(document.body);
+        
+        // Generate summary
+        const counts = Object.entries(refCounts);
+        const summaryParts = counts.map(([prefix, count]) => {
+          switch (prefix) {
+            case 'btn': return count + ' button' + (count === 1 ? '' : 's');
+            case 'tf': return count + ' text field' + (count === 1 ? '' : 's');
+            case 'sw': return count + ' switch' + (count === 1 ? '' : 'es');
+            case 'sl': return count + ' slider' + (count === 1 ? '' : 's');
+            case 'dd': return count + ' dropdown' + (count === 1 ? '' : 's');
+            case 'item': return count + ' list item' + (count === 1 ? '' : 's');
+            case 'lnk': return count + ' link' + (count === 1 ? '' : 's');
+            case 'tab': return count + ' tab' + (count === 1 ? '' : 's');
+            default: return count + ' element' + (count === 1 ? '' : 's');
+          }
+        });
+        
+        const summary = summaryParts.length === 0 ? 
+          'No interactive elements found' : 
+          elements.length + ' interactive: ' + summaryParts.join(', ');
+
+        return { elements, summary };
+      })();
+    `);
+    
+    return result;
+  }
+
   async _tap(win, params) {
     if (!win) return { success: false, message: 'No window' };
     const sel = this._resolveSelector(params);
     const textMatch = params.text;
+    const refId = params.ref;
 
     const result = await win.webContents.executeJavaScript(`
       (function() {
         let el = null;
-        if (${JSON.stringify(sel)}) {
+        
+        // Try ref ID first if provided
+        if (${JSON.stringify(refId)}) {
+          // Get ref to element mapping from inspect_interactive
+          ${this._getRefResolutionScript()}
+          el = findElementByRef(${JSON.stringify(refId)});
+        }
+        
+        // Fallback to selector
+        if (!el && ${JSON.stringify(sel)}) {
           el = document.querySelector(${JSON.stringify(sel || '')});
         }
+        
+        // Fallback to text search
         if (!el && ${JSON.stringify(textMatch)}) {
           const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
           while (tw.nextNode()) {
@@ -221,9 +484,10 @@ class FlutterSkillElectron {
             }
           }
         }
+        
         if (!el) return { success: false, message: 'Element not found' };
         el.click();
-        return { success: true };
+        return { success: true, method: ${JSON.stringify(refId ? 'ref' : sel ? 'selector' : 'text')} };
       })();
     `);
     return result;
@@ -233,17 +497,43 @@ class FlutterSkillElectron {
     if (!win) return { success: false, message: 'No window' };
     const sel = this._resolveSelector(params);
     const text = params.text || '';
-    if (!sel) return { success: false, message: 'Missing key/selector' };
+    const refId = params.ref;
+    
+    if (!sel && !refId) return { success: false, message: 'Missing key/selector/ref' };
 
     const result = await win.webContents.executeJavaScript(`
       (function() {
-        const el = document.querySelector(${JSON.stringify(sel)});
-        if (!el) return { success: false, message: 'Element not found: ${sel}' };
+        let el = null;
+        
+        // Try ref ID first if provided
+        if (${JSON.stringify(refId)}) {
+          ${this._getRefResolutionScript()}
+          el = findElementByRef(${JSON.stringify(refId)});
+        }
+        
+        // Fallback to selector
+        if (!el && ${JSON.stringify(sel)}) {
+          el = document.querySelector(${JSON.stringify(sel)});
+        }
+        
+        if (!el) return { success: false, message: 'Element not found' };
+        
+        // Check if element can accept text input
+        if (!el.matches('input, textarea, select') && !el.isContentEditable) {
+          return { success: false, message: 'Element is not a text input field' };
+        }
+        
         el.focus();
-        el.value = ${JSON.stringify(text)};
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        return { success: true };
+        if (el.matches('input, textarea')) {
+          el.value = ${JSON.stringify(text)};
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (el.isContentEditable) {
+          el.textContent = ${JSON.stringify(text)};
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        return { success: true, method: ${JSON.stringify(refId ? 'ref' : 'selector')} };
       })();
     `);
     return result;

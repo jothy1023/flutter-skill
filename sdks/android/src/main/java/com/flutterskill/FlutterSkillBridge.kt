@@ -63,7 +63,7 @@ object FlutterSkillBridge {
 
     // Capabilities advertised in health check
     private val capabilities = listOf(
-        "initialize", "screenshot", "inspect", "tap", "enter_text",
+        "initialize", "screenshot", "inspect", "inspect_interactive", "tap", "enter_text",
         "swipe", "scroll", "find_element", "get_text", "wait_for_element",
         "get_logs", "clear_logs", "go_back",
     )
@@ -430,19 +430,20 @@ object FlutterSkillBridge {
 
     private fun dispatchMethod(method: String, params: JSONObject): JSONObject {
         return when (method) {
-            "initialize"       -> handleInitialize()
-            "inspect"          -> handleInspect(params)
-            "tap"              -> handleTap(params)
-            "enter_text"       -> handleEnterText(params)
-            "swipe"            -> handleSwipe(params)
-            "scroll"           -> handleScroll(params)
-            "find_element"     -> handleFindElement(params)
-            "get_text"         -> handleGetText(params)
-            "wait_for_element" -> handleWaitForElement(params)
-            "screenshot"       -> handleScreenshot()
-            "get_logs"         -> handleGetLogs()
-            "clear_logs"       -> handleClearLogs()
-            "go_back"          -> handleGoBack()
+            "initialize"          -> handleInitialize()
+            "inspect"             -> handleInspect(params)
+            "inspect_interactive" -> handleInspectInteractive(params)
+            "tap"                 -> handleTap(params)
+            "enter_text"          -> handleEnterText(params)
+            "swipe"               -> handleSwipe(params)
+            "scroll"              -> handleScroll(params)
+            "find_element"        -> handleFindElement(params)
+            "get_text"            -> handleGetText(params)
+            "wait_for_element"    -> handleWaitForElement(params)
+            "screenshot"          -> handleScreenshot()
+            "get_logs"            -> handleGetLogs()
+            "clear_logs"          -> handleClearLogs()
+            "go_back"             -> handleGoBack()
             else -> throw IllegalArgumentException("Unknown method: $method")
         }
     }
@@ -480,12 +481,37 @@ object FlutterSkillBridge {
         }
     }
 
+    private fun handleInspectInteractive(params: JSONObject): JSONObject {
+        val activity = currentActivity
+            ?: return JSONObject().apply { 
+                put("elements", JSONArray())
+                put("summary", "No active activity")
+            }
+
+        val result = runOnMainThreadBlocking {
+            val rootView = activity.window.decorView.rootView
+            ViewTraversal.collectInteractiveElementsStructured(rootView)
+        }
+
+        val jsonElements = JSONArray()
+        for (el in result.first) {
+            jsonElements.put(mapToJsonObject(el))
+        }
+
+        return JSONObject().apply {
+            put("elements", jsonElements)
+            put("summary", result.second)
+        }
+    }
+
     private fun handleTap(params: JSONObject): JSONObject {
         val key = params.optString("key", "")
-        if (key.isEmpty()) {
+        val refId = params.optString("ref", "")
+        
+        if (key.isEmpty() && refId.isEmpty()) {
             return JSONObject().apply {
                 put("success", false)
-                put("message", "Missing 'key' parameter")
+                put("message", "Missing 'key' or 'ref' parameter")
             }
         }
 
@@ -495,30 +521,47 @@ object FlutterSkillBridge {
                 put("message", "No active activity")
             }
 
-        val success = runOnMainThreadBlocking {
+        val result = runOnMainThreadBlocking {
             val root = activity.window.decorView.rootView
-            val view = ViewTraversal.findByKey(root, key)
+            var view: View? = null
+            var method = "unknown"
+
+            // Try ref ID first if provided
+            if (refId.isNotEmpty()) {
+                view = findViewByRefId(root, refId)
+                method = "ref"
+            }
+
+            // Fallback to key if ref not found or not provided
+            if (view == null && key.isNotEmpty()) {
+                view = ViewTraversal.findByKey(root, key)
+                method = "key"
+            }
+
             if (view != null) {
                 view.performClick()
-                true
+                Pair(true, method)
             } else {
-                false
+                Pair(false, method)
             }
         }
 
         return JSONObject().apply {
-            put("success", success)
-            put("message", if (success) "Tapped" else "Element not found: $key")
+            put("success", result.first)
+            put("message", if (result.first) "Tapped via ${result.second}" else "Element not found")
+            put("method", result.second)
         }
     }
 
     private fun handleEnterText(params: JSONObject): JSONObject {
         val key = params.optString("key", "")
+        val refId = params.optString("ref", "")
         val text = params.optString("text", "")
-        if (key.isEmpty()) {
+        
+        if (key.isEmpty() && refId.isEmpty()) {
             return JSONObject().apply {
                 put("success", false)
-                put("message", "Missing 'key' parameter")
+                put("message", "Missing 'key' or 'ref' parameter")
             }
         }
 
@@ -528,22 +571,37 @@ object FlutterSkillBridge {
                 put("message", "No active activity")
             }
 
-        val success = runOnMainThreadBlocking {
+        val result = runOnMainThreadBlocking {
             val root = activity.window.decorView.rootView
-            val view = ViewTraversal.findByKey(root, key)
+            var view: View? = null
+            var method = "unknown"
+
+            // Try ref ID first if provided
+            if (refId.isNotEmpty()) {
+                view = findViewByRefId(root, refId)
+                method = "ref"
+            }
+
+            // Fallback to key if ref not found or not provided
+            if (view == null && key.isNotEmpty()) {
+                view = ViewTraversal.findByKey(root, key)
+                method = "key"
+            }
+
             if (view is EditText) {
                 view.requestFocus()
                 view.setText(text)
                 view.setSelection(text.length)
-                true
+                Pair(true, method)
             } else {
-                false
+                Pair(false, method)
             }
         }
 
         return JSONObject().apply {
-            put("success", success)
-            put("message", if (success) "Text entered" else "EditText not found: $key")
+            put("success", result.first)
+            put("message", if (result.first) "Text entered via ${result.second}" else "EditText not found")
+            put("method", result.second)
         }
     }
 
@@ -932,6 +990,71 @@ object FlutterSkillBridge {
         return JSONObject().apply {
             put("success", true)
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Ref ID resolution utilities
+    // ---------------------------------------------------------------
+
+    /**
+     * Find a view by ref ID from the structured inspect data
+     */
+    private fun findViewByRefId(root: View, targetRefId: String): View? {
+        val result = ViewTraversal.collectInteractiveElementsStructured(root)
+        val elements = result.first
+        
+        // Find the element with matching ref ID and get its bounds
+        val targetElement = elements.find { it["ref"] == targetRefId } ?: return null
+        val bounds = targetElement["bounds"] as? Map<String, Any?> ?: return null
+        
+        val x = (bounds["x"] as? Int) ?: return null
+        val y = (bounds["y"] as? Int) ?: return null
+        val w = (bounds["w"] as? Int) ?: return null
+        val h = (bounds["h"] as? Int) ?: return null
+        
+        if (w <= 0 || h <= 0) return null
+        
+        val centerX = x + w / 2
+        val centerY = y + h / 2
+        
+        // Find the view at the center position
+        return findViewAtPosition(root, centerX, centerY)
+    }
+
+    /**
+     * Find view at a specific screen position
+     */
+    private fun findViewAtPosition(root: View, targetX: Int, targetY: Int): View? {
+        fun checkView(view: View): View? {
+            if (view.visibility != View.VISIBLE) return null
+            
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            val left = location[0]
+            val top = location[1]
+            val right = left + view.width
+            val bottom = top + view.height
+            
+            if (targetX in left..right && targetY in top..bottom) {
+                // Check children first (they're on top)
+                if (view is ViewGroup) {
+                    for (i in view.childCount - 1 downTo 0) {
+                        val child = view.getChildAt(i)
+                        val found = checkView(child)
+                        if (found != null) return found
+                    }
+                }
+                
+                // Return this view if it's interactive
+                if (ViewTraversal.isInteractiveView(view)) {
+                    return view
+                }
+            }
+            
+            return null
+        }
+        
+        return checkView(root)
     }
 
     // ---------------------------------------------------------------

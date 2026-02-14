@@ -160,6 +160,183 @@ function _getAccessibilityTree() {
 }
 
 /**
+ * Get interactive elements with ref ID system for React Native
+ */
+function _getInteractiveElementsStructured() {
+  return new Promise((resolve) => {
+    const elements = [];
+    const promises = [];
+    const refCounts = {};
+
+    function generateRefId(baseType) {
+      let refPrefix;
+      switch (baseType) {
+        case 'button':
+          refPrefix = 'btn';
+          break;
+        case 'text_field':
+          refPrefix = 'tf';
+          break;
+        case 'checkbox':
+        case 'switch':
+          refPrefix = 'sw';
+          break;
+        case 'slider':
+          refPrefix = 'sl';
+          break;
+        case 'tab':
+          refPrefix = 'tab';
+          break;
+        case 'dropdown':
+          refPrefix = 'dd';
+          break;
+        case 'link':
+          refPrefix = 'lnk';
+          break;
+        case 'list_item':
+          refPrefix = 'item';
+          break;
+        default:
+          refPrefix = 'elem';
+      }
+
+      const count = refCounts[refPrefix] || 0;
+      refCounts[refPrefix] = count + 1;
+      return refPrefix + '_' + count;
+    }
+
+    function getElementType(entry) {
+      const accessibilityRole = entry.accessibilityRole;
+      const type = entry.type || 'View';
+
+      if (accessibilityRole === 'button' || type.includes('Button')) return 'button';
+      if (accessibilityRole === 'search' || type.includes('TextInput')) return 'text_field';
+      if (accessibilityRole === 'switch') return 'switch';
+      if (accessibilityRole === 'checkbox') return 'checkbox';
+      if (accessibilityRole === 'radio') return 'radio';
+      if (accessibilityRole === 'adjustable' || type.includes('Slider')) return 'slider';
+      if (accessibilityRole === 'tab') return 'tab';
+      if (accessibilityRole === 'link') return 'link';
+      if (type.includes('TouchableOpacity') || type.includes('Touchable')) return 'button';
+      if (type.includes('Picker')) return 'dropdown';
+
+      // Check for interactive properties
+      if (entry.onPress || entry.onLongPress) return 'button';
+      
+      return 'button'; // Default for interactive elements
+    }
+
+    function getActions(entry, elementType) {
+      const actions = [];
+      
+      if (elementType === 'text_field') {
+        actions.push('tap', 'enter_text');
+      } else if (elementType === 'slider') {
+        actions.push('tap', 'swipe');
+      } else {
+        actions.push('tap');
+        if (entry.onLongPress) {
+          actions.push('long_press');
+        }
+      }
+      
+      return actions;
+    }
+
+    function getValue(entry, elementType) {
+      if (elementType === 'text_field') {
+        return entry.value || '';
+      } else if (elementType === 'switch' || elementType === 'checkbox') {
+        return entry.selected || entry.checked || false;
+      } else if (elementType === 'slider') {
+        return entry.value || 0;
+      }
+      return undefined;
+    }
+
+    _componentRegistry.forEach((entry, testID) => {
+      const ref = entry.ref;
+      if (!ref) return;
+
+      // Check if element is interactive
+      const hasInteractiveRole = ['button', 'link', 'switch', 'checkbox', 'radio', 'search', 'adjustable', 'tab'].includes(entry.accessibilityRole);
+      const hasInteractiveCallback = entry.onPress || entry.onLongPress || entry.interactive !== false;
+      const isTextInput = entry.type && (entry.type.includes('TextInput') || entry.accessibilityRole === 'search');
+
+      if (!hasInteractiveRole && !hasInteractiveCallback && !isTextInput) return;
+
+      const nodeHandle = findNodeHandle(ref);
+      if (!nodeHandle) return;
+
+      promises.push(
+        new Promise((resolveElement) => {
+          UIManager.measure(nodeHandle, (x, y, width, height, pageX, pageY) => {
+            if (width != null && height != null && width > 0 && height > 0) {
+              const elementType = getElementType(entry);
+              const refId = generateRefId(elementType);
+
+              const element = {
+                ref: refId,
+                type: entry.type || 'View',
+                text: entry.text || entry.accessibilityLabel || null,
+                actions: getActions(entry, elementType),
+                enabled: entry.enabled !== false,
+                bounds: {
+                  x: Math.round(pageX || 0),
+                  y: Math.round(pageY || 0),
+                  w: Math.round(width),
+                  h: Math.round(height),
+                }
+              };
+
+              // Add optional fields
+              if (entry.accessibilityLabel && entry.accessibilityLabel !== entry.text) {
+                element.label = entry.accessibilityLabel;
+              }
+              
+              const value = getValue(entry, elementType);
+              if (value !== undefined) {
+                element.value = value;
+              }
+
+              // Store original testID for internal use
+              element._testID = testID;
+              
+              elements.push(element);
+            }
+            resolveElement();
+          });
+        })
+      );
+    });
+
+    Promise.all(promises).then(() => {
+      // Generate summary
+      const counts = Object.entries(refCounts);
+      const summaryParts = counts.map(([prefix, count]) => {
+        switch (prefix) {
+          case 'btn': return count + ' button' + (count === 1 ? '' : 's');
+          case 'tf': return count + ' text field' + (count === 1 ? '' : 's');
+          case 'sw': return count + ' switch' + (count === 1 ? '' : 'es');
+          case 'sl': return count + ' slider' + (count === 1 ? '' : 's');
+          case 'dd': return count + ' dropdown' + (count === 1 ? '' : 's');
+          case 'item': return count + ' list item' + (count === 1 ? '' : 's');
+          case 'lnk': return count + ' link' + (count === 1 ? '' : 's');
+          case 'tab': return count + ' tab' + (count === 1 ? '' : 's');
+          default: return count + ' element' + (count === 1 ? '' : 's');
+        }
+      });
+
+      const summary = summaryParts.length === 0 ? 
+        'No interactive elements found' : 
+        elements.length + ' interactive: ' + summaryParts.join(', ');
+
+      resolve({ elements, summary });
+    });
+  });
+}
+
+/**
  * Find a single element by testID, text, or accessibilityLabel.
  */
 function _findElement(params) {
@@ -232,18 +409,46 @@ methods.inspect = function (_params) {
   });
 };
 
+methods.inspect_interactive = function (_params) {
+  return _getInteractiveElementsStructured().then((result) => {
+    return result;
+  });
+};
+
 methods.tap = function (params) {
+  // Support ref parameter
+  if (params.ref) {
+    return _getInteractiveElementsStructured().then((structured) => {
+      const targetElement = structured.elements.find(el => el.ref === params.ref);
+      if (!targetElement) {
+        return { success: false, message: 'Element with ref "' + params.ref + '" not found' };
+      }
+      
+      // Find the original component by testID
+      const testID = targetElement._testID;
+      const entry = _componentRegistry.get(testID);
+      if (!entry || !entry.ref) {
+        return { success: false, message: 'Component reference lost for ref "' + params.ref + '"' };
+      }
+      
+      return _tapComponent(entry.ref, 'ref');
+    });
+  }
+
+  // Original logic for key/testID/text
   const entry = _findElement(params);
   if (!entry || !entry.ref) {
     return Promise.resolve({ success: false, message: 'Element not found' });
   }
 
-  // Try calling onPress / onPressIn / props.onPress
-  const component = entry.ref;
+  return _tapComponent(entry.ref, 'key');
+};
 
+function _tapComponent(component, method) {
+  // Try calling onPress / onPressIn / props.onPress
   if (component.props && typeof component.props.onPress === 'function') {
     component.props.onPress();
-    return Promise.resolve({ success: true, message: 'Tapped via onPress' });
+    return Promise.resolve({ success: true, message: 'Tapped via onPress', method: method });
   }
 
   // Fallback: dispatch accessibility tap action
@@ -257,6 +462,7 @@ methods.tap = function (params) {
     return Promise.resolve({
       success: true,
       message: 'Tapped via accessibility action',
+      method: method,
     });
   }
 
@@ -264,34 +470,57 @@ methods.tap = function (params) {
     success: false,
     message: 'Could not trigger tap on element',
   });
-};
+}
 
 methods.enter_text = function (params) {
+  const text = params.text || '';
+
+  // Support ref parameter
+  if (params.ref) {
+    return _getInteractiveElementsStructured().then((structured) => {
+      const targetElement = structured.elements.find(el => el.ref === params.ref);
+      if (!targetElement) {
+        return { success: false, message: 'Element with ref "' + params.ref + '" not found' };
+      }
+      
+      // Find the original component by testID
+      const testID = targetElement._testID;
+      const entry = _componentRegistry.get(testID);
+      if (!entry || !entry.ref) {
+        return { success: false, message: 'Component reference lost for ref "' + params.ref + '"' };
+      }
+      
+      return _enterTextIntoComponent(entry.ref, text, 'ref');
+    });
+  }
+
+  // Original logic for key/testID
   const entry = _findElement({ key: params.key, testID: params.testID });
   if (!entry || !entry.ref) {
     return Promise.resolve({ success: false, message: 'Element not found' });
   }
 
-  const component = entry.ref;
-  const text = params.text || '';
+  return _enterTextIntoComponent(entry.ref, text, 'key');
+};
 
+function _enterTextIntoComponent(component, text, method) {
   // TextInput components: call onChangeText or set nativeProps
   if (component.props && typeof component.props.onChangeText === 'function') {
     component.props.onChangeText(text);
-    return Promise.resolve({ success: true, message: 'Text entered via onChangeText' });
+    return Promise.resolve({ success: true, message: 'Text entered via onChangeText', method: method });
   }
 
   // Try setNativeProps for uncontrolled TextInput
   if (typeof component.setNativeProps === 'function') {
     component.setNativeProps({ text: text });
-    return Promise.resolve({ success: true, message: 'Text entered via setNativeProps' });
+    return Promise.resolve({ success: true, message: 'Text entered via setNativeProps', method: method });
   }
 
   return Promise.resolve({
     success: false,
     message: 'Could not enter text: no onChangeText or setNativeProps available',
   });
-};
+}
 
 methods.swipe = function (params) {
   const direction = params.direction || 'up';
@@ -500,6 +729,7 @@ function _getCapabilities() {
   const caps = [
     'initialize',
     'inspect',
+    'inspect_interactive',
     'tap',
     'enter_text',
     'swipe',

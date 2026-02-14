@@ -60,8 +60,19 @@ export class FlutterSkillClient {
 
   health() { return this.call('health'); }
   inspect() { return this.call('inspect'); }
-  tap(selector: string) { return this.call('tap', { selector }); }
-  enterText(selector: string, text: string) { return this.call('enter_text', { selector, text }); }
+  inspectInteractive() { return this.call('inspect_interactive'); }
+  tap(selector?: string, ref?: string) { 
+    const params: Record<string, unknown> = {};
+    if (ref) params.ref = ref;
+    else if (selector) params.selector = selector;
+    return this.call('tap', params); 
+  }
+  enterText(text: string, selector?: string, ref?: string) { 
+    const params: Record<string, unknown> = { text };
+    if (ref) params.ref = ref;
+    else if (selector) params.selector = selector;
+    return this.call('enter_text', params); 
+  }
   screenshot() { return this.call('screenshot'); }
   scroll(dx = 0, dy = 0) { return this.call('scroll', { dx, dy }); }
   getText(selector: string) { return this.call('get_text', { selector }); }

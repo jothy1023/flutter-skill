@@ -107,6 +107,122 @@
     return { elements: elements };
   };
 
+  methods.inspect_interactive = function (params) {
+    var elements = [];
+    var refCounts = {};
+
+    function generateRefId(baseType) {
+      var refPrefix = {
+        button: "btn",
+        text_field: "tf",
+        checkbox: "sw",
+        switch: "sw",
+        slider: "sl",
+        tab: "tab",
+        dropdown: "dd",
+        link: "lnk",
+        list_item: "item"
+      }[baseType] || "elem";
+
+      var count = refCounts[refPrefix] || 0;
+      refCounts[refPrefix] = count + 1;
+      return refPrefix + "_" + count;
+    }
+
+    function getElementType(el) {
+      var tag = el.tagName.toLowerCase();
+      var type = el.type ? el.type.toLowerCase() : "";
+      var role = el.getAttribute("role") || "";
+
+      if (tag === "button" || role === "button" || el.onclick) return "button";
+      if (tag === "input") {
+        if (["checkbox", "radio"].includes(type)) return type;
+        if (["text", "email", "password", "search", "number", "tel", "url"].includes(type)) return "text_field";
+        if (type === "range") return "slider";
+        return "button";
+      }
+      if (tag === "textarea") return "text_field";
+      if (tag === "select") return "dropdown";
+      if (tag === "a" && el.href) return "link";
+      if (role === "tab" || el.closest('[role="tablist"]')) return "tab";
+      if (role === "listitem" || tag === "li") return "list_item";
+      if (role === "switch") return "switch";
+      if (role === "slider") return "slider";
+      return "button";
+    }
+
+    function getActions(elementType) {
+      switch (elementType) {
+        case "text_field": return ["tap", "enter_text"];
+        case "slider": return ["tap", "swipe"];
+        default: return ["tap", "long_press"];
+      }
+    }
+
+    function getValue(el, elementType) {
+      switch (elementType) {
+        case "text_field": return el.value || "";
+        case "checkbox":
+        case "switch": return el.checked || false;
+        case "dropdown": return el.value || "";
+        case "slider": return parseFloat(el.value) || 0;
+        default: return undefined;
+      }
+    }
+
+    var selectors = "button, a, input, textarea, select, [role=button], [role=link], " +
+      "[role=textbox], [role=checkbox], [role=radio], [role=tab], [role=switch], " +
+      "[role=slider], [onclick], li[onclick]";
+    var nodes = document.querySelectorAll(selectors);
+
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.offsetParent !== null || el.tagName === "INPUT") { // visible or input
+        var elementType = getElementType(el);
+        var refId = generateRefId(elementType);
+        var rect = el.getBoundingClientRect();
+
+        var element = {
+          ref: refId,
+          type: el.tagName + (el.type ? "[" + el.type + "]" : ""),
+          text: (el.textContent || el.value || "").trim().substring(0, 100) || null,
+          actions: getActions(elementType),
+          enabled: !el.disabled && !el.readOnly,
+          bounds: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            w: Math.round(rect.width),
+            h: Math.round(rect.height)
+          }
+        };
+
+        var label = el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("title");
+        if (label) element.label = label;
+
+        var value = getValue(el, elementType);
+        if (value !== undefined) element.value = value;
+
+        elements.push(element);
+      }
+    }
+
+    // Generate summary
+    var summaryParts = Object.keys(refCounts).map(function(prefix) {
+      var count = refCounts[prefix];
+      var label = {
+        btn: "button", tf: "text field", sw: "switch", sl: "slider",
+        dd: "dropdown", item: "list item", lnk: "link", tab: "tab"
+      }[prefix] || "element";
+      return count + " " + label + (count === 1 ? "" : (label === "switch" ? "es" : "s"));
+    });
+
+    var summary = summaryParts.length === 0 ? 
+      "No interactive elements found" :
+      elements.length + " interactive: " + summaryParts.join(", ");
+
+    return { elements: elements, summary: summary };
+  };
+
   methods.tap = function (params) {
     var el = findElement(params);
     if (!el) return { success: false, message: "Element not found" };

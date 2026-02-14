@@ -97,13 +97,27 @@ class FlutterSkillBinding {
       }
     });
 
+    // 1c. Interactive Elements with Ref IDs (New inspect_interactive method)
+    developer.registerExtension('ext.flutter.flutter_skill.inspectInteractive',
+        (method, parameters) async {
+      try {
+        final elements = _findInteractiveElementsStructured();
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode({'type': 'Success', 'data': elements}),
+        );
+      } catch (e, stack) {
+        return _errorResponse(e, stack);
+      }
+    });
+
     // 2. Tap
     developer.registerExtension('ext.flutter.flutter_skill.tap',
         (method, parameters) async {
       try {
         final key = parameters['key'];
         final text = parameters['text'];
-        final result = await _performTapWithDetails(key: key, text: text);
+        final refId = parameters['ref'];
+        final result = await _performTapWithDetails(key: key, text: text, refId: refId);
         return developer.ServiceExtensionResponse.result(jsonEncode(result));
       } catch (e, stack) {
         return _errorResponse(e, stack);
@@ -116,6 +130,7 @@ class FlutterSkillBinding {
       try {
         final key = parameters['key'];
         final text = parameters['text'];
+        final refId = parameters['ref'];
         if (text == null) {
           return developer.ServiceExtensionResponse.result(jsonEncode({
             'success': false,
@@ -125,7 +140,7 @@ class FlutterSkillBinding {
             },
           }));
         }
-        final result = await _performEnterTextWithDetails(key: key, text: text);
+        final result = await _performEnterTextWithDetails(key: key, text: text, refId: refId);
         return developer.ServiceExtensionResponse.result(jsonEncode(result));
       } catch (e, stack) {
         return _errorResponse(e, stack);
@@ -820,6 +835,176 @@ class FlutterSkillBinding {
     return null;
   }
 
+  /// Find element by ref ID from the structured inspect data
+  static Element? _findElementByRefId(String refId) {
+    final structured = _findInteractiveElementsStructured();
+    final elements = structured['elements'] as List<dynamic>? ?? [];
+    
+    // Find the element with matching ref ID
+    Map<String, dynamic>? targetElementData;
+    for (final elementData in elements) {
+      if (elementData is Map<String, dynamic> && elementData['ref'] == refId) {
+        targetElementData = elementData;
+        break;
+      }
+    }
+    
+    if (targetElementData == null) return null;
+    
+    // Extract bounds to find the element at center position
+    final bounds = targetElementData['bounds'] as Map<String, dynamic>?;
+    if (bounds != null) {
+      final x = bounds['x'] as int? ?? 0;
+      final y = bounds['y'] as int? ?? 0;
+      final w = bounds['w'] as int? ?? 0;
+      final h = bounds['h'] as int? ?? 0;
+      
+      if (w > 0 && h > 0) {
+        final centerX = x + w / 2;
+        final centerY = y + h / 2;
+        return _findElementAtPosition(Offset(centerX, centerY));
+      }
+    }
+    
+    // Fallback: try to find by text or key if available
+    final text = targetElementData['text'] as String?;
+    final label = targetElementData['label'] as String?;
+    
+    if (text != null) {
+      return _findElementByText(text);
+    }
+    if (label != null) {
+      return _findElementByText(label);
+    }
+    
+    return null;
+  }
+
+  /// Find element at a specific position by traversing the widget tree
+  static Element? _findElementAtPosition(Offset position) {
+    Element? found;
+    
+    void visit(Element element) {
+      if (found != null) return;
+      
+      final renderObject = element.renderObject;
+      if (renderObject is RenderBox && renderObject.hasSize) {
+        final offset = renderObject.localToGlobal(Offset.zero);
+        final size = renderObject.size;
+        
+        final bounds = Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height);
+        if (bounds.contains(position)) {
+          // Check if this is an interactive element
+          final widget = element.widget;
+          if (_isInteractiveWidget(widget)) {
+            found = element;
+            return;
+          }
+        }
+      }
+      
+      element.visitChildren(visit);
+    }
+
+    final binding = WidgetsBinding.instance;
+    // ignore: invalid_use_of_protected_member
+    if (binding.rootElement != null) {
+      visit(binding.rootElement!);
+    }
+    return found;
+  }
+
+  /// Check if a widget is interactive
+  static bool _isInteractiveWidget(Widget widget) {
+    return widget is ElevatedButton ||
+        widget is TextButton ||
+        widget is OutlinedButton ||
+        widget is IconButton ||
+        widget is FloatingActionButton ||
+        widget is TextField ||
+        widget is TextFormField ||
+        widget is Checkbox ||
+        widget is Switch ||
+        widget is Slider ||
+        widget is DropdownButton ||
+        (widget is InkWell && widget.onTap != null) ||
+        (widget is GestureDetector && widget.onTap != null) ||
+        widget is ListTile;
+  }
+
+  /// Helper method to enter text into a specific element
+  static Future<Map<String, dynamic>> _enterTextIntoElement(Element element, String text, {required String method}) async {
+    final renderObject = element.renderObject;
+    if (renderObject is! RenderBox) {
+      return {
+        'success': false,
+        'error': {
+          'code': ErrorCode.elementNotVisible,
+          'message': 'TextField has no valid render box',
+        },
+        'method': method,
+      };
+    }
+
+    final center = renderObject.localToGlobal(renderObject.size.center(Offset.zero));
+
+    // Show indicator if enabled
+    if (_indicatorsEnabled && _indicatorOverlay != null) {
+      final bounds = Rect.fromLTWH(
+        renderObject.localToGlobal(Offset.zero).dx,
+        renderObject.localToGlobal(Offset.zero).dy,
+        renderObject.size.width,
+        renderObject.size.height,
+      );
+      _indicatorOverlay!.showTextInput(bounds, hint: "Entering text: '$text'");
+    }
+
+    await _dispatchTap(center);
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    EditableTextState? editableTextState;
+    void findEditable(Element e) {
+      if (editableTextState != null) return;
+      if (e is StatefulElement && e.state is EditableTextState) {
+        editableTextState = e.state as EditableTextState;
+        return;
+      }
+      e.visitChildren(findEditable);
+    }
+
+    findEditable(element);
+
+    if (editableTextState != null) {
+      editableTextState!.updateEditingValue(TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      ));
+      _log('Entered text "$text" using $method');
+      return {
+        'success': true,
+        'message': 'Text entered successfully',
+        'method': method,
+        'enteredText': text,
+      };
+    }
+
+    SystemChannels.textInput.invokeMethod('TextInput.setEditingState', {
+      'text': text,
+      'selectionBase': text.length,
+      'selectionExtent': text.length,
+      'composingBase': -1,
+      'composingExtent': -1,
+    });
+    _log('Text input sent via channel');
+
+    return {
+      'success': true,
+      'message': 'Text entered via system channel',
+      'method': method,
+      'enteredText': text,
+    };
+  }
+
   // ==================== ACTIONS ====================
 
   // ignore: unused_element
@@ -847,8 +1032,18 @@ class FlutterSkillBinding {
 
   /// Enhanced tap with detailed error information and suggestions
   static Future<Map<String, dynamic>> _performTapWithDetails(
-      {String? key, String? text}) async {
-    final element = _findElement(key: key, text: text);
+      {String? key, String? text, String? refId}) async {
+    Element? element;
+    
+    // If refId is provided, find element by ref ID first
+    if (refId != null) {
+      element = _findElementByRefId(refId);
+    }
+    
+    // Fallback to key/text search if ref not found or not provided
+    if (element == null) {
+      element = _findElement(key: key, text: text);
+    }
 
     if (element == null) {
       final suggestions = <String>[];
@@ -1157,9 +1352,20 @@ class FlutterSkillBinding {
 
   /// Enhanced enter text with detailed error information
   static Future<Map<String, dynamic>> _performEnterTextWithDetails(
-      {String? key, required String text}) async {
-    // If no key provided (null or empty), try the currently focused TextField
-    if (key == null || key.isEmpty) {
+      {String? key, required String text, String? refId}) async {
+    Element? element;
+    
+    // If refId is provided, find element by ref ID first
+    if (refId != null) {
+      element = _findElementByRefId(refId);
+      if (element != null) {
+        // Found by ref ID, proceed with text input
+        return await _enterTextIntoElement(element, text, method: 'ref_id');
+      }
+    }
+    
+    // If no key or refId provided (null or empty), try the currently focused TextField
+    if ((key == null || key.isEmpty) && refId == null) {
       final focusedField = _findFocusedTextField();
       if (focusedField != null) {
         focusedField.updateEditingValue(TextEditingValue(
@@ -1203,119 +1409,56 @@ class FlutterSkillBinding {
           'suggestions': [
             'Tap on a TextField first to focus it, then call enter_text(text: "...")',
             'Or provide a key: enter_text(key: "field_key", text: "...")',
-            'Use inspect() to find TextField elements with keys',
+            'Or use ref: enter_text(ref: "tf_0", text: "...")',
+            'Use inspect_interactive() to find TextField elements with ref IDs',
           ],
         };
       }
     }
 
-    final element = _findElement(key: key);
+    // Try to find element by key if provided
+    if (key != null) {
+      element = _findElement(key: key);
+    }
 
     if (element == null) {
       final suggestions = <String>[];
 
-      final similarKeys = _findSimilarKeys(key);
-      if (similarKeys.isNotEmpty) {
-        suggestions.add('Similar keys found: ${similarKeys.take(5).toList()}');
+      if (key != null) {
+        final similarKeys = _findSimilarKeys(key);
+        if (similarKeys.isNotEmpty) {
+          suggestions.add('Similar keys found: ${similarKeys.take(5).toList()}');
+        }
+
+        // Find TextField keys specifically
+        final textFieldKeys = _getAllKeys()
+            .where((k) =>
+                k.toLowerCase().contains('field') ||
+                k.toLowerCase().contains('input') ||
+                k.toLowerCase().contains('text'))
+            .toList();
+        if (textFieldKeys.isNotEmpty) {
+          suggestions
+              .add('TextField keys available: ${textFieldKeys.take(5).toList()}');
+        }
       }
 
-      // Find TextField keys specifically
-      final textFieldKeys = _getAllKeys()
-          .where((k) =>
-              k.toLowerCase().contains('field') ||
-              k.toLowerCase().contains('input') ||
-              k.toLowerCase().contains('text'))
-          .toList();
-      if (textFieldKeys.isNotEmpty) {
-        suggestions
-            .add('TextField keys available: ${textFieldKeys.take(5).toList()}');
-      }
-
-      suggestions.add('Use inspect() to find TextField elements');
-      suggestions.add(
-          'Or omit key to enter text into the currently focused TextField');
+      suggestions.add('Use inspect_interactive() to find TextField elements with ref IDs');
+      suggestions.add('Or omit key/ref to enter text into the currently focused TextField');
 
       return {
         'success': false,
         'error': {
           'code': ErrorCode.elementNotFound,
-          'message': 'No TextField matching key \'$key\' found',
+          'message': 'No TextField matching ${key != null ? "key '$key'" : (refId != null ? "ref '$refId'" : "criteria")} found',
         },
-        'target': {'key': key},
+        'target': {'key': key, 'ref': refId},
         'suggestions': suggestions,
       };
     }
 
-    final renderObject = element.renderObject;
-    if (renderObject is! RenderBox) {
-      return {
-        'success': false,
-        'error': {
-          'code': ErrorCode.elementNotVisible,
-          'message': 'TextField has no valid render box',
-        },
-        'target': {'key': key},
-      };
-    }
-
-    final center =
-        renderObject.localToGlobal(renderObject.size.center(Offset.zero));
-
-    // Show indicator if enabled
-    if (_indicatorsEnabled && _indicatorOverlay != null) {
-      final bounds = Rect.fromLTWH(
-        renderObject.localToGlobal(Offset.zero).dx,
-        renderObject.localToGlobal(Offset.zero).dy,
-        renderObject.size.width,
-        renderObject.size.height,
-      );
-      _indicatorOverlay!.showTextInput(bounds, hint: "Entering text: '$text'");
-    }
-
-    await _dispatchTap(center);
-    await Future.delayed(const Duration(milliseconds: 200));
-
-    EditableTextState? editableTextState;
-    void findEditable(Element e) {
-      if (editableTextState != null) return;
-      if (e is StatefulElement && e.state is EditableTextState) {
-        editableTextState = e.state as EditableTextState;
-        return;
-      }
-      e.visitChildren(findEditable);
-    }
-
-    findEditable(element);
-
-    if (editableTextState != null) {
-      editableTextState!.updateEditingValue(TextEditingValue(
-        text: text,
-        selection: TextSelection.collapsed(offset: text.length),
-      ));
-      _log('Entered text "$text" (key: $key)');
-      return {
-        'success': true,
-        'message': 'Text entered successfully',
-        'target': {'key': key},
-        'enteredText': text,
-      };
-    }
-
-    SystemChannels.textInput.invokeMethod('TextInput.setEditingState', {
-      'text': text,
-      'selectionBase': text.length,
-      'selectionExtent': text.length,
-      'composingBase': -1,
-      'composingExtent': -1,
-    });
-    _log('Text input sent via channel');
-
-    return {
-      'success': true,
-      'message': 'Text entered via system channel',
-      'target': {'key': key},
-      'enteredText': text,
-    };
+    // Use the helper method to enter text into the found element
+    return await _enterTextIntoElement(element, text, method: key != null ? 'key' : 'fallback');
   }
 
   static Future<bool> _performScroll({String? key, String? text}) async {
@@ -1780,11 +1923,41 @@ class FlutterSkillBinding {
     return results;
   }
 
-  /// Enhanced interactive elements discovery for better automation.
-  /// Returns structured data with actions, selectors, and state information.
+  /// Enhanced interactive elements discovery for better automation with ref ID system.
+  /// Returns structured data with ref IDs, actions, bounds, and state information.
   static Map<String, dynamic> _findInteractiveElementsStructured() {
     final elements = <Map<String, dynamic>>[];
-    final elementCounts = <String, int>{};
+    final refCounts = <String, int>{};
+
+    String _generateRefId(String baseType, String? widgetType) {
+      String refPrefix;
+      
+      // Map widget types to ref prefixes according to ref generation rules
+      if (widgetType != null && (widgetType.contains('Button') || widgetType == 'FloatingActionButton' || widgetType == 'IconButton')) {
+        refPrefix = 'btn';
+      } else if (baseType == 'text_field') {
+        refPrefix = 'tf';
+      } else if (baseType == 'switch' || baseType == 'checkbox') {
+        refPrefix = 'sw';
+      } else if (baseType == 'slider') {
+        refPrefix = 'sl';
+      } else if (baseType == 'tab') {
+        refPrefix = 'tab';
+      } else if (baseType == 'dropdown') {
+        refPrefix = 'dd';
+      } else if (baseType == 'link' || baseType == 'clickable') {
+        refPrefix = 'lnk';
+      } else if (baseType == 'list_tile') {
+        refPrefix = 'item';
+      } else {
+        // Fallback for other interactive elements
+        refPrefix = baseType.substring(0, 3);
+      }
+
+      final count = refCounts[refPrefix] ?? 0;
+      refCounts[refPrefix] = count + 1;
+      return '${refPrefix}_$count';
+    }
 
     void visit(Element element) {
       final widget = element.widget;
@@ -1794,7 +1967,6 @@ class FlutterSkillBinding {
       String? label;
       String? tooltip;
       List<String> actions = [];
-      Map<String, dynamic>? selector;
       Map<String, dynamic> state = {};
 
       // Get widget key
@@ -1811,17 +1983,6 @@ class FlutterSkillBinding {
         type = widget.runtimeType.toString();
         text = _extractTextFrom(element);
         actions = ['tap', 'long_press'];
-        
-        // Determine best selector
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else if (text != null && text.isNotEmpty) {
-          selector = {'by': 'text', 'value': text};
-        } else {
-          // Fallback to type-based selector with index
-          final index = elementCounts[type] ?? 0;
-          selector = {'by': 'type', 'value': type, 'index': index};
-        }
 
         // Get button state
         bool enabled = true;
@@ -1842,55 +2003,45 @@ class FlutterSkillBinding {
         type = widget.runtimeType.toString();
         actions = ['tap', 'enter_text'];
         
-        // Get field label/hint
+        // Get field label/hint - improved TextFormField label extraction
         if (widget is TextField) {
           label = widget.decoration?.labelText ?? 
                   widget.decoration?.hintText;
         } else if (widget is TextFormField) {
-          // TextFormField doesn't have direct decoration access
-          // We'll extract label from child TextField if possible
-          label = 'Text Field'; // Default label for TextFormField
-        }
-        
-        // Determine best selector
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else if (label != null && label.isNotEmpty) {
-          selector = {'by': 'label', 'value': label};
-        } else {
-          final index = elementCounts['TextField'] ?? 0;
-          selector = {'by': 'type', 'value': 'TextField', 'index': index};
+          // For TextFormField, try to extract the label from the decoration
+          // by looking at the child TextField
+          String? extractedLabel;
+          
+          void findTextField(Element e) {
+            if (extractedLabel != null) return;
+            final w = e.widget;
+            if (w is TextField) {
+              extractedLabel = w.decoration?.labelText ?? 
+                               w.decoration?.hintText;
+              return;
+            }
+            e.visitChildren(findTextField);
+          }
+          
+          findTextField(element);
+          label = extractedLabel ?? 'Text Field';
         }
 
         // Get current text value
         final currentValue = _getTextFieldValueByElement(element);
-        state['currentValue'] = currentValue ?? '';
+        state['value'] = currentValue ?? '';
         state['enabled'] = true; // TextFields are typically enabled
         
       } else if (widget is Checkbox) {
         type = 'Checkbox';
         actions = ['tap'];
         
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else {
-          final index = elementCounts['Checkbox'] ?? 0;
-          selector = {'by': 'type', 'value': 'Checkbox', 'index': index};
-        }
-        
-        state['checked'] = widget.value ?? false;
+        state['value'] = widget.value ?? false;
         state['enabled'] = widget.onChanged != null;
         
       } else if (widget is Switch) {
         type = 'Switch';
         actions = ['tap'];
-        
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else {
-          final index = elementCounts['Switch'] ?? 0;
-          selector = {'by': 'type', 'value': 'Switch', 'index': index};
-        }
         
         state['value'] = widget.value;
         state['enabled'] = widget.onChanged != null;
@@ -1898,13 +2049,6 @@ class FlutterSkillBinding {
       } else if (widget is Slider) {
         type = 'Slider';
         actions = ['tap', 'swipe'];  // Can tap to set value or swipe to adjust
-        
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else {
-          final index = elementCounts['Slider'] ?? 0;
-          selector = {'by': 'type', 'value': 'Slider', 'index': index};
-        }
         
         state['value'] = widget.value;
         state['min'] = widget.min;
@@ -1915,13 +2059,6 @@ class FlutterSkillBinding {
         type = 'DropdownButton';
         actions = ['tap'];
         
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else {
-          final index = elementCounts['DropdownButton'] ?? 0;
-          selector = {'by': 'type', 'value': 'DropdownButton', 'index': index};
-        }
-        
         // Get current value if available
         state['value'] = widget.value?.toString() ?? '';
         state['enabled'] = widget.onChanged != null;
@@ -1931,15 +2068,6 @@ class FlutterSkillBinding {
         text = _extractTextFrom(element);
         actions = ['tap', 'long_press'];
         
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else if (text != null && text.isNotEmpty) {
-          selector = {'by': 'text', 'value': text};
-        } else {
-          final index = elementCounts['InkWell'] ?? 0;
-          selector = {'by': 'type', 'value': 'InkWell', 'index': index};
-        }
-        
         state['enabled'] = true;
         
       } else if (widget is GestureDetector && widget.onTap != null) {
@@ -1947,30 +2075,12 @@ class FlutterSkillBinding {
         text = _extractTextFrom(element);
         actions = ['tap', 'long_press'];
         
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else if (text != null && text.isNotEmpty) {
-          selector = {'by': 'text', 'value': text};
-        } else {
-          final index = elementCounts['GestureDetector'] ?? 0;
-          selector = {'by': 'type', 'value': 'GestureDetector', 'index': index};
-        }
-        
         state['enabled'] = true;
         
       } else if (widget is ListTile) {
         type = 'ListTile';
         text = _extractTextFrom(element);
         actions = ['tap', 'long_press'];
-        
-        if (key != null) {
-          selector = {'by': 'key', 'value': key};
-        } else if (text != null && text.isNotEmpty) {
-          selector = {'by': 'text', 'value': text};
-        } else {
-          final index = elementCounts['ListTile'] ?? 0;
-          selector = {'by': 'type', 'value': 'ListTile', 'index': index};
-        }
         
         state['enabled'] = widget.enabled;
       }
@@ -1981,14 +2091,32 @@ class FlutterSkillBinding {
       }
 
       // If this is an interactive element, add it to results
-      if (type != null && selector != null) {
-        // Update element count for this type
-        final typeKey = type.contains('Button') ? 'Button' : type;
-        elementCounts[typeKey] = (elementCounts[typeKey] ?? 0) + 1;
+      if (type != null) {
+        // Generate ref ID based on element type
+        String baseType;
+        if (type.contains('Button') || type == 'FloatingActionButton' || type == 'IconButton') {
+          baseType = 'button';
+        } else if (type == 'TextField' || type == 'TextFormField') {
+          baseType = 'text_field';
+        } else if (type == 'Switch' || type == 'Checkbox') {
+          baseType = type == 'Switch' ? 'switch' : 'checkbox';
+        } else if (type == 'Slider') {
+          baseType = 'slider';
+        } else if (type == 'DropdownButton') {
+          baseType = 'dropdown';
+        } else if (type == 'InkWell' || type == 'GestureDetector') {
+          baseType = 'clickable';
+        } else if (type == 'ListTile') {
+          baseType = 'list_tile';
+        } else {
+          baseType = 'interactive';
+        }
+
+        final refId = _generateRefId(baseType, type);
 
         final elementEntry = <String, dynamic>{
+          'ref': refId,
           'type': type,
-          'selector': selector,
           'actions': actions,
         };
 
@@ -1996,12 +2124,12 @@ class FlutterSkillBinding {
         if (text != null && text.isNotEmpty) elementEntry['text'] = text;
         if (label != null && label.isNotEmpty) elementEntry['label'] = label;
         if (tooltip != null) elementEntry['tooltip'] = tooltip;
-        if (key != null) elementEntry['key'] = key; // For debugging/reference
 
-        // Add bounds and visibility info
+        // Add bounds information - improved with RenderBox
         final renderObject = element.renderObject;
         if (renderObject is RenderBox && renderObject.hasSize) {
           final offset = renderObject.localToGlobal(Offset.zero);
+          final size = renderObject.size;
           
           // Helper function to safely convert double to int
           int safeRound(double value) {
@@ -2012,16 +2140,18 @@ class FlutterSkillBinding {
           elementEntry['bounds'] = {
             'x': safeRound(offset.dx),
             'y': safeRound(offset.dy),
-            'width': safeRound(renderObject.size.width),
-            'height': safeRound(renderObject.size.height),
+            'w': safeRound(size.width),
+            'h': safeRound(size.height),
           };
 
-          final isVisible = renderObject.size.width > 0 && 
-                           renderObject.size.height > 0 &&
+          final isVisible = size.width > 0 && 
+                           size.height > 0 &&
                            offset.dx.isFinite && 
                            offset.dy.isFinite;
           state['visible'] = isVisible;
         } else {
+          // Element has no render box or size - set default bounds
+          elementEntry['bounds'] = {'x': 0, 'y': 0, 'w': 0, 'h': 0};
           state['visible'] = false;
         }
 
@@ -2041,32 +2171,37 @@ class FlutterSkillBinding {
       visit(binding.rootElement!);
     }
 
-    // Generate summary
-    final buttonCount = elementCounts['Button'] ?? 0;
-    final textFieldCount = (elementCounts['TextField'] ?? 0) + 
-                          (elementCounts['TextFormField'] ?? 0);
-    final checkboxCount = elementCounts['Checkbox'] ?? 0;
-    final switchCount = elementCounts['Switch'] ?? 0;
-    final sliderCount = elementCounts['Slider'] ?? 0;
-    final dropdownCount = elementCounts['DropdownButton'] ?? 0;
-    final inkWellCount = elementCounts['InkWell'] ?? 0;
-    final gestureCount = elementCounts['GestureDetector'] ?? 0;
-    final listTileCount = elementCounts['ListTile'] ?? 0;
-
+    // Generate summary based on ref counts
     final summaryParts = <String>[];
-    if (buttonCount > 0) summaryParts.add('$buttonCount buttons');
-    if (textFieldCount > 0) summaryParts.add('$textFieldCount text fields');
-    if (checkboxCount > 0) summaryParts.add('$checkboxCount checkboxes');
-    if (switchCount > 0) summaryParts.add('$switchCount switches');
-    if (sliderCount > 0) summaryParts.add('$sliderCount sliders');
-    if (dropdownCount > 0) summaryParts.add('$dropdownCount dropdowns');
-    if (inkWellCount > 0) summaryParts.add('$inkWellCount tappable areas');
-    if (gestureCount > 0) summaryParts.add('$gestureCount gesture detectors');
-    if (listTileCount > 0) summaryParts.add('$listTileCount list items');
+    refCounts.forEach((prefix, count) {
+      switch (prefix) {
+        case 'btn':
+          summaryParts.add('$count button${count == 1 ? '' : 's'}');
+          break;
+        case 'tf':
+          summaryParts.add('$count text field${count == 1 ? '' : 's'}');
+          break;
+        case 'sw':
+          summaryParts.add('$count switch${count == 1 ? '' : 'es'}');
+          break;
+        case 'sl':
+          summaryParts.add('$count slider${count == 1 ? '' : 's'}');
+          break;
+        case 'dd':
+          summaryParts.add('$count dropdown${count == 1 ? '' : 's'}');
+          break;
+        case 'item':
+          summaryParts.add('$count list item${count == 1 ? '' : 's'}');
+          break;
+        case 'lnk':
+          summaryParts.add('$count link${count == 1 ? '' : 's'}');
+          break;
+      }
+    });
 
     final summary = summaryParts.isEmpty 
         ? 'No interactive elements found'
-        : 'Found ${elements.length} interactive elements: ${summaryParts.join(', ')}';
+        : '${elements.length} interactive: ${summaryParts.join(', ')}';
 
     return {
       'elements': elements,

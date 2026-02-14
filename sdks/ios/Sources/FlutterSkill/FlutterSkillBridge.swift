@@ -574,7 +574,7 @@ public final class FlutterSkillBridge: @unchecked Sendable {
 
     static let allCapabilities: [String] = [
         // Core
-        "initialize", "screenshot", "inspect", "tap", "enter_text",
+        "initialize", "screenshot", "inspect", "inspect_interactive", "tap", "enter_text",
         "swipe", "scroll", "find_element", "get_text", "wait_for_element",
         // Extended
         "get_logs", "clear_logs", "go_back", "get_route",
@@ -594,6 +594,8 @@ public final class FlutterSkillBridge: @unchecked Sendable {
             return .success(handleInitialize(params))
         case "inspect":
             return .success(handleInspect(params))
+        case "inspect_interactive":
+            return .success(handleInspectInteractive(params))
         case "tap":
             return .success(handleTap(params))
         case "enter_text":
@@ -678,33 +680,296 @@ public final class FlutterSkillBridge: @unchecked Sendable {
         return ["elements": merged]
     }
 
+    private func handleInspectInteractive(_ params: [String: Any]) -> [String: Any] {
+        guard let window = Self.keyWindow else {
+            return [
+                "elements": [Any](),
+                "summary": "No key window available"
+            ]
+        }
+
+        var refCounts: [String: Int] = [:]
+        var elements: [[String: Any]] = []
+
+        func generateRefId(baseType: String) -> String {
+            let refPrefix: String
+            switch baseType {
+            case "button":
+                refPrefix = "btn"
+            case "text_field":
+                refPrefix = "tf"
+            case "checkbox", "switch":
+                refPrefix = "sw"
+            case "slider":
+                refPrefix = "sl"
+            case "tab":
+                refPrefix = "tab"
+            case "dropdown":
+                refPrefix = "dd"
+            case "link":
+                refPrefix = "lnk"
+            case "list_item":
+                refPrefix = "item"
+            default:
+                refPrefix = "elem"
+            }
+
+            let count = refCounts[refPrefix] ?? 0
+            refCounts[refPrefix] = count + 1
+            return "\(refPrefix)_\(count)"
+        }
+
+        func getElementType(view: UIView) -> String {
+            if view is UIButton { return "button" }
+            if view is UITextField || view is UITextView || view is UISearchBar { return "text_field" }
+            if view is UISwitch { return "switch" }
+            if view is UISlider { return "slider" }
+            if view is UISegmentedControl { return "tab" }
+            if view.accessibilityTraits.contains(.button) { return "button" }
+            if view.accessibilityTraits.contains(.searchField) { return "text_field" }
+            if view.accessibilityTraits.contains(.adjustable) { return "slider" }
+            if view.accessibilityTraits.contains(.link) { return "link" }
+            if view.isKind(of: NSClassFromString("UITableViewCell") ?? UIView.self) { return "list_item" }
+            return "button" // Default for interactive elements
+        }
+
+        func getBaseType(elementType: String) -> String {
+            switch elementType {
+            case "button": return "button"
+            case "text_field": return "text_field"
+            case "switch": return "switch"
+            case "slider": return "slider"
+            case "tab": return "tab"
+            case "link": return "link"
+            case "list_item": return "list_item"
+            default: return "button"
+            }
+        }
+
+        func getActions(elementType: String) -> [String] {
+            switch elementType {
+            case "text_field":
+                return ["tap", "enter_text"]
+            case "slider":
+                return ["tap", "swipe"]
+            default:
+                return ["tap", "long_press"]
+            }
+        }
+
+        func getValue(view: UIView, elementType: String) -> Any? {
+            switch elementType {
+            case "text_field":
+                if let textField = view as? UITextField {
+                    return textField.text ?? ""
+                } else if let textView = view as? UITextView {
+                    return textView.text ?? ""
+                } else if let searchBar = view as? UISearchBar {
+                    return searchBar.text ?? ""
+                }
+                return ""
+            case "switch":
+                if let switchControl = view as? UISwitch {
+                    return switchControl.isOn
+                }
+                return false
+            case "slider":
+                if let slider = view as? UISlider {
+                    return slider.value
+                }
+                return 0.0
+            default:
+                return nil
+            }
+        }
+
+        // Collect interactive UIViews
+        window.flutterSkill_walkHierarchy { view in
+            let isInteractive = view.isUserInteractionEnabled &&
+                               (view.accessibilityTraits.contains(.button) ||
+                                view.accessibilityTraits.contains(.searchField) ||
+                                view.accessibilityTraits.contains(.adjustable) ||
+                                view.accessibilityTraits.contains(.link) ||
+                                view is UIButton ||
+                                view is UITextField ||
+                                view is UITextView ||
+                                view is UISearchBar ||
+                                view is UISwitch ||
+                                view is UISlider ||
+                                view is UISegmentedControl ||
+                                (view.accessibilityIdentifier != nil && !view.accessibilityIdentifier!.isEmpty))
+
+            if isInteractive {
+                let elementType = getElementType(view: view)
+                let baseType = getBaseType(elementType: elementType)
+                let refId = generateRefId(baseType: baseType)
+
+                let frame = view.superview?.convert(view.frame, to: window) ?? view.frame
+                var element: [String: Any] = [
+                    "ref": refId,
+                    "type": String(describing: type(of: view)),
+                    "actions": getActions(elementType),
+                    "enabled": view.isEnabled,
+                    "bounds": [
+                        "x": Int(frame.origin.x),
+                        "y": Int(frame.origin.y),
+                        "w": Int(frame.width),
+                        "h": Int(frame.height)
+                    ]
+                ]
+
+                // Add optional fields
+                let text = extractText(from: view)
+                if !text.isEmpty {
+                    element["text"] = text
+                }
+
+                if let label = view.accessibilityLabel, !label.isEmpty {
+                    element["label"] = label
+                }
+
+                let value = getValue(view: view, elementType: elementType)
+                if value != nil {
+                    element["value"] = value
+                }
+
+                elements.append(element)
+            }
+        }
+
+        // Add SwiftUI registry elements
+        for entry in FlutterSkillRegistry.shared.allElements() {
+            if entry.onTap != nil || entry.onSetText != nil {
+                let elementType = entry.onSetText != nil ? "text_field" : "button"
+                let baseType = getBaseType(elementType: elementType)
+                let refId = generateRefId(baseType: baseType)
+
+                var element: [String: Any] = [
+                    "ref": refId,
+                    "type": "SwiftUI.\(entry.tag)",
+                    "actions": getActions(elementType),
+                    "enabled": true,
+                    "bounds": [
+                        "x": Int(entry.frame.origin.x),
+                        "y": Int(entry.frame.origin.y),
+                        "w": Int(entry.frame.width),
+                        "h": Int(entry.frame.height)
+                    ]
+                ]
+
+                if let text = entry.text(), !text.isEmpty {
+                    element["text"] = text
+                }
+
+                if let label = entry.label, !label.isEmpty {
+                    element["label"] = label
+                }
+
+                element["_swiftui_id"] = entry.id // Store for ref resolution
+
+                elements.append(element)
+            }
+        }
+
+        // Generate summary
+        let counts = refCounts.map { (prefix, count) -> String in
+            switch prefix {
+            case "btn": return "\(count) button\(count == 1 ? "" : "s")"
+            case "tf": return "\(count) text field\(count == 1 ? "" : "s")"
+            case "sw": return "\(count) switch\(count == 1 ? "" : "es")"
+            case "sl": return "\(count) slider\(count == 1 ? "" : "s")"
+            case "dd": return "\(count) dropdown\(count == 1 ? "" : "s")"
+            case "item": return "\(count) list item\(count == 1 ? "" : "s")"
+            case "lnk": return "\(count) link\(count == 1 ? "" : "s")"
+            case "tab": return "\(count) tab\(count == 1 ? "" : "s")"
+            default: return "\(count) element\(count == 1 ? "" : "s")"
+            }
+        }
+
+        let summary = counts.isEmpty ?
+            "No interactive elements found" :
+            "\(elements.count) interactive: \(counts.joined(separator: ", "))"
+
+        return [
+            "elements": elements,
+            "summary": summary
+        ]
+    }
+
+    private func extractText(from view: UIView) -> String {
+        if let label = view as? UILabel {
+            return label.text ?? ""
+        } else if let button = view as? UIButton {
+            return button.titleLabel?.text ?? ""
+        } else if let textField = view as? UITextField {
+            return textField.text ?? ""
+        } else if let textView = view as? UITextView {
+            return textView.text ?? ""
+        } else if let searchBar = view as? UISearchBar {
+            return searchBar.text ?? ""
+        } else if let accessibilityLabel = view.accessibilityLabel {
+            return accessibilityLabel
+        }
+        return ""
+    }
+
     private func handleTap(_ params: [String: Any]) -> [String: Any] {
-        // Try UIView-based resolution first
+        var method = "unknown"
+
+        // Try ref-based resolution first
+        if let refId = params["ref"] as? String, !refId.isEmpty {
+            if let element = resolveElementByRef(refId) {
+                method = "ref"
+                if let control = element as? UIControl {
+                    control.sendActions(for: .touchUpInside)
+                    return ["success": true, "message": "Tapped (sendActions)", "method": method]
+                }
+                if element.accessibilityActivate() {
+                    return ["success": true, "message": "Tapped (accessibilityActivate)", "method": method]
+                }
+                let center = element.superview?.convert(element.center, to: nil) ?? element.center
+                simulateTap(at: center, in: element.window)
+                return ["success": true, "message": "Tapped (simulated touch)", "method": method]
+            }
+            
+            // Try SwiftUI registry by ref
+            if let entry = resolveRegisteredElementByRef(refId) {
+                method = "ref"
+                if let onTap = entry.onTap {
+                    onTap()
+                    return ["success": true, "message": "Tapped (registry)", "method": method]
+                }
+            }
+        }
+
+        // Fall back to UIView-based resolution
         if let element = resolveElement(params) {
+            method = params["key"] != nil ? "key" : "text"
             if let control = element as? UIControl {
                 control.sendActions(for: .touchUpInside)
-                return ["success": true, "message": "Tapped (sendActions)"]
+                return ["success": true, "message": "Tapped (sendActions)", "method": method]
             }
             if element.accessibilityActivate() {
-                return ["success": true, "message": "Tapped (accessibilityActivate)"]
+                return ["success": true, "message": "Tapped (accessibilityActivate)", "method": method]
             }
             let center = element.superview?.convert(element.center, to: nil) ?? element.center
             simulateTap(at: center, in: element.window)
-            return ["success": true, "message": "Tapped (simulated touch)"]
+            return ["success": true, "message": "Tapped (simulated touch)", "method": method]
         }
 
         // Fall back to SwiftUI registry
         if let entry = resolveRegisteredElement(params) {
+            method = "registry"
             if let onTap = entry.onTap {
                 onTap()
-                return ["success": true, "message": "Tapped (registry)"]
+                return ["success": true, "message": "Tapped (registry)", "method": method]
             }
             // Fall back to simulated tap at registered frame center
             if entry.frame != .zero, let window = Self.keyWindow {
                 let center = CGPoint(x: entry.frame.midX, y: entry.frame.midY)
                 let windowCenter = window.convert(center, from: nil)
                 simulateTap(at: windowCenter, in: window)
-                return ["success": true, "message": "Tapped (registry frame)"]
+                return ["success": true, "message": "Tapped (registry frame)", "method": method]
             }
         }
 
@@ -713,9 +978,56 @@ public final class FlutterSkillBridge: @unchecked Sendable {
 
     private func handleEnterText(_ params: [String: Any]) -> [String: Any] {
         let text = params["text"] as? String ?? ""
+        var method = "unknown"
 
-        // Try UIView-based resolution first
+        // Try ref-based resolution first
+        if let refId = params["ref"] as? String, !refId.isEmpty {
+            if let element = resolveElementByRef(refId) {
+                method = "ref"
+                if let textField = element as? UITextField {
+                    textField.becomeFirstResponder()
+                    textField.text = text
+                    textField.sendActions(for: .editingChanged)
+                    NotificationCenter.default.post(
+                        name: UITextField.textDidChangeNotification, object: textField
+                    )
+                    return ["success": true, "message": "Text entered in UITextField", "method": method]
+                }
+
+                if let textView = element as? UITextView {
+                    textView.becomeFirstResponder()
+                    textView.text = text
+                    textView.delegate?.textViewDidChange?(textView)
+                    NotificationCenter.default.post(
+                        name: UITextView.textDidChangeNotification, object: textView
+                    )
+                    return ["success": true, "message": "Text entered in UITextView", "method": method]
+                }
+
+                if let searchBar = element as? UISearchBar {
+                    searchBar.becomeFirstResponder()
+                    searchBar.text = text
+                    searchBar.delegate?.searchBar?(searchBar, textDidChange: text)
+                    return ["success": true, "message": "Text entered in UISearchBar", "method": method]
+                }
+
+                return ["success": false, "message": "Element is not a text input", "method": method]
+            }
+            
+            // Try SwiftUI registry by ref
+            if let entry = resolveRegisteredElementByRef(refId) {
+                method = "ref"
+                if let onSetText = entry.onSetText {
+                    onSetText(text)
+                    return ["success": true, "message": "Text entered (registry)", "method": method]
+                }
+                return ["success": false, "message": "Registry element has no text setter", "method": method]
+            }
+        }
+
+        // Fall back to UIView-based resolution
         if let element = resolveElement(params) {
+            method = params["key"] != nil ? "key" : "text"
             if let textField = element as? UITextField {
                 textField.becomeFirstResponder()
                 textField.text = text
@@ -723,7 +1035,7 @@ public final class FlutterSkillBridge: @unchecked Sendable {
                 NotificationCenter.default.post(
                     name: UITextField.textDidChangeNotification, object: textField
                 )
-                return ["success": true, "message": "Text entered in UITextField"]
+                return ["success": true, "message": "Text entered in UITextField", "method": method]
             }
 
             if let textView = element as? UITextView {
@@ -733,26 +1045,27 @@ public final class FlutterSkillBridge: @unchecked Sendable {
                 NotificationCenter.default.post(
                     name: UITextView.textDidChangeNotification, object: textView
                 )
-                return ["success": true, "message": "Text entered in UITextView"]
+                return ["success": true, "message": "Text entered in UITextView", "method": method]
             }
 
             if let searchBar = element as? UISearchBar {
                 searchBar.becomeFirstResponder()
                 searchBar.text = text
                 searchBar.delegate?.searchBar?(searchBar, textDidChange: text)
-                return ["success": true, "message": "Text entered in UISearchBar"]
+                return ["success": true, "message": "Text entered in UISearchBar", "method": method]
             }
 
-            return ["success": false, "message": "Element is not a text input"]
+            return ["success": false, "message": "Element is not a text input", "method": method]
         }
 
         // Fall back to SwiftUI registry
         if let entry = resolveRegisteredElement(params) {
+            method = "registry"
             if let onSetText = entry.onSetText {
                 onSetText(text)
-                return ["success": true, "message": "Text entered (registry)"]
+                return ["success": true, "message": "Text entered (registry)", "method": method]
             }
-            return ["success": false, "message": "Registry element has no text setter"]
+            return ["success": false, "message": "Registry element has no text setter", "method": method]
         }
 
         return ["success": false, "message": "Element not found"]
@@ -1003,6 +1316,42 @@ public final class FlutterSkillBridge: @unchecked Sendable {
     }
 
     // MARK: - Element Resolution
+
+    /// Resolve a UIView by ref ID from inspect_interactive data
+    private func resolveElementByRef(_ refId: String) -> UIView? {
+        let interactiveData = handleInspectInteractive([:])
+        guard let elements = interactiveData["elements"] as? [[String: Any]] else { return nil }
+        
+        // Find element with matching ref ID
+        guard let targetElement = elements.first(where: { ($0["ref"] as? String) == refId }),
+              let bounds = targetElement["bounds"] as? [String: Any],
+              let x = bounds["x"] as? Int,
+              let y = bounds["y"] as? Int,
+              let w = bounds["w"] as? Int,
+              let h = bounds["h"] as? Int else { return nil }
+        
+        if w <= 0 || h <= 0 { return nil }
+        
+        let centerX = CGFloat(x + w / 2)
+        let centerY = CGFloat(y + h / 2)
+        let centerPoint = CGPoint(x: centerX, y: centerY)
+        
+        // Find view at center position
+        guard let window = Self.keyWindow else { return nil }
+        return window.hitTest(centerPoint, with: nil)
+    }
+    
+    /// Resolve a SwiftUI registry element by ref ID
+    private func resolveRegisteredElementByRef(_ refId: String) -> FlutterSkillRegistry.ElementEntry? {
+        let interactiveData = handleInspectInteractive([:])
+        guard let elements = interactiveData["elements"] as? [[String: Any]] else { return nil }
+        
+        // Find element with matching ref ID and SwiftUI ID
+        guard let targetElement = elements.first(where: { ($0["ref"] as? String) == refId }),
+              let swiftUIId = targetElement["_swiftui_id"] as? String else { return nil }
+        
+        return FlutterSkillRegistry.shared.find(id: swiftUIId)
+    }
 
     /// Resolve a UIView from the params. Supports: key (accessibilityIdentifier),
     /// text (accessibilityLabel / visible text), and type (class name).
