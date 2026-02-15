@@ -28,7 +28,7 @@ const DART   = '/Users/cw/development/flutter/bin/dart';
 const SERVER = '/Users/cw/development/flutter-skill/bin/flutter_skill.dart';
 
 // ── Platform classification ────────────────────────────────────────────────
-const FLUTTER_PLATFORMS = new Set(['flutter-ios', 'flutter-web', 'android']);
+const FLUTTER_PLATFORMS = new Set(['flutter-ios', 'flutter-web']);
 const MOBILE_PLATFORMS  = new Set(['android', 'flutter-ios', 'react-native']);
 const WEB_PLATFORMS     = new Set(['electron', 'tauri', 'kmp', 'web-sdk', 'web-cdp', 'flutter-web', 'dotnet-maui']);
 const isFlutter = FLUTTER_PLATFORMS.has(PLATFORM);
@@ -77,7 +77,7 @@ const ELEMENT_KEYS = {
   'react-native': { button: 'like_button', input: 'search_input', text: 'post_text', checkbox: 'remember_checkbox', slider: 'volume_slider' },
   'web-sdk': { button: 'post_like_button_0', input: 'email_input', text: 'post_content_0', checkbox: 'remember_me_checkbox', slider: 'font_size_slider' },
   'web-cdp': { button: 'post_like_button_0', input: 'email_input', text: 'post_content_0', checkbox: 'remember_me_checkbox', slider: 'font_size_slider' },
-  'android': { button: 'increment-btn', input: 'text-input', text: 'counter', checkbox: 'test-checkbox', slider: 'volume-slider' },
+  'android': { button: 'increment_btn', input: 'input_field', text: 'counter_text', checkbox: 'test_checkbox', slider: 'volume_slider' },
   'flutter-ios': { button: 'like_button', input: 'search_input', text: 'post_text', checkbox: 'dark_mode_switch', slider: 'font_size_slider' },
   'flutter-web': { button: 'like_button', input: 'search_input', text: 'post_text', checkbox: 'dark_mode_switch', slider: 'font_size_slider' },
 };
@@ -127,7 +127,7 @@ const TOOLS = [
   ['scroll_until_visible', { key: EK.text, direction: 'down' }],
   ['native_tap', { x: 100, y: 200 }],
   ['native_input_text', { text: 'native hello' }],
-  ['native_swipe', { startX: 200, startY: 400, endX: 200, endY: 200 }],
+  ['native_swipe', { start_x: 200, start_y: 400, end_x: 200, end_y: 200 }],
   ['native_screenshot', {}],
   ['execute_batch', { actions: [{ tool: 'tap', arguments: { key: EK.button } }] }],
 
@@ -185,7 +185,7 @@ async function main() {
 
   const proc = spawn(DART, ['run', SERVER, 'server'], {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PATH: `/Users/cw/development/flutter/bin:${process.env.PATH}` },
+    env: { ...process.env, PATH: `/Users/cw/development/flutter/bin:${process.env.HOME}/Library/Android/sdk/platform-tools:${process.env.PATH}`, ANDROID_HOME: `${process.env.HOME}/Library/Android/sdk` },
   });
 
   // Collect stderr for debugging
@@ -229,7 +229,7 @@ async function main() {
     capabilities: {},
     clientInfo: { name: 'full-mcp-test', version: '1.0' },
   });
-  const init = await waitFor(initId, 15000);
+  const init = await waitFor(initId, 120000);
   if (!init.result) {
     console.log('❌ Initialize failed:', init.error?.message || stderrBuf.slice(-500));
     proc.kill();
