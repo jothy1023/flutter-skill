@@ -2904,6 +2904,9 @@ Detailed diagnostic report with:
     if (name == 'enable_test_indicators') {
       final client = _getClient(args);
       _requireConnection(client);
+      if (client is CdpDriver) {
+        return {"success": true, "enabled": false, "message": "No-op for CDP"};
+      }
       if (client is BridgeDriver) {
         final enabled = args['enabled'] ?? true;
         final style = args['style'] ?? 'standard';
@@ -2934,6 +2937,9 @@ Detailed diagnostic report with:
     if (name == 'get_indicator_status') {
       final client = _getClient(args);
       _requireConnection(client);
+      if (client is CdpDriver) {
+        return {"enabled": false, "message": "No-op for CDP"};
+      }
       if (client is BridgeDriver) {
         return await client.callMethod('get_indicator_status');
       }
@@ -4310,7 +4316,7 @@ Detailed diagnostic report with:
         return await cdp.edgeSwipe(direction, edge: edge, distance: distance);
 
       case 'gesture':
-        final points = (args['points'] as List<dynamic>).cast<Map<String, dynamic>>();
+        final points = ((args['points'] ?? args['actions']) as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
         return await cdp.gesture(points);
 
       case 'scroll_until_visible':
@@ -4364,8 +4370,8 @@ Detailed diagnostic report with:
         final results = <Map<String, dynamic>>[];
         for (final action in actions) {
           final a = action as Map<String, dynamic>;
-          final actionName = a['action'] as String;
-          final actionArgs = (a['args'] as Map<String, dynamic>?) ?? {};
+          final actionName = (a['action'] ?? a['tool'] ?? a['name']) as String;
+          final actionArgs = (a['args'] ?? a['arguments'] ?? a['params']) as Map<String, dynamic>? ?? {};
           try {
             final r = await _executeCdpTool(actionName, actionArgs, cdp);
             results.add({"action": actionName, "success": true, "result": r});
