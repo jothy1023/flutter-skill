@@ -2754,6 +2754,11 @@ Detailed diagnostic report with:
     if (name == 'enable_test_indicators') {
       final client = _getClient(args);
       _requireConnection(client);
+      if (client is BridgeDriver) {
+        final enabled = args['enabled'] ?? true;
+        final style = args['style'] ?? 'standard';
+        return await client.callMethod('enable_test_indicators', {'enabled': enabled, 'style': style});
+      }
       final fc = _asFlutterClient(client!, 'enable_test_indicators');
       final enabled = args['enabled'] ?? true;
       final style = args['style'] ?? 'standard';
@@ -2779,6 +2784,9 @@ Detailed diagnostic report with:
     if (name == 'get_indicator_status') {
       final client = _getClient(args);
       _requireConnection(client);
+      if (client is BridgeDriver) {
+        return await client.callMethod('get_indicator_status');
+      }
       final fc = _asFlutterClient(client!, 'get_indicator_status');
       return await fc.getIndicatorStatus();
     }
@@ -3173,6 +3181,9 @@ Detailed diagnostic report with:
         }
         return elements;
       case 'inspect_interactive':
+        if (client is BridgeDriver) {
+          return await client.getInteractiveElementsStructured();
+        }
         final fc = _asFlutterClient(client!, 'inspect_interactive');
         return await fc.getInteractiveElementsStructured();
       case 'snapshot':
@@ -3313,6 +3324,10 @@ Detailed diagnostic report with:
         final fc = _asFlutterClient(client!, 'get_widget_properties');
         return await fc.getWidgetProperties(args['key']);
       case 'get_text_content':
+        if (client is BridgeDriver) {
+          final text = await client.getText();
+          return {"success": true, "text": text};
+        }
         final fc = _asFlutterClient(client!, 'get_text_content');
         return await fc.getTextContent();
       case 'find_by_type':
@@ -3325,8 +3340,12 @@ Detailed diagnostic report with:
         final x = args['x'] as num?;
         final y = args['y'] as num?;
 
-        // Method 3: Tap by coordinates (Flutter-specific)
+        // Method 3: Tap by coordinates
         if (x != null && y != null) {
+          if (client is BridgeDriver) {
+            await client.callMethod('tap_at', {'x': x.toDouble(), 'y': y.toDouble()});
+            return {"success": true, "method": "coordinates", "message": "Tapped at ($x, $y)", "position": {"x": x, "y": y}};
+          }
           final fc = _asFlutterClient(client!, 'tap (coordinates)');
           await fc.tapAt(x.toDouble(), y.toDouble());
           return {
@@ -3379,6 +3398,10 @@ Detailed diagnostic report with:
         return {"success": true, "message": "Text entered"};
 
       case 'scroll_to':
+        if (client is BridgeDriver) {
+          await client.scroll(direction: args['direction'] ?? 'down', distance: args['distance'] ?? 300);
+          return {"success": true, "message": "Scrolled"};
+        }
         final fc = _asFlutterClient(client!, 'scroll_to');
         final result = await fc.scrollTo(key: args['key'], text: args['text']);
         if (result['success'] != true) {
@@ -3391,12 +3414,20 @@ Detailed diagnostic report with:
 
       // Advanced Actions
       case 'long_press':
+        if (client is BridgeDriver) {
+          final success = await client.longPress(key: args['key'], text: args['text']);
+          return success ? "Long pressed" : "Long press failed";
+        }
         final fc = _asFlutterClient(client!, 'long_press');
         final duration = args['duration'] ?? 500;
         final success = await fc.longPress(
             key: args['key'], text: args['text'], duration: duration);
         return success ? "Long pressed" : "Long press failed";
       case 'double_tap':
+        if (client is BridgeDriver) {
+          final success = await client.doubleTap(key: args['key'], text: args['text']);
+          return success ? "Double tapped" : "Double tap failed";
+        }
         final fc = _asFlutterClient(client!, 'double_tap');
         final success =
             await fc.doubleTap(key: args['key'], text: args['text']);
@@ -3407,6 +3438,10 @@ Detailed diagnostic report with:
             direction: args['direction'], distance: distance, key: args['key']);
         return success ? "Swiped ${args['direction']}" : "Swipe failed";
       case 'drag':
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('drag', {'from_key': args['from_key'], 'to_key': args['to_key']});
+          return result['success'] == true ? "Dragged" : "Drag failed";
+        }
         final fc = _asFlutterClient(client!, 'drag');
         final success =
             await fc.drag(fromKey: args['from_key'], toKey: args['to_key']);
@@ -3414,21 +3449,40 @@ Detailed diagnostic report with:
 
       // State & Validation
       case 'get_text_value':
+        if (client is BridgeDriver) {
+          final text = await client.getText(key: args['key']);
+          return {"success": true, "text": text};
+        }
         final fc = _asFlutterClient(client!, 'get_text_value');
         return await fc.getTextValue(args['key']);
       case 'get_checkbox_state':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_checkbox_state', {'key': args['key']});
+        }
         final fc = _asFlutterClient(client!, 'get_checkbox_state');
         return await fc.getCheckboxState(args['key']);
       case 'get_slider_value':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_slider_value', {'key': args['key']});
+        }
         final fc = _asFlutterClient(client!, 'get_slider_value');
         return await fc.getSliderValue(args['key']);
       case 'wait_for_element':
+        if (client is BridgeDriver) {
+          final timeout = args['timeout'] ?? 5000;
+          final found = await client.waitForElement(key: args['key'], text: args['text'], timeout: timeout);
+          return {"found": found};
+        }
         final fc = _asFlutterClient(client!, 'wait_for_element');
         final timeout = args['timeout'] ?? 5000;
         final found = await fc.waitForElement(
             key: args['key'], text: args['text'], timeout: timeout);
         return {"found": found};
       case 'wait_for_gone':
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('wait_for_gone', {'key': args['key'], 'text': args['text'], 'timeout': args['timeout'] ?? 5000});
+          return {"gone": result['gone'] ?? true};
+        }
         final fc = _asFlutterClient(client!, 'wait_for_gone');
         final timeout = args['timeout'] ?? 5000;
         final gone = await fc.waitForGone(
@@ -3487,6 +3541,13 @@ Detailed diagnostic report with:
         }
 
       case 'screenshot_region':
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('screenshot_region', {
+            'x': (args['x'] as num).toDouble(), 'y': (args['y'] as num).toDouble(),
+            'width': (args['width'] as num).toDouble(), 'height': (args['height'] as num).toDouble(),
+          });
+          return result;
+        }
         final fc = _asFlutterClient(client!, 'screenshot_region');
         final x = (args['x'] as num).toDouble();
         final y = (args['y'] as num).toDouble();
@@ -3548,6 +3609,10 @@ Detailed diagnostic report with:
           };
         }
 
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('screenshot_element', {'key': targetKey});
+          return result;
+        }
         final fc = _asFlutterClient(client!, 'screenshot_element');
         final image = await fc.takeElementScreenshot(targetKey);
         if (image == null) {
@@ -3560,13 +3625,24 @@ Detailed diagnostic report with:
 
       // Navigation
       case 'get_current_route':
+        if (client is BridgeDriver) {
+          final route = await client.getRoute();
+          return {"route": route};
+        }
         final fc = _asFlutterClient(client!, 'get_current_route');
         return await fc.getCurrentRoute();
       case 'go_back':
+        if (client is BridgeDriver) {
+          final success = await client.goBack();
+          return success ? "Navigated back" : "Cannot go back";
+        }
         final fc = _asFlutterClient(client!, 'go_back');
         final success = await fc.goBack();
         return success ? "Navigated back" : "Cannot go back";
       case 'get_navigation_stack':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_navigation_stack');
+        }
         final fc = _asFlutterClient(client!, 'get_navigation_stack');
         return await fc.getNavigationStack();
 
@@ -3581,6 +3657,9 @@ Detailed diagnostic report with:
           }
         };
       case 'get_errors':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_errors', {'limit': args['limit'] ?? 50, 'offset': args['offset'] ?? 0});
+        }
         final fc = _asFlutterClient(client!, 'get_errors');
         final allErrors = await fc.getErrors();
         final limit = int.tryParse('${args['limit'] ?? ''}') ?? 50;
@@ -3604,11 +3683,17 @@ Detailed diagnostic report with:
         await client!.clearLogs();
         return {"success": true, "message": "Logs cleared successfully"};
       case 'get_performance':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_performance');
+        }
         final fc = _asFlutterClient(client!, 'get_performance');
         return await fc.getPerformance();
 
       // === HTTP / Network Monitoring ===
       case 'enable_network_monitoring':
+        if (client is BridgeDriver) {
+          return await client.callMethod('enable_network_monitoring', {'enable': args['enable'] ?? true});
+        }
         final fc = _asFlutterClient(client!, 'enable_network_monitoring');
         final enable = args['enable'] ?? true;
         final success = await fc.enableHttpTimelineLogging(enable: enable);
@@ -3624,6 +3709,9 @@ Detailed diagnostic report with:
         };
 
       case 'get_network_requests':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_network_requests', {'limit': args['limit'] ?? 20});
+        }
         final fc = _asFlutterClient(client!, 'get_network_requests');
         final limit = int.tryParse('${args['limit'] ?? ''}') ?? 20;
         // Try VM Service HTTP profile first (captures all dart:io HTTP)
@@ -3682,17 +3770,43 @@ Detailed diagnostic report with:
         };
 
       case 'clear_network_requests':
+        if (client is BridgeDriver) {
+          return await client.callMethod('clear_network_requests');
+        }
         final fc = _asFlutterClient(client!, 'clear_network_requests');
         await fc.clearHttpRequests();
         return {"success": true, "message": "Network request history cleared"};
 
       // === NEW: Batch Operations ===
       case 'execute_batch':
+        if (client is BridgeDriver) {
+          final actions = args['actions'] as List? ?? [];
+          final results = <Map<String, dynamic>>[];
+          for (final action in actions) {
+            if (action is Map<String, dynamic>) {
+              final toolName = action['tool'] as String?;
+              final toolArgs = Map<String, dynamic>.from(action['args'] as Map? ?? {});
+              if (toolName != null) {
+                try {
+                  final result = await client.callMethod(toolName, toolArgs);
+                  results.add({'tool': toolName, 'success': true, 'result': result});
+                } catch (e) {
+                  results.add({'tool': toolName, 'success': false, 'error': e.toString()});
+                }
+              }
+            }
+          }
+          return {"success": true, "results": results, "count": results.length};
+        }
         final fc = _asFlutterClient(client!, 'execute_batch');
         return await _executeBatch(args, fc);
 
       // === NEW: Coordinate-based Actions ===
       case 'tap_at':
+        if (client is BridgeDriver) {
+          await client.callMethod('tap_at', {'x': (args['x'] as num).toDouble(), 'y': (args['y'] as num).toDouble()});
+          return {"success": true, "action": "tap_at", "x": args['x'], "y": args['y']};
+        }
         final fc = _asFlutterClient(client!, 'tap_at');
         final x = (args['x'] as num).toDouble();
         final y = (args['y'] as num).toDouble();
@@ -3700,6 +3814,10 @@ Detailed diagnostic report with:
         return {"success": true, "action": "tap_at", "x": x, "y": y};
 
       case 'long_press_at':
+        if (client is BridgeDriver) {
+          await client.callMethod('long_press_at', {'x': (args['x'] as num).toDouble(), 'y': (args['y'] as num).toDouble(), 'duration': args['duration'] ?? 500});
+          return {"success": true, "action": "long_press_at", "x": args['x'], "y": args['y']};
+        }
         final fc = _asFlutterClient(client!, 'long_press_at');
         final x = (args['x'] as num).toDouble();
         final y = (args['y'] as num).toDouble();
@@ -3708,6 +3826,14 @@ Detailed diagnostic report with:
         return {"success": true, "action": "long_press_at", "x": x, "y": y};
 
       case 'swipe_coordinates':
+        if (client is BridgeDriver) {
+          await client.callMethod('swipe_coordinates', {
+            'start_x': (args['start_x'] as num).toDouble(), 'start_y': (args['start_y'] as num).toDouble(),
+            'end_x': (args['end_x'] as num).toDouble(), 'end_y': (args['end_y'] as num).toDouble(),
+            'duration': args['duration'] ?? 300,
+          });
+          return {"success": true, "action": "swipe_coordinates"};
+        }
         final fc = _asFlutterClient(client!, 'swipe_coordinates');
         final startX = (args['start_x'] as num).toDouble();
         final startY = (args['start_y'] as num).toDouble();
@@ -3719,6 +3845,9 @@ Detailed diagnostic report with:
         return {"success": true, "action": "swipe_coordinates"};
 
       case 'edge_swipe':
+        if (client is BridgeDriver) {
+          return await client.callMethod('edge_swipe', {'edge': args['edge'], 'direction': args['direction'], 'distance': (args['distance'] as num?)?.toDouble() ?? 200});
+        }
         final fc = _asFlutterClient(client!, 'edge_swipe');
         final edge = args['edge'] as String;
         final direction = args['direction'] as String;
@@ -3728,37 +3857,74 @@ Detailed diagnostic report with:
         return result;
 
       case 'gesture':
+        if (client is BridgeDriver) {
+          return await client.callMethod('gesture', args);
+        }
         final fc = _asFlutterClient(client!, 'gesture');
         return await _performGesture(args, fc);
 
       case 'wait_for_idle':
+        if (client is BridgeDriver) {
+          return {"success": true, "message": "Bridge platform ready"};
+        }
         final fc = _asFlutterClient(client!, 'wait_for_idle');
         return await _waitForIdle(args, fc);
 
       // === NEW: Smart Scroll ===
       case 'scroll_until_visible':
+        if (client is BridgeDriver) {
+          return await client.callMethod('scroll_until_visible', {'key': args['key'], 'text': args['text'], 'direction': args['direction'] ?? 'down', 'max_scrolls': args['max_scrolls'] ?? 10});
+        }
         final fc = _asFlutterClient(client!, 'scroll_until_visible');
         return await _scrollUntilVisible(args, fc);
 
       // === NEW: Assertions ===
       case 'assert_visible':
+        if (client is BridgeDriver) {
+          final found = await client.findElement(key: args['key'], text: args['text']);
+          final isVisible = found.isNotEmpty && found['found'] == true;
+          return {"success": isVisible, "visible": isVisible, "message": isVisible ? "Element is visible" : "Element not found"};
+        }
         final fc = _asFlutterClient(client!, 'assert_visible');
         return await _assertVisible(args, fc, shouldBeVisible: true);
 
       case 'assert_not_visible':
+        if (client is BridgeDriver) {
+          final found = await client.findElement(key: args['key'], text: args['text']);
+          final isGone = found.isEmpty || found['found'] != true;
+          return {"success": isGone, "visible": !isGone, "message": isGone ? "Element is not visible" : "Element is still visible"};
+        }
         final fc = _asFlutterClient(client!, 'assert_not_visible');
         return await _assertVisible(args, fc, shouldBeVisible: false);
 
       case 'assert_text':
+        if (client is BridgeDriver) {
+          final actual = await client.getText(key: args['key']);
+          final expected = args['expected'] as String?;
+          final matches = actual == expected;
+          return {"success": matches, "actual": actual, "expected": expected, "message": matches ? "Text matches" : "Text mismatch"};
+        }
         final fc = _asFlutterClient(client!, 'assert_text');
         return await _assertText(args, fc);
 
       case 'assert_element_count':
+        if (client is BridgeDriver) {
+          final elements = await client.getInteractiveElements();
+          final count = elements.length;
+          final expected = args['expected'] as int?;
+          final matches = expected == null || count == expected;
+          return {"success": matches, "count": count, "expected": expected, "message": matches ? "Count matches" : "Expected $expected but found $count"};
+        }
         final fc = _asFlutterClient(client!, 'assert_element_count');
         return await _assertElementCount(args, fc);
 
       // === NEW: Page State ===
       case 'get_page_state':
+        if (client is BridgeDriver) {
+          final route = await client.getRoute();
+          final structured = await client.getInteractiveElementsStructured();
+          return {"route": route, "elements": structured};
+        }
         final fc = _asFlutterClient(client!, 'get_page_state');
         return await _getPageState(fc);
 
@@ -3769,15 +3935,24 @@ Detailed diagnostic report with:
 
       // === NEW: Performance & Memory ===
       case 'get_frame_stats':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_frame_stats');
+        }
         final fc = _asFlutterClient(client!, 'get_frame_stats');
         return await fc.getFrameStats();
 
       case 'get_memory_stats':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_memory_stats');
+        }
         final fc = _asFlutterClient(client!, 'get_memory_stats');
         return await fc.getMemoryStats();
 
       // === Smart Diagnosis ===
       case 'diagnose':
+        if (client is BridgeDriver) {
+          return await client.callMethod('diagnose', args);
+        }
         final fc = _asFlutterClient(client!, 'diagnose');
         return await _performDiagnosis(args, fc);
 
