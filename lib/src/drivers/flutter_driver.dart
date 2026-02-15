@@ -442,6 +442,15 @@ URI: $wsUri''');
         "external": allocationProfile.memoryUsage?.externalUsage ?? 0,
       };
     } catch (e) {
+      // getAllocationProfile not available on web VM
+      if (e.toString().contains('Unknown method') || e.toString().contains('-32601')) {
+        return {
+          "heapUsed": 0,
+          "heapCapacity": 0,
+          "external": 0,
+          "message": "Memory stats not available on this platform",
+        };
+      }
       if (!_isConnectionError(e)) rethrow;
       if (await _reconnect()) {
         final allocationProfile =
