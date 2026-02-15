@@ -909,23 +909,7 @@ methods.press_key = function (params) {
 // ---------------------------------------------------------------------------
 
 function _getCapabilities() {
-  return [
-    'initialize',
-    'inspect',
-    'inspect_interactive',
-    'tap',
-    'enter_text',
-    'swipe',
-    'scroll',
-    'find_element',
-    'get_text',
-    'wait_for_element',
-    'get_logs',
-    'clear_logs',
-    'get_route',
-    'go_back',
-    'press_key',
-  ];
+  return Object.keys(methods);
 }
 
 // ---------------------------------------------------------------------------

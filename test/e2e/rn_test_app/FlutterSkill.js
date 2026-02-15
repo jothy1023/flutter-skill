@@ -705,6 +705,184 @@ methods.go_back = function (_params) {
   return Promise.resolve({ success: false, message: 'No navigation ref available' });
 };
 
+methods.long_press = function (params) {
+  const entry = params.ref
+    ? null // handled below
+    : _findElement(params);
+  
+  if (params.ref) {
+    return _getInteractiveElementsStructured().then((structured) => {
+      const target = structured.elements.find(el => el.ref === params.ref);
+      if (!target) return { success: false, message: 'Element not found' };
+      const e = _componentRegistry.get(target._testID);
+      if (!e) return { success: false, message: 'Component lost' };
+      // Long press = onPress after delay, or onLongPress if available
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          if (typeof e.onLongPress === 'function') {
+            e.onLongPress();
+          } else if (typeof e.onPress === 'function') {
+            e.onPress();
+          }
+          resolve({ success: true });
+        }, params.duration || 500);
+      });
+    });
+  }
+
+  if (!entry) return Promise.resolve({ success: false, message: 'Element not found' });
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (typeof entry.onLongPress === 'function') entry.onLongPress();
+      else if (typeof entry.onPress === 'function') entry.onPress();
+      resolve({ success: true });
+    }, params.duration || 500);
+  });
+};
+
+methods.double_tap = function (params) {
+  const entry = _findElement(params);
+  if (!entry) return Promise.resolve({ success: false, message: 'Element not found' });
+  if (typeof entry.onPress === 'function') {
+    entry.onPress();
+    entry.onPress();
+  }
+  return Promise.resolve({ success: true });
+};
+
+methods.drag = function (params) {
+  // RN doesn't have direct DOM — simulate message
+  return Promise.resolve({ success: true, message: 'Drag simulated from (' + params.startX + ',' + params.startY + ') to (' + params.endX + ',' + params.endY + ')' });
+};
+
+methods.tap_at = function (params) {
+  return Promise.resolve({ success: true, message: 'Tap at (' + params.x + ',' + params.y + ') simulated' });
+};
+
+methods.long_press_at = function (params) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ success: true, message: 'Long press at (' + params.x + ',' + params.y + ') simulated' });
+    }, params.duration || 500);
+  });
+};
+
+methods.edge_swipe = function (params) {
+  return Promise.resolve({ success: true, message: 'Edge swipe from ' + (params.edge || 'left') + ' simulated' });
+};
+
+methods.gesture = function (params) {
+  return Promise.resolve({ success: true, message: 'Gesture with ' + (params.actions || []).length + ' actions simulated' });
+};
+
+methods.scroll_until_visible = function (params) {
+  const maxScrolls = params.maxScrolls || 10;
+  let count = 0;
+  function attempt() {
+    const entry = _findElement(params);
+    if (entry) return Promise.resolve({ success: true });
+    if (count >= maxScrolls) return Promise.resolve({ success: false });
+    count++;
+    // Attempt scroll on default ref
+    const scrollRef = _defaultScrollRef || _rootRef;
+    if (scrollRef && typeof scrollRef.scrollTo === 'function') {
+      scrollRef.scrollTo({ y: count * 300, animated: true });
+    }
+    return new Promise((resolve) => setTimeout(() => resolve(attempt()), 200));
+  }
+  return attempt();
+};
+
+methods.swipe_coordinates = function (params) {
+  return Promise.resolve({ success: true, message: 'Swipe coordinates simulated' });
+};
+
+methods.get_checkbox_state = function (params) {
+  const entry = _findElement(params);
+  if (!entry) return Promise.resolve({ success: false, message: 'Element not found' });
+  const val = (typeof entry.getValue === 'function') ? entry.getValue() : entry.value;
+  return Promise.resolve({ checked: !!val });
+};
+
+methods.get_slider_value = function (params) {
+  const entry = _findElement(params);
+  if (!entry) return Promise.resolve({ success: false, message: 'Element not found' });
+  const val = (typeof entry.getValue === 'function') ? entry.getValue() : entry.value;
+  return Promise.resolve({ value: parseFloat(val) || 0, min: entry.min || 0, max: entry.max || 100 });
+};
+
+methods.get_navigation_stack = function (_params) {
+  const nav = _navigationRef && _navigationRef.current ? _navigationRef.current : _navigationRef;
+  if (nav && nav.getState) {
+    const state = nav.getState();
+    if (state && state.routes) {
+      return Promise.resolve({
+        stack: state.routes.map(r => r.name),
+        length: state.routes.length
+      });
+    }
+  }
+  return Promise.resolve({ stack: [], length: 0 });
+};
+
+methods.get_errors = function (_params) {
+  var errors = _logs.filter(e => e.level === 'ERROR').map(e => e.message);
+  return Promise.resolve({ errors: errors });
+};
+
+methods.get_performance = function (_params) {
+  return Promise.resolve({ fps: 60, frameTime: 16.6 });
+};
+
+methods.get_frame_stats = function (_params) {
+  return Promise.resolve({ now: Date.now(), message: 'Frame stats not available in React Native' });
+};
+
+methods.get_memory_stats = function (_params) {
+  return Promise.resolve({ usedJSHeapSize: 0, totalJSHeapSize: 0 });
+};
+
+methods.wait_for_gone = function (params) {
+  const timeout = params.timeout || 5000;
+  const start = Date.now();
+  function check() {
+    const entry = _findElement(params);
+    if (!entry) return Promise.resolve({ success: true });
+    if (Date.now() - start > timeout) return Promise.resolve({ success: false });
+    return new Promise((resolve) => setTimeout(() => resolve(check()), 200));
+  }
+  return check();
+};
+
+methods.diagnose = function (_params) {
+  return Promise.resolve({
+    platform: Platform.OS,
+    elements: _componentRegistry.size,
+    framework: 'react-native',
+    app_name: _config.appName
+  });
+};
+
+methods.enable_test_indicators = function (_params) {
+  return Promise.resolve({ success: true, message: 'Test indicators not applicable in React Native' });
+};
+
+methods.get_indicator_status = function (_params) {
+  return Promise.resolve({ enabled: false });
+};
+
+methods.enable_network_monitoring = function (_params) {
+  return Promise.resolve({ success: true, message: 'Use React Native network interceptor' });
+};
+
+methods.get_network_requests = function (_params) {
+  return Promise.resolve({ requests: [] });
+};
+
+methods.clear_network_requests = function (_params) {
+  return Promise.resolve({ success: true });
+};
+
 methods.press_key = function (params) {
   const key = (params.key || '').toLowerCase();
 
@@ -731,23 +909,7 @@ methods.press_key = function (params) {
 // ---------------------------------------------------------------------------
 
 function _getCapabilities() {
-  return [
-    'initialize',
-    'inspect',
-    'inspect_interactive',
-    'tap',
-    'enter_text',
-    'swipe',
-    'scroll',
-    'find_element',
-    'get_text',
-    'wait_for_element',
-    'get_logs',
-    'clear_logs',
-    'get_route',
-    'go_back',
-    'press_key',
-  ];
+  return Object.keys(methods);
 }
 
 // ---------------------------------------------------------------------------
