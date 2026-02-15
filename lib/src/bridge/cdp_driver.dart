@@ -797,6 +797,430 @@ class CdpDriver implements AppDriver {
     };
   }
 
+  // ── Advanced CDP tools (beyond Playwright MCP) ──
+
+  /// Evaluate JavaScript and return result.
+  Future<Map<String, dynamic>> eval(String expression) async {
+    return _evalJs(expression);
+  }
+
+  /// Press a keyboard key.
+  Future<void> pressKey(String key, {List<String>? modifiers}) async {
+    // Map common key names to CDP key codes
+    final keyMap = <String, Map<String, dynamic>>{
+      'Enter': {'key': 'Enter', 'code': 'Enter', 'keyCode': 13},
+      'Tab': {'key': 'Tab', 'code': 'Tab', 'keyCode': 9},
+      'Escape': {'key': 'Escape', 'code': 'Escape', 'keyCode': 27},
+      'Backspace': {'key': 'Backspace', 'code': 'Backspace', 'keyCode': 8},
+      'Delete': {'key': 'Delete', 'code': 'Delete', 'keyCode': 46},
+      'ArrowUp': {'key': 'ArrowUp', 'code': 'ArrowUp', 'keyCode': 38},
+      'ArrowDown': {'key': 'ArrowDown', 'code': 'ArrowDown', 'keyCode': 40},
+      'ArrowLeft': {'key': 'ArrowLeft', 'code': 'ArrowLeft', 'keyCode': 37},
+      'ArrowRight': {'key': 'ArrowRight', 'code': 'ArrowRight', 'keyCode': 39},
+      'Space': {'key': ' ', 'code': 'Space', 'keyCode': 32},
+    };
+    final mapped = keyMap[key];
+    final keyName = mapped?['key'] ?? key;
+    final code = mapped?['code'] ?? 'Key${key.toUpperCase()}';
+    final keyCode = mapped?['keyCode'] ?? key.codeUnitAt(0);
+
+    int modifierFlags = 0;
+    if (modifiers != null) {
+      if (modifiers.contains('Alt')) modifierFlags |= 1;
+      if (modifiers.contains('Control')) modifierFlags |= 2;
+      if (modifiers.contains('Meta')) modifierFlags |= 4;
+      if (modifiers.contains('Shift')) modifierFlags |= 8;
+    }
+
+    await _call('Input.dispatchKeyEvent', {
+      'type': 'keyDown',
+      'key': keyName,
+      'code': code,
+      'windowsVirtualKeyCode': keyCode,
+      'nativeVirtualKeyCode': keyCode,
+      'modifiers': modifierFlags,
+    });
+    await _call('Input.dispatchKeyEvent', {
+      'type': 'keyUp',
+      'key': keyName,
+      'code': code,
+      'windowsVirtualKeyCode': keyCode,
+      'nativeVirtualKeyCode': keyCode,
+      'modifiers': modifierFlags,
+    });
+  }
+
+  /// Type text character by character (more realistic than enterText).
+  Future<void> typeText(String text) async {
+    for (final char in text.split('')) {
+      await _call('Input.dispatchKeyEvent', {
+        'type': 'char',
+        'text': char,
+      });
+    }
+  }
+
+  /// Hover over element.
+  Future<Map<String, dynamic>> hover({String? key, String? text, String? ref}) async {
+    final bounds = await _getElementBounds(key ?? '', text: text, ref: ref);
+    if (bounds == null) return {"success": false, "message": "Element not found"};
+    final cx = bounds['x']! + bounds['w']! / 2;
+    final cy = bounds['y']! + bounds['h']! / 2;
+    await _dispatchMouseEvent('mouseMoved', cx, cy);
+    return {"success": true, "position": {"x": cx, "y": cy}};
+  }
+
+  /// Select option in a <select> element.
+  Future<Map<String, dynamic>> selectOption(String key, String value) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]') || document.querySelector('select[name="$key"]');
+        if (!el || el.tagName !== 'SELECT') return JSON.stringify({success: false, message: 'Select element not found'});
+        el.value = '$value';
+        el.dispatchEvent(new Event('change', {bubbles: true}));
+        return JSON.stringify({success: true, value: '$value'});
+      })()
+    ''');
+    final v = result['result']?['value'] as String?;
+    if (v == null) return {"success": false};
+    return jsonDecode(v) as Map<String, dynamic>;
+  }
+
+  /// Check/uncheck a checkbox.
+  Future<Map<String, dynamic>> setCheckbox(String key, bool checked) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return JSON.stringify({success: false, message: 'Element not found'});
+        const cb = el.type === 'checkbox' ? el : el.querySelector('input[type="checkbox"]');
+        if (!cb) return JSON.stringify({success: false, message: 'Checkbox not found'});
+        if (cb.checked !== $checked) { cb.click(); }
+        return JSON.stringify({success: true, checked: cb.checked});
+      })()
+    ''');
+    final v = result['result']?['value'] as String?;
+    if (v == null) return {"success": false};
+    return jsonDecode(v) as Map<String, dynamic>;
+  }
+
+  /// Fill input (clear + type — faster than enterText for forms).
+  Future<Map<String, dynamic>> fill(String key, String value) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]') || document.querySelector('[name="$key"]');
+        if (!el) return JSON.stringify({success: false, message: 'Element not found'});
+        el.focus();
+        el.value = '';
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+          || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+        if (nativeInputValueSetter) nativeInputValueSetter.call(el, '${value.replaceAll("'", "\\'")}');
+        else el.value = '${value.replaceAll("'", "\\'")}';
+        el.dispatchEvent(new Event('input', {bubbles: true}));
+        el.dispatchEvent(new Event('change', {bubbles: true}));
+        return JSON.stringify({success: true, value: el.value});
+      })()
+    ''');
+    final v = result['result']?['value'] as String?;
+    if (v == null) return {"success": false};
+    return jsonDecode(v) as Map<String, dynamic>;
+  }
+
+  /// Get/set cookies.
+  Future<Map<String, dynamic>> getCookies() async {
+    final result = await _call('Network.getCookies');
+    return result;
+  }
+
+  Future<Map<String, dynamic>> setCookie(String name, String value, {String? domain, String? path}) async {
+    await _call('Network.setCookie', {
+      'name': name,
+      'value': value,
+      if (domain != null) 'domain': domain,
+      'path': path ?? '/',
+    });
+    return {"success": true};
+  }
+
+  Future<Map<String, dynamic>> clearCookies() async {
+    await _call('Network.clearBrowserCookies');
+    return {"success": true};
+  }
+
+  /// LocalStorage operations.
+  Future<Map<String, dynamic>> getLocalStorage() async {
+    final result = await _evalJs('JSON.stringify(Object.fromEntries(Object.entries(localStorage)))');
+    final v = result['result']?['value'] as String?;
+    if (v == null) return {};
+    return jsonDecode(v) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> setLocalStorage(String key, String value) async {
+    await _evalJs("localStorage.setItem('${key.replaceAll("'", "\\'")}', '${value.replaceAll("'", "\\'")}')");
+    return {"success": true};
+  }
+
+  Future<Map<String, dynamic>> clearLocalStorage() async {
+    await _evalJs("localStorage.clear()");
+    return {"success": true};
+  }
+
+  /// Get console messages (via Runtime.consoleAPICalled events).
+  Future<Map<String, dynamic>> getConsoleMessages() async {
+    // Enable console tracking if not already
+    try { await _call('Runtime.enable'); } catch (_) {}
+    final result = await _evalJs('''
+      JSON.stringify(window.__cdpConsoleLog || [])
+    ''');
+    final v = result['result']?['value'] as String?;
+    return {"messages": v != null ? jsonDecode(v) : [], "source": "runtime"};
+  }
+
+  /// Get network requests (requires Network.enable).
+  Future<Map<String, dynamic>> getNetworkRequests() async {
+    final result = await _evalJs('''
+      JSON.stringify(performance.getEntriesByType('resource').map(r => ({
+        name: r.name,
+        type: r.initiatorType,
+        duration: Math.round(r.duration),
+        size: r.transferSize || 0,
+        status: r.responseStatus || 200
+      })))
+    ''');
+    final v = result['result']?['value'] as String?;
+    return {"requests": v != null ? jsonDecode(v) : []};
+  }
+
+  /// Set viewport size.
+  Future<Map<String, dynamic>> setViewport(int width, int height, {double deviceScaleFactor = 1.0}) async {
+    await _call('Emulation.setDeviceMetricsOverride', {
+      'width': width,
+      'height': height,
+      'deviceScaleFactor': deviceScaleFactor,
+      'mobile': false,
+    });
+    return {"success": true, "width": width, "height": height};
+  }
+
+  /// Emulate device (mobile/tablet).
+  Future<Map<String, dynamic>> emulateDevice(String device) async {
+    final devices = <String, Map<String, dynamic>>{
+      'iphone-12': {'width': 390, 'height': 844, 'scale': 3.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)'},
+      'iphone-14': {'width': 393, 'height': 852, 'scale': 3.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)'},
+      'pixel-7': {'width': 412, 'height': 915, 'scale': 2.625, 'mobile': true, 'ua': 'Mozilla/5.0 (Linux; Android 13; Pixel 7)'},
+      'ipad-pro': {'width': 1024, 'height': 1366, 'scale': 2.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)'},
+      'desktop-1080p': {'width': 1920, 'height': 1080, 'scale': 1.0, 'mobile': false, 'ua': null},
+    };
+    final d = devices[device];
+    if (d == null) return {"success": false, "message": "Unknown device: $device", "available": devices.keys.toList()};
+
+    await _call('Emulation.setDeviceMetricsOverride', {
+      'width': d['width'],
+      'height': d['height'],
+      'deviceScaleFactor': d['scale'],
+      'mobile': d['mobile'],
+    });
+    if (d['ua'] != null) {
+      await _call('Emulation.setUserAgentOverride', {'userAgent': d['ua']});
+    }
+    return {"success": true, "device": device, "viewport": {"width": d['width'], "height": d['height']}};
+  }
+
+  /// Generate PDF (headless Chrome only).
+  Future<Map<String, dynamic>> generatePdf() async {
+    try {
+      final result = await _call('Page.printToPDF', {
+        'printBackground': true,
+        'preferCSSPageSize': true,
+      });
+      final data = result['data'] as String?;
+      if (data != null) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final file = File('${Directory.systemTemp.path}/flutter_skill_page_$timestamp.pdf');
+        await file.writeAsBytes(base64.decode(data));
+        return {"success": true, "file_path": file.path};
+      }
+      return {"success": false, "message": "No PDF data"};
+    } catch (e) {
+      return {"success": false, "message": "PDF generation requires headless Chrome: $e"};
+    }
+  }
+
+  /// Wait for navigation (page load).
+  Future<Map<String, dynamic>> waitForNavigation({int timeoutMs = 10000}) async {
+    // Simple approach: wait for load event
+    await Future.delayed(Duration(milliseconds: timeoutMs > 3000 ? 3000 : timeoutMs));
+    final url = await getCurrentRoute();
+    return {"success": true, "url": url};
+  }
+
+  /// Navigate to URL.
+  Future<Map<String, dynamic>> navigate(String url) async {
+    await _call('Page.navigate', {'url': url});
+    await Future.delayed(const Duration(seconds: 2));
+    return {"success": true, "url": url};
+  }
+
+  /// Go forward in history.
+  Future<bool> goForward() async {
+    await _evalJs("history.forward()");
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  /// Reload page.
+  Future<Map<String, dynamic>> reload() async {
+    await _call('Page.reload');
+    await Future.delayed(const Duration(seconds: 1));
+    return {"success": true};
+  }
+
+  /// Get element attribute.
+  Future<Map<String, dynamic>> getAttribute(String key, String attribute) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return null;
+        return el.getAttribute('$attribute');
+      })()
+    ''');
+    return {"value": result['result']?['value']};
+  }
+
+  /// Get element CSS property.
+  Future<Map<String, dynamic>> getCssProperty(String key, String property) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return null;
+        return getComputedStyle(el).getPropertyValue('$property');
+      })()
+    ''');
+    return {"value": result['result']?['value']};
+  }
+
+  /// Get element bounding box (public).
+  Future<Map<String, dynamic>> getBoundingBox(String key) async {
+    final bounds = await _getElementBounds(key);
+    if (bounds == null) return {"success": false, "message": "Element not found"};
+    return {"success": true, "bounds": bounds};
+  }
+
+  /// Count elements matching selector.
+  Future<int> countElements(String selector) async {
+    final result = await _evalJs('document.querySelectorAll("$selector").length');
+    return result['result']?['value'] as int? ?? 0;
+  }
+
+  /// Check if element is visible.
+  Future<bool> isVisible(String key) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return false;
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      })()
+    ''');
+    return result['result']?['value'] == true;
+  }
+
+  /// Focus element.
+  Future<Map<String, dynamic>> focus(String key) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return false;
+        el.focus();
+        return true;
+      })()
+    ''');
+    return {"success": result['result']?['value'] == true};
+  }
+
+  /// Blur (unfocus) element.
+  Future<Map<String, dynamic>> blur(String key) async {
+    await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (el) el.blur();
+      })()
+    ''');
+    return {"success": true};
+  }
+
+  /// Get page title.
+  Future<String> getTitle() async {
+    final result = await _evalJs('document.title');
+    return (result['result']?['value'] as String?) ?? '';
+  }
+
+  /// Get page HTML.
+  Future<String> getPageSource() async {
+    final result = await _evalJs('document.documentElement.outerHTML');
+    return (result['result']?['value'] as String?) ?? '';
+  }
+
+  /// Set geolocation.
+  Future<Map<String, dynamic>> setGeolocation(double latitude, double longitude, {double accuracy = 100}) async {
+    await _call('Emulation.setGeolocationOverride', {
+      'latitude': latitude,
+      'longitude': longitude,
+      'accuracy': accuracy,
+    });
+    return {"success": true};
+  }
+
+  /// Set timezone.
+  Future<Map<String, dynamic>> setTimezone(String timezone) async {
+    await _call('Emulation.setTimezoneOverride', {'timezoneId': timezone});
+    return {"success": true};
+  }
+
+  /// Set dark/light mode.
+  Future<Map<String, dynamic>> setColorScheme(String scheme) async {
+    await _call('Emulation.setEmulatedMedia', {
+      'features': [{'name': 'prefers-color-scheme', 'value': scheme}],
+    });
+    return {"success": true, "scheme": scheme};
+  }
+
+  /// Block URLs (e.g. ads, trackers).
+  Future<Map<String, dynamic>> blockUrls(List<String> patterns) async {
+    await _call('Network.setBlockedURLs', {'urls': patterns});
+    return {"success": true, "blocked": patterns};
+  }
+
+  /// Throttle network (simulate slow connections).
+  Future<Map<String, dynamic>> throttleNetwork({int latencyMs = 0, int downloadKbps = -1, int uploadKbps = -1}) async {
+    await _call('Network.emulateNetworkConditions', {
+      'offline': false,
+      'latency': latencyMs,
+      'downloadThroughput': downloadKbps > 0 ? downloadKbps * 1024 / 8 : -1,
+      'uploadThroughput': uploadKbps > 0 ? uploadKbps * 1024 / 8 : -1,
+    });
+    return {"success": true};
+  }
+
+  /// Disable network (offline mode).
+  Future<Map<String, dynamic>> goOffline() async {
+    await _call('Network.emulateNetworkConditions', {
+      'offline': true,
+      'latency': 0,
+      'downloadThroughput': -1,
+      'uploadThroughput': -1,
+    });
+    return {"success": true, "offline": true};
+  }
+
+  /// Clear browser data.
+  Future<Map<String, dynamic>> clearBrowserData() async {
+    await _call('Network.clearBrowserCookies');
+    await _call('Network.clearBrowserCache');
+    await _evalJs("localStorage.clear(); sessionStorage.clear()");
+    return {"success": true};
+  }
+
   // ── Internal helpers ──
 
   Future<void> _launchChromeProcess() async {

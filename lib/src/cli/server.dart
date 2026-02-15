@@ -660,6 +660,39 @@ After starting, point the web SDK at ws://127.0.0.1:<port>.""",
         "inputSchema": {"type": "object", "properties": {}},
       },
 
+      // CDP-exclusive tools (web testing superpowers)
+      {"name": "eval", "description": "Execute JavaScript in the browser and return the result. Works with CDP and bridge connections.", "inputSchema": {"type": "object", "properties": {"expression": {"type": "string", "description": "JavaScript expression to evaluate"}}, "required": ["expression"]}},
+      {"name": "press_key", "description": "Press a keyboard key (Enter, Tab, Escape, ArrowUp, etc.)", "inputSchema": {"type": "object", "properties": {"key": {"type": "string", "description": "Key name (Enter, Tab, Escape, Backspace, ArrowUp, ArrowDown, Space, or any character)"}, "modifiers": {"type": "array", "items": {"type": "string"}, "description": "Modifier keys: Alt, Control, Meta, Shift"}}, "required": ["key"]}},
+      {"name": "hover", "description": "Hover over an element (triggers CSS :hover styles and mouseover events)", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "text": {"type": "string"}, "ref": {"type": "string"}}}},
+      {"name": "select_option", "description": "Select an option in a <select> dropdown", "inputSchema": {"type": "object", "properties": {"key": {"type": "string", "description": "Element ID or test ID"}, "value": {"type": "string", "description": "Option value to select"}}, "required": ["key", "value"]}},
+      {"name": "set_checkbox", "description": "Check or uncheck a checkbox", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "checked": {"type": "boolean"}}, "required": ["key"]}},
+      {"name": "fill", "description": "Fill an input field (clear + set value — faster than enter_text for forms)", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "value": {"type": "string"}}, "required": ["key", "value"]}},
+      {"name": "get_cookies", "description": "Get all browser cookies for the current page", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_cookie", "description": "Set a browser cookie", "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "domain": {"type": "string"}, "path": {"type": "string"}}, "required": ["name", "value"]}},
+      {"name": "clear_cookies", "description": "Clear all browser cookies", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_local_storage", "description": "Get all localStorage key-value pairs", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_local_storage", "description": "Set a localStorage value", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "value": {"type": "string"}}, "required": ["key", "value"]}},
+      {"name": "clear_local_storage", "description": "Clear all localStorage data", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_console_messages", "description": "Get browser console log messages", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_network_requests", "description": "Get all network requests made by the page (via Performance API)", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_viewport", "description": "Set browser viewport size (responsive testing)", "inputSchema": {"type": "object", "properties": {"width": {"type": "integer"}, "height": {"type": "integer"}, "device_scale_factor": {"type": "number"}}, "required": ["width", "height"]}},
+      {"name": "emulate_device", "description": "Emulate a mobile device (viewport + user agent). Devices: iphone-12, iphone-14, pixel-7, ipad-pro, desktop-1080p", "inputSchema": {"type": "object", "properties": {"device": {"type": "string"}}, "required": ["device"]}},
+      {"name": "generate_pdf", "description": "Generate a PDF of the current page", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "navigate", "description": "Navigate to a URL", "inputSchema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
+      {"name": "go_forward", "description": "Navigate forward in browser history", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "reload", "description": "Reload the current page", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_attribute", "description": "Get an HTML element's attribute value", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "attribute": {"type": "string"}}, "required": ["key", "attribute"]}},
+      {"name": "get_css_property", "description": "Get computed CSS property of an element", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}, "property": {"type": "string"}}, "required": ["key", "property"]}},
+      {"name": "get_bounding_box", "description": "Get element position and size", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
+      {"name": "focus", "description": "Focus an element", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
+      {"name": "get_title", "description": "Get the page title", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "set_geolocation", "description": "Override browser geolocation", "inputSchema": {"type": "object", "properties": {"latitude": {"type": "number"}, "longitude": {"type": "number"}}, "required": ["latitude", "longitude"]}},
+      {"name": "set_color_scheme", "description": "Set dark/light mode preference", "inputSchema": {"type": "object", "properties": {"scheme": {"type": "string", "enum": ["dark", "light"]}}, "required": ["scheme"]}},
+      {"name": "block_urls", "description": "Block network requests matching URL patterns (ads, trackers, etc.)", "inputSchema": {"type": "object", "properties": {"patterns": {"type": "array", "items": {"type": "string"}}}, "required": ["patterns"]}},
+      {"name": "throttle_network", "description": "Simulate slow network (3G, offline, etc.)", "inputSchema": {"type": "object", "properties": {"latency_ms": {"type": "integer"}, "download_kbps": {"type": "integer"}, "upload_kbps": {"type": "integer"}}}},
+      {"name": "go_offline", "description": "Simulate offline mode (no network)", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "clear_browser_data", "description": "Clear all browser data (cookies, cache, localStorage, sessionStorage)", "inputSchema": {"type": "object", "properties": {}}},
+
       // Basic Inspection
       {
         "name": "inspect",
@@ -4390,6 +4423,138 @@ Detailed diagnostic report with:
 
       case 'clear_network_requests':
         return {"success": true, "message": "No-op for CDP"};
+
+      case 'eval':
+        final expression = args['expression'] as String? ?? '';
+        final result = await cdp.eval(expression);
+        return result;
+
+      case 'press_key':
+        final key = args['key'] as String? ?? 'Enter';
+        final modifiers = (args['modifiers'] as List<dynamic>?)?.cast<String>();
+        await cdp.pressKey(key, modifiers: modifiers);
+        return {"success": true, "key": key};
+
+      case 'type_text':
+        final text = args['text'] as String? ?? '';
+        await cdp.typeText(text);
+        return {"success": true, "text": text};
+
+      case 'hover':
+        return await cdp.hover(key: args['key'], text: args['text'], ref: args['ref']);
+
+      case 'select_option':
+        final key = args['key'] as String? ?? '';
+        final value = args['value'] as String? ?? '';
+        return await cdp.selectOption(key, value);
+
+      case 'set_checkbox':
+        final key = args['key'] as String? ?? '';
+        final checked = args['checked'] ?? true;
+        return await cdp.setCheckbox(key, checked);
+
+      case 'fill':
+        final key = args['key'] as String? ?? '';
+        final value = args['value'] ?? args['text'] as String? ?? '';
+        return await cdp.fill(key, value);
+
+      case 'get_cookies':
+        return await cdp.getCookies();
+
+      case 'set_cookie':
+        return await cdp.setCookie(
+          args['name'] as String? ?? '',
+          args['value'] as String? ?? '',
+          domain: args['domain'] as String?,
+          path: args['path'] as String?,
+        );
+
+      case 'clear_cookies':
+        return await cdp.clearCookies();
+
+      case 'get_local_storage':
+        return await cdp.getLocalStorage();
+
+      case 'set_local_storage':
+        return await cdp.setLocalStorage(args['key'] as String? ?? '', args['value'] as String? ?? '');
+
+      case 'clear_local_storage':
+        return await cdp.clearLocalStorage();
+
+      case 'get_console_messages':
+        return await cdp.getConsoleMessages();
+
+      case 'get_network_requests':
+        return await cdp.getNetworkRequests();
+
+      case 'set_viewport':
+        return await cdp.setViewport(
+          (args['width'] as num?)?.toInt() ?? 1280,
+          (args['height'] as num?)?.toInt() ?? 720,
+          deviceScaleFactor: (args['device_scale_factor'] as num?)?.toDouble() ?? 1.0,
+        );
+
+      case 'emulate_device':
+        return await cdp.emulateDevice(args['device'] as String? ?? 'iphone-14');
+
+      case 'generate_pdf':
+        return await cdp.generatePdf();
+
+      case 'navigate':
+        return await cdp.navigate(args['url'] as String? ?? '');
+
+      case 'go_forward':
+        await cdp.goForward();
+        return {"success": true};
+
+      case 'reload':
+        return await cdp.reload();
+
+      case 'get_attribute':
+        return await cdp.getAttribute(args['key'] as String? ?? '', args['attribute'] as String? ?? '');
+
+      case 'get_css_property':
+        return await cdp.getCssProperty(args['key'] as String? ?? '', args['property'] as String? ?? '');
+
+      case 'get_bounding_box':
+        return await cdp.getBoundingBox(args['key'] as String? ?? '');
+
+      case 'focus':
+        return await cdp.focus(args['key'] as String? ?? '');
+
+      case 'blur':
+        return await cdp.blur(args['key'] as String? ?? '');
+
+      case 'get_title':
+        return {"title": await cdp.getTitle()};
+
+      case 'set_geolocation':
+        return await cdp.setGeolocation(
+          (args['latitude'] as num?)?.toDouble() ?? 0,
+          (args['longitude'] as num?)?.toDouble() ?? 0,
+        );
+
+      case 'set_timezone':
+        return await cdp.setTimezone(args['timezone'] as String? ?? 'UTC');
+
+      case 'set_color_scheme':
+        return await cdp.setColorScheme(args['scheme'] as String? ?? 'dark');
+
+      case 'block_urls':
+        return await cdp.blockUrls((args['patterns'] as List<dynamic>?)?.cast<String>() ?? []);
+
+      case 'throttle_network':
+        return await cdp.throttleNetwork(
+          latencyMs: (args['latency_ms'] as num?)?.toInt() ?? 0,
+          downloadKbps: (args['download_kbps'] as num?)?.toInt() ?? -1,
+          uploadKbps: (args['upload_kbps'] as num?)?.toInt() ?? -1,
+        );
+
+      case 'go_offline':
+        return await cdp.goOffline();
+
+      case 'clear_browser_data':
+        return await cdp.clearBrowserData();
 
       default:
         throw Exception('Tool "$name" is not supported in CDP mode.');
