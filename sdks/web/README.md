@@ -1,83 +1,62 @@
-# flutter-skill Web SDK
+# Flutter Skill Web SDK
 
-> Part of [flutter-skill](https://github.com/ai-dashboad/flutter-skill) — **AI-Powered End-to-End Testing for Any App**
-
-Lightweight in-browser bridge that lets flutter-skill automate **any web app** — React, Vue, Svelte, plain HTML, or any other framework.
+Lightweight browser bridge for vanilla web apps. Zero dependencies.
 
 ## Quick Start
 
-Add the script to your page during development:
+```html
+<script src="flutter-skill-web.js"></script>
+```
+
+The SDK auto-connects to `ws://127.0.0.1:18118` on load.
+
+## Configuration
 
 ```html
-<script src="https://unpkg.com/flutter-skill@latest/web/flutter-skill.js"></script>
+<script>
+  window.FLUTTER_SKILL_PORT = 18119;       // Custom port
+  window.FLUTTER_SKILL_APP_NAME = 'MyApp'; // App name for health endpoint
+</script>
+<script src="flutter-skill-web.js"></script>
 ```
 
-Or install via npm and import conditionally:
-
-```bash
-npm install flutter-skill
-```
+## API
 
 ```js
-// Only load in development
-if (process.env.NODE_ENV === 'development') {
-  require('flutter-skill/web');
-}
+FlutterSkillWeb.connect();    // Manual connect (auto-called on load)
+FlutterSkillWeb.disconnect(); // Disconnect
+FlutterSkillWeb.health();     // Get health/capability info
 ```
 
-## How It Works
-
-1. **Include the SDK** in your web app (see above).
-2. **Launch Chrome** with remote debugging enabled:
-   ```bash
-   # macOS
-   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-     --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
-
-   # Linux
-   google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
-   ```
-3. **Open your app** in the browser.
-4. **Run flutter-skill server** — it will auto-discover the web app via bridge discovery.
-5. Use `scan_and_connect`, `inspect`, `tap`, `screenshot`, etc. as usual.
-
-## Supported Methods
+## Supported Bridge Methods
 
 | Method | Description |
 |--------|-------------|
-| `inspect` | List interactive DOM elements with positions |
-| `tap` | Click an element by key, text, or selector |
-| `enter_text` | Type into an input/textarea |
-| `swipe` | Simulate swipe gesture via pointer events |
-| `scroll` | Scroll window or element |
-| `find_element` | Check if an element exists |
-| `get_text` | Get text content or input value |
-| `wait_for_element` | Check element presence (proxy polls) |
-| `screenshot` | Captured via CDP (handled by proxy) |
-| `get_logs` | Retrieve captured console output |
-| `clear_logs` | Clear log buffer |
+| `initialize` | Handshake |
+| `inspect` | Full DOM tree inspection |
+| `inspect_interactive` | Interactive elements with semantic refs |
+| `tap` | Click element by ref/selector/text |
+| `enter_text` | Type into input fields |
+| `get_text` | Read element text/value |
+| `get_checkbox_state` | Get checkbox/toggle state |
+| `get_slider_value` | Get range input value |
+| `scroll_to` | Scroll to element or direction |
+| `long_press` | Simulate long press |
+| `double_tap` | Double click |
+| `swipe` | Swipe gesture + scroll |
+| `drag` | Mouse drag |
+| `go_back` | Navigate back |
+| `screenshot` | Full page screenshot via Canvas |
+| `screenshot_region` | Region screenshot |
+| `screenshot_element` | Element screenshot |
+| `eval` | Execute JavaScript |
+| `press_key` | Simulate keyboard input |
+| `get_elements_by_type` | Filter elements by type |
+| `find_element` | Find single element |
+| `wait_for_element` | Wait for element to appear |
 
-## Element Selectors
+## Element Resolution
 
-Elements are found by (in priority order):
+Elements are resolved in order: `ref` → `selector`/`key` → `text`.
 
-1. **`selector`** — any CSS selector (`#id`, `.class`, `button[type=submit]`)
-2. **`key`** — matches `data-testid` attribute or element `id`
-3. **`text`** — matches visible text content
-
-## Architecture
-
-```
-flutter-skill server
-      │
-      ▼  (bridge WebSocket, port 18118)
-WebBridgeProxy
-      │
-      ▼  (CDP WebSocket, port 9222)
-Chrome browser
-      │
-      ▼  (in-page JS)
-flutter-skill.js  →  window.__FLUTTER_SKILL_CALL__()
-```
-
-The proxy translates JSON-RPC bridge calls into CDP `Runtime.evaluate` calls that invoke the in-page SDK. Screenshots are taken directly via CDP `Page.captureScreenshot`.
+Semantic refs follow `{role}:{content}` format (e.g., `button:Login`, `input:Email`).

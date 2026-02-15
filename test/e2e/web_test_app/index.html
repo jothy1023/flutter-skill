@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flutter Skill Web Test</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- LOGIN PAGE -->
+  <div id="login-page" class="page login-page active">
+    <div class="login-box">
+      <h1>🔥 SocialApp</h1>
+      <p>Sign in to continue</p>
+      <div id="login_error" class="login-error"></div>
+      <div class="form-group">
+        <label for="email_input">Email</label>
+        <input id="email_input" class="form-input" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="password_input">Password</label>
+        <input id="password_input" class="form-input" type="password" placeholder="Password">
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="remember_me_checkbox">
+        <label for="remember_me_checkbox">Remember me</label>
+      </div>
+      <button id="login_button" class="btn btn-block" onclick="doLogin()">Sign In</button>
+      <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text2)">
+        <a href="#" id="forgot_password_link" onclick="showToast('Reset link sent!');" style="color:var(--accent)">Forgot password?</a>
+        &nbsp;·&nbsp;
+        <a href="#" id="signup_link" onclick="showToast('Signup coming soon')" style="color:var(--accent)">Sign up</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- HOME / FEED PAGE -->
+  <div id="home-page" class="page">
+    <h1 style="font-size:24px;margin-bottom:16px">🔥 For You</h1>
+
+    <div class="counter-widget">
+      <button class="counter-btn dec" id="decrement_button" onclick="decrement()">−</button>
+      <div class="counter-value" id="counter_display">Count: 0</div>
+      <button class="counter-btn inc" id="increment_button" onclick="increment()">+</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="post_input" class="form-input" type="text" placeholder="What's on your mind?" style="flex:1">
+      <button id="post_submit_button" class="btn" onclick="submitPost()">Post</button>
+    </div>
+    <div id="post_result" style="color:var(--accent);font-size:13px;margin-bottom:12px"></div>
+
+    <div id="feed"></div>
+  </div>
+
+  <!-- SEARCH PAGE -->
+  <div id="search-page" class="page">
+    <h1 style="font-size:24px;margin-bottom:16px">🔍 Discover</h1>
+    <div class="search-bar">
+      <input id="search_input" class="form-input" type="text" placeholder="Search posts, users..." oninput="onSearch()">
+      <button id="search_button" class="btn" onclick="onSearch()">🔍</button>
+    </div>
+    <div class="filters">
+      <span class="filter-chip active" id="filter_all" onclick="setFilter(this,'all')">All</span>
+      <span class="filter-chip" id="filter_trending" onclick="setFilter(this,'trending')">Trending</span>
+      <span class="filter-chip" id="filter_people" onclick="setFilter(this,'people')">People</span>
+      <span class="filter-chip" id="filter_videos" onclick="setFilter(this,'videos')">Videos</span>
+      <span class="filter-chip" id="filter_music" onclick="setFilter(this,'music')">Music</span>
+    </div>
+    <div id="search_results"></div>
+    <div class="section-title">Browse All</div>
+    <div id="browse_list"></div>
+  </div>
+
+  <!-- CREATE PAGE -->
+  <div id="create-page" class="page">
+    <h1 style="font-size:24px;margin-bottom:16px">✨ Create Post</h1>
+    <div class="form-group">
+      <label for="create_title_input">Title</label>
+      <input id="create_title_input" class="form-input" type="text" placeholder="Give your post a title">
+    </div>
+    <div class="form-group">
+      <label for="create_body_input">Body</label>
+      <textarea id="create_body_input" class="form-textarea" placeholder="Tell your story..."></textarea>
+    </div>
+    <div class="form-group">
+      <label for="category_select">Category</label>
+      <select id="category_select" class="form-select">
+        <option value="">Select a category</option>
+        <option value="comedy">😂 Comedy</option>
+        <option value="music">🎵 Music</option>
+        <option value="dance">💃 Dance</option>
+        <option value="food">🍕 Food</option>
+        <option value="travel">✈️ Travel</option>
+        <option value="tech">💻 Tech</option>
+        <option value="fitness">💪 Fitness</option>
+      </select>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="public_checkbox" checked>
+      <label for="public_checkbox">Make public</label>
+    </div>
+    <div class="toggle-row">
+      <span>Allow comments</span>
+      <button id="comments_toggle" class="toggle on" onclick="toggleSwitch(this)"></button>
+    </div>
+    <div class="toggle-row">
+      <span>Allow sharing</span>
+      <button id="sharing_toggle" class="toggle on" onclick="toggleSwitch(this)"></button>
+    </div>
+    <div class="form-group" style="margin-top:16px">
+      <label>Attach media</label>
+      <input id="file_input" type="file" style="margin-top:4px">
+    </div>
+    <button id="publish_button" class="btn btn-block" style="margin-top:16px" onclick="publishPost()">🚀 Publish</button>
+  </div>
+
+  <!-- PROFILE PAGE -->
+  <div id="profile-page" class="page">
+    <div class="profile-header">
+      <div class="profile-avatar-lg">😎</div>
+      <div class="profile-name" id="profile_name">Test User</div>
+      <div class="profile-handle">@testuser</div>
+    </div>
+    <div class="profile-stats">
+      <div class="stat"><div class="stat-num" id="followers_count">12.5K</div><div class="stat-label">Followers</div></div>
+      <div class="stat"><div class="stat-num" id="following_count">842</div><div class="stat-label">Following</div></div>
+      <div class="stat"><div class="stat-num" id="likes_count">98.1K</div><div class="stat-label">Likes</div></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
+      <button id="edit_profile_button" class="btn" onclick="showToast('Edit profile')">Edit Profile</button>
+      <button id="settings_button" class="btn btn-outline" onclick="openSettings()">⚙️ Settings</button>
+      <button id="logout_button" class="btn btn-outline" onclick="doLogout()">Logout</button>
+    </div>
+
+    <div class="section-title">Settings</div>
+    <div class="toggle-row"><span>Dark Mode</span><button id="dark_mode_toggle" class="toggle on" onclick="toggleSwitch(this)"></button></div>
+    <div class="toggle-row"><span>Notifications</span><button id="notifications_toggle" class="toggle on" onclick="toggleSwitch(this)"></button></div>
+    <div class="toggle-row"><span>Private Account</span><button id="private_toggle" class="toggle" onclick="toggleSwitch(this)"></button></div>
+
+    <div class="slider-row">
+      <label for="font_size_slider">Font Size</label>
+      <input type="range" id="font_size_slider" min="10" max="24" value="14" oninput="updateSlider('font_size_slider')">
+      <div class="slider-value" id="font_size_slider_value">14</div>
+    </div>
+    <div class="slider-row">
+      <label for="volume_slider">Volume</label>
+      <input type="range" id="volume_slider" min="0" max="100" value="75" oninput="updateSlider('volume_slider')">
+      <div class="slider-value" id="volume_slider_value">75</div>
+    </div>
+    <div class="slider-row">
+      <label for="brightness_slider">Brightness</label>
+      <input type="range" id="brightness_slider" min="0" max="100" value="50" oninput="updateSlider('brightness_slider')">
+      <div class="slider-value" id="brightness_slider_value">50</div>
+    </div>
+
+    <div class="section-title" style="margin-top:20px">My Posts</div>
+    <div id="my_posts"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings_modal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ Settings</h2>
+      <button id="modal_close_button" class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="toggle-row"><span>Auto-play Videos</span><button id="autoplay_toggle" class="toggle on" onclick="toggleSwitch(this)"></button></div>
+    <div class="toggle-row"><span>Data Saver</span><button id="datasaver_toggle" class="toggle" onclick="toggleSwitch(this)"></button></div>
+    <div class="toggle-row"><span>Show Activity</span><button id="activity_toggle" class="toggle on" onclick="toggleSwitch(this)"></button></div>
+    <div class="form-group" style="margin-top:16px">
+      <label for="language_select">Language</label>
+      <select id="language_select" class="form-select">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+    <button id="save_settings_button" class="btn btn-block" style="margin-top:12px" onclick="closeSettings();showToast('Settings saved')">Save</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Bottom Nav -->
+<nav id="bottom_nav" class="bottom-nav">
+  <button id="nav_home" class="nav-tab active" onclick="switchTab('home')"><span class="icon">🏠</span>Home</button>
+  <button id="nav_search" class="nav-tab" onclick="switchTab('search')"><span class="icon">🔍</span>Search</button>
+  <button id="nav_create" class="nav-tab" onclick="switchTab('create')"><span class="icon">➕</span>Create</button>
+  <button id="nav_profile" class="nav-tab" onclick="switchTab('profile')"><span class="icon">👤</span>Profile</button>
+</nav>
+
+<script src="/sdks/web/flutter-skill-web.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

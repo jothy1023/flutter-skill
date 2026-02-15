@@ -1,0 +1,8 @@
+{
+  "name": "flutter-skill-web",
+  "version": "1.0.0",
+  "description": "Flutter Skill bridge SDK for vanilla web apps",
+  "main": "flutter-skill-web.js",
+  "keywords": ["flutter-skill", "web", "bridge", "mcp"],
+  "license": "MIT"
+}
