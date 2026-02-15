@@ -4277,10 +4277,116 @@ Detailed diagnostic report with:
       case 'clear_logs':
         return {"success": true, "message": "No-op for CDP"};
 
+      case 'drag':
+        final startX = (args['startX'] as num?)?.toDouble() ?? 0;
+        final startY = (args['startY'] as num?)?.toDouble() ?? 0;
+        final endX = (args['endX'] as num?)?.toDouble() ?? 0;
+        final endY = (args['endY'] as num?)?.toDouble() ?? 0;
+        return await cdp.drag(startX, startY, endX, endY);
+
+      case 'tap_at':
+        final x = (args['x'] as num).toDouble();
+        final y = (args['y'] as num).toDouble();
+        await cdp.tapAt(x, y);
+        return {"success": true, "position": {"x": x, "y": y}};
+
+      case 'long_press_at':
+        final x = (args['x'] as num).toDouble();
+        final y = (args['y'] as num).toDouble();
+        await cdp.longPressAt(x, y);
+        return {"success": true, "position": {"x": x, "y": y}};
+
+      case 'swipe_coordinates':
+        final startX = (args['startX'] ?? args['start_x'] as num?)?.toDouble() ?? 0;
+        final startY = (args['startY'] ?? args['start_y'] as num?)?.toDouble() ?? 0;
+        final endX = (args['endX'] ?? args['end_x'] as num?)?.toDouble() ?? 0;
+        final endY = (args['endY'] ?? args['end_y'] as num?)?.toDouble() ?? 0;
+        return await cdp.swipeCoordinates(startX, startY, endX, endY);
+
+      case 'edge_swipe':
+        final direction = args['direction'] as String? ?? 'right';
+        final edge = args['edge'] as String? ?? 'left';
+        final distance = (args['distance'] as num?)?.toInt() ?? 200;
+        return await cdp.edgeSwipe(direction, edge: edge, distance: distance);
+
+      case 'gesture':
+        final points = (args['points'] as List<dynamic>).cast<Map<String, dynamic>>();
+        return await cdp.gesture(points);
+
+      case 'scroll_until_visible':
+        final key = args['key'] as String? ?? '';
+        final maxScrolls = (args['max_scrolls'] as num?)?.toInt() ?? 10;
+        final direction = args['direction'] as String? ?? 'down';
+        return await cdp.scrollUntilVisible(key, maxScrolls: maxScrolls, direction: direction);
+
+      case 'get_checkbox_state':
+        final key = args['key'] as String? ?? '';
+        return await cdp.getCheckboxState(key);
+
+      case 'get_slider_value':
+        final key = args['key'] as String? ?? '';
+        return await cdp.getSliderValue(key);
+
+      case 'get_page_state':
+        return await cdp.getPageState();
+
+      case 'get_interactable_elements':
+        return await cdp.getInteractableElements();
+
+      case 'get_performance':
+        return await cdp.getPerformance();
+
+      case 'get_frame_stats':
+        return await cdp.getFrameStats();
+
+      case 'get_memory_stats':
+        return await cdp.getMemoryStats();
+
+      case 'assert_text':
+        final text = args['text'] as String? ?? '';
+        final key = args['key'] as String?;
+        return await cdp.assertText(text, key: key);
+
+      case 'assert_element_count':
+        final selector = args['selector'] as String? ?? args['key'] as String? ?? '*';
+        final count = (args['expected_count'] as num?)?.toInt() ?? 0;
+        return await cdp.assertElementCount(selector, count);
+
+      case 'wait_for_idle':
+        final timeoutMs = (args['timeout'] as num?)?.toInt() ?? 5000;
+        return await cdp.waitForIdle(timeoutMs: timeoutMs);
+
+      case 'diagnose':
+        return await cdp.diagnose();
+
+      case 'execute_batch':
+        final actions = args['actions'] as List<dynamic>? ?? [];
+        final results = <Map<String, dynamic>>[];
+        for (final action in actions) {
+          final a = action as Map<String, dynamic>;
+          final actionName = a['action'] as String;
+          final actionArgs = (a['args'] as Map<String, dynamic>?) ?? {};
+          try {
+            final r = await _executeCdpTool(actionName, actionArgs, cdp);
+            results.add({"action": actionName, "success": true, "result": r});
+          } catch (e) {
+            results.add({"action": actionName, "success": false, "error": e.toString()});
+          }
+        }
+        return {"success": true, "results": results};
+
+      case 'enable_test_indicators':
+      case 'get_indicator_status':
+        return {"success": true, "message": "No-op for CDP", "enabled": false};
+
+      case 'enable_network_monitoring':
+        return {"success": true, "message": "Network monitoring (no-op for CDP)"};
+
+      case 'clear_network_requests':
+        return {"success": true, "message": "No-op for CDP"};
+
       default:
-        throw Exception('Tool "$name" is not supported in CDP mode. '
-            'CDP mode supports: inspect, tap, enter_text, screenshot, snapshot, scroll_to, go_back, '
-            'get_current_route, swipe, long_press, double_tap, wait_for_element, assert_visible.');
+        throw Exception('Tool "$name" is not supported in CDP mode.');
     }
   }
 

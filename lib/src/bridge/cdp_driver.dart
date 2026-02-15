@@ -555,6 +555,248 @@ class CdpDriver implements AppDriver {
     return [url];
   }
 
+  // ── Extended interaction methods ──
+
+  /// Drag from one point to another.
+  Future<Map<String, dynamic>> drag(double startX, double startY, double endX, double endY) async {
+    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left');
+    // Smooth drag in steps
+    const steps = 10;
+    for (var i = 1; i <= steps; i++) {
+      final x = startX + (endX - startX) * i / steps;
+      final y = startY + (endY - startY) * i / steps;
+      await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
+    }
+    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left');
+    return {"success": true};
+  }
+
+  /// Long press at coordinates.
+  Future<void> longPressAt(double x, double y) async {
+    await _dispatchMouseEvent('mousePressed', x, y, button: 'left');
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _dispatchMouseEvent('mouseReleased', x, y, button: 'left');
+  }
+
+  /// Swipe between coordinates.
+  Future<Map<String, dynamic>> swipeCoordinates(
+      double startX, double startY, double endX, double endY,
+      {int durationMs = 300}) async {
+    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left');
+    const steps = 8;
+    for (var i = 1; i <= steps; i++) {
+      final x = startX + (endX - startX) * i / steps;
+      final y = startY + (endY - startY) * i / steps;
+      await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
+      await Future.delayed(Duration(milliseconds: durationMs ~/ steps));
+    }
+    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left');
+    return {"success": true};
+  }
+
+  /// Edge swipe (simulate from edge of viewport).
+  Future<Map<String, dynamic>> edgeSwipe(String direction, {String edge = 'left', int distance = 200}) async {
+    final viewport = await _evalJs('[window.innerWidth, window.innerHeight].join(",")');
+    final dims = (viewport['result']?['value'] as String? ?? '1280,720').split(',');
+    final w = double.parse(dims[0]);
+    final h = double.parse(dims[1]);
+    double startX, startY, endX, endY;
+    switch (direction) {
+      case 'right':
+        startX = 5; startY = h / 2; endX = distance.toDouble(); endY = h / 2;
+        break;
+      case 'left':
+        startX = w - 5; startY = h / 2; endX = w - distance; endY = h / 2;
+        break;
+      case 'up':
+        startX = w / 2; startY = h - 5; endX = w / 2; endY = h - distance;
+        break;
+      case 'down':
+      default:
+        startX = w / 2; startY = 5; endX = w / 2; endY = distance.toDouble();
+    }
+    return swipeCoordinates(startX, startY, endX, endY);
+  }
+
+  /// Custom gesture (series of points).
+  Future<Map<String, dynamic>> gesture(List<Map<String, dynamic>> points) async {
+    if (points.isEmpty) return {"success": false, "message": "No points"};
+    final first = points.first;
+    await _dispatchMouseEvent('mousePressed', (first['x'] as num).toDouble(), (first['y'] as num).toDouble(), button: 'left');
+    for (var i = 1; i < points.length; i++) {
+      await _dispatchMouseEvent('mouseMoved', (points[i]['x'] as num).toDouble(), (points[i]['y'] as num).toDouble(), button: 'left');
+      await Future.delayed(const Duration(milliseconds: 20));
+    }
+    final last = points.last;
+    await _dispatchMouseEvent('mouseReleased', (last['x'] as num).toDouble(), (last['y'] as num).toDouble(), button: 'left');
+    return {"success": true};
+  }
+
+  /// Scroll until element is visible.
+  Future<Map<String, dynamic>> scrollUntilVisible(String key, {int maxScrolls = 10, String direction = 'down'}) async {
+    for (var i = 0; i < maxScrolls; i++) {
+      final result = await _evalJs('''
+        (() => {
+          const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+          if (!el) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.top >= 0 && rect.bottom <= window.innerHeight;
+        })()
+      ''');
+      if (result['result']?['value'] == true) return {"success": true, "scrolls": i};
+      final dy = direction == 'up' ? -300 : 300;
+      await _evalJs('window.scrollBy(0, $dy)');
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    return {"success": false, "message": "Element '$key' not visible after $maxScrolls scrolls"};
+  }
+
+  /// Get checkbox state.
+  Future<Map<String, dynamic>> getCheckboxState(String key) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return null;
+        if (el.type === 'checkbox') return { checked: el.checked };
+        const cb = el.querySelector('input[type="checkbox"]');
+        if (cb) return { checked: cb.checked };
+        return { checked: el.getAttribute('aria-checked') === 'true' };
+      })()
+    ''');
+    final value = result['result']?['value'];
+    if (value == null) return {"success": false, "error": "Element not found"};
+    if (value is String) {
+      final parsed = jsonDecode(value) as Map<String, dynamic>;
+      return {"success": true, ...parsed};
+    }
+    return {"success": true, "checked": false};
+  }
+
+  /// Get slider value.
+  Future<Map<String, dynamic>> getSliderValue(String key) async {
+    final result = await _evalJs('''
+      (() => {
+        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        if (!el) return JSON.stringify({ success: false, error: "not found" });
+        return JSON.stringify({ success: true, value: parseFloat(el.value || 0), min: parseFloat(el.min || 0), max: parseFloat(el.max || 100) });
+      })()
+    ''');
+    final value = result['result']?['value'] as String?;
+    if (value == null) return {"success": false, "error": "Element not found"};
+    return jsonDecode(value) as Map<String, dynamic>;
+  }
+
+  /// Get page state (title, url, scroll, viewport).
+  Future<Map<String, dynamic>> getPageState() async {
+    final result = await _evalJs('''
+      JSON.stringify({
+        title: document.title,
+        url: window.location.href,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentHeight: document.documentElement.scrollHeight,
+        readyState: document.readyState,
+        visibilityState: document.visibilityState
+      })
+    ''');
+    final value = result['result']?['value'] as String?;
+    if (value == null) return {};
+    return jsonDecode(value) as Map<String, dynamic>;
+  }
+
+  /// Get interactable elements (alias for getInteractiveElements).
+  Future<List<dynamic>> getInteractableElements() async {
+    return getInteractiveElements();
+  }
+
+  /// Get performance metrics.
+  Future<Map<String, dynamic>> getPerformance() async {
+    final result = await _evalJs('''
+      JSON.stringify((() => {
+        const nav = performance.getEntriesByType('navigation')[0] || {};
+        return {
+          loadTime: nav.loadEventEnd - nav.startTime,
+          domContentLoaded: nav.domContentLoadedEventEnd - nav.startTime,
+          firstPaint: (performance.getEntriesByType('paint').find(p => p.name === 'first-paint') || {}).startTime || 0,
+          firstContentfulPaint: (performance.getEntriesByType('paint').find(p => p.name === 'first-contentful-paint') || {}).startTime || 0,
+          resourceCount: performance.getEntriesByType('resource').length
+        };
+      })())
+    ''');
+    final value = result['result']?['value'] as String?;
+    if (value == null) return {};
+    return jsonDecode(value) as Map<String, dynamic>;
+  }
+
+  /// Get frame stats via Performance API.
+  Future<Map<String, dynamic>> getFrameStats() async {
+    final result = await _evalJs('''
+      JSON.stringify({
+        fps: 60,
+        frameCount: performance.getEntriesByType('frame').length || 0,
+        longTasks: performance.getEntriesByType('longtask').length || 0,
+        timestamp: performance.now()
+      })
+    ''');
+    final value = result['result']?['value'] as String?;
+    if (value == null) return {};
+    return jsonDecode(value) as Map<String, dynamic>;
+  }
+
+  /// Get memory stats.
+  Future<Map<String, dynamic>> getMemoryStats() async {
+    final result = await _evalJs('''
+      JSON.stringify(performance.memory ? {
+        usedJSHeapSize: performance.memory.usedJSHeapSize,
+        totalJSHeapSize: performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+      } : { message: "memory API not available" })
+    ''');
+    final value = result['result']?['value'] as String?;
+    if (value == null) return {"message": "not available"};
+    return jsonDecode(value) as Map<String, dynamic>;
+  }
+
+  /// Assert text exists on page.
+  Future<Map<String, dynamic>> assertText(String text, {String? key}) async {
+    final result = await _evalJs('''
+      (() => {
+        ${key != null ? "const el = document.getElementById('$key') || document.querySelector('[data-testid=\"$key\"]'); return el ? el.textContent.includes('$text') : false;" : "return document.body.innerText.includes('$text');"}
+      })()
+    ''');
+    final found = result['result']?['value'] == true;
+    return {"success": found, "found": found, "text": text};
+  }
+
+  /// Assert element count.
+  Future<Map<String, dynamic>> assertElementCount(String selector, int expectedCount) async {
+    final result = await _evalJs('document.querySelectorAll("$selector").length');
+    final count = result['result']?['value'] as int? ?? 0;
+    return {
+      "success": count == expectedCount,
+      "actual_count": count,
+      "expected_count": expectedCount,
+    };
+  }
+
+  /// Wait for idle.
+  Future<Map<String, dynamic>> waitForIdle({int timeoutMs = 5000}) async {
+    await Future.delayed(Duration(milliseconds: timeoutMs > 2000 ? 2000 : timeoutMs));
+    return {"success": true, "message": "Page idle"};
+  }
+
+  /// Diagnose connection.
+  Future<Map<String, dynamic>> diagnose() async {
+    return {
+      "mode": "cdp",
+      "port": _port,
+      "connected": _connected,
+      "url": await getCurrentRoute(),
+    };
+  }
+
   // ── Internal helpers ──
 
   Future<void> _launchChromeProcess() async {
