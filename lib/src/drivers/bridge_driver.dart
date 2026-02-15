@@ -218,6 +218,9 @@ class BridgeDriver implements AppDriver {
   // Internal RPC plumbing
   // ------------------------------------------------------------------
 
+    /// Public raw method call for tools that need direct bridge access (e.g. eval)
+  Future<Map<String, dynamic>> callMethod(String method, [Map<String, dynamic>? params]) => _call(method, params);
+
   Future<Map<String, dynamic>> _call(String method,
       [Map<String, dynamic>? params]) async {
     if (_ws == null || !_connected) {

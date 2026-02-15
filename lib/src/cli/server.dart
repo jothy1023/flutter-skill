@@ -147,6 +147,7 @@ class FlutterMcpServer {
   Process? _videoProcess;
   String? _videoPath;
   String? _videoPlatform;
+  String? _videoDevicePath;
 
   // Native platform drivers (for interacting with native OS views)
   final Map<String, NativeDriver> _nativeDrivers = {};
@@ -2754,7 +2755,8 @@ Detailed diagnostic report with:
 
     // Auth tools (system commands, no bridge connection required)
     if (name == 'auth_biometric') {
-      final action = args['action'] as String;
+      final action = args['action'] as String? ?? '';
+      if (action.isEmpty) return {"success": false, "error": "Missing required parameter: action (enroll|match|fail)"};
       final platform = await _detectSimulatorPlatform();
       String command;
       if (platform == 'ios') {
@@ -2776,10 +2778,10 @@ Detailed diagnostic report with:
         switch (action) {
           case 'enroll':
           case 'match':
-            command = 'adb -s emulator-5554 emu finger touch 1';
+            command = '${_findAdb()} -s emulator-5554 emu finger touch 1';
             break;
           case 'fail':
-            command = 'adb -s emulator-5554 emu finger touch 0';
+            command = '${_findAdb()} -s emulator-5554 emu finger touch 0';
             break;
           default:
             return {"success": false, "error": "Invalid action: $action"};
@@ -2810,7 +2812,7 @@ Detailed diagnostic report with:
           final result = await Process.run('xcrun', ['simctl', 'pbpaste', 'booted']);
           return {"clipboard": result.stdout.toString().trim(), "platform": "ios"};
         } else {
-          final result = await Process.run('adb', ['shell', 'service', 'call', 'clipboard', '1']);
+          final result = await Process.run(_findAdb(), ['shell', 'service', 'call', 'clipboard', '1']);
           return {"clipboard": result.stdout.toString().trim(), "platform": "android"};
         }
       } catch (e) {
@@ -2822,11 +2824,22 @@ Detailed diagnostic report with:
       final url = args['url'] as String;
       final platform = await _detectSimulatorPlatform();
       try {
+        if (platform == 'web') {
+          // For web/electron/tauri: navigate via eval
+          final client = _getClient(args);
+          if (client is BridgeDriver) {
+            try {
+              await client.callMethod('eval', {'expression': "window.location.href='$url'"});
+              return {"success": true, "url": url, "platform": platform, "method": "eval"};
+            } catch (_) {}
+          }
+          return {"success": false, "url": url, "platform": platform, "note": "Cannot open deep link on web platform without eval support"};
+        }
         ProcessResult result;
         if (platform == 'ios') {
           result = await Process.run('xcrun', ['simctl', 'openurl', 'booted', url]);
         } else {
-          result = await Process.run('adb', ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', url]);
+          result = await Process.run(_findAdb(), ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', url]);
         }
         return {"success": result.exitCode == 0, "url": url, "platform": platform};
       } catch (e) {
@@ -2888,11 +2901,17 @@ Detailed diagnostic report with:
         Process process;
         if (platform == 'ios') {
           process = await Process.start('xcrun', ['simctl', 'io', 'booted', 'recordVideo', path]);
+          _videoProcess = process;
+          _videoPath = path;
         } else {
-          process = await Process.start('adb', ['shell', 'screenrecord', path]);
+          // Android: record on device, pull later
+          final devicePath = '/sdcard/flutter_skill_video_$timestamp.mp4';
+          final adb = _findAdb();
+          process = await Process.start(adb, ['-s', 'emulator-5554', 'shell', 'screenrecord', devicePath]);
+          _videoProcess = process;
+          _videoPath = path; // local path for after pull
+          _videoDevicePath = devicePath;
         }
-        _videoProcess = process;
-        _videoPath = path;
         _videoPlatform = platform;
         return {"recording": true, "platform": platform, "path": path};
       } catch (e) {
@@ -2913,9 +2932,17 @@ Detailed diagnostic report with:
       } catch (_) {}
       final path = _videoPath;
       final platform = _videoPlatform;
+      final devicePath = _videoDevicePath;
       _videoProcess = null;
       _videoPath = null;
       _videoPlatform = null;
+      _videoDevicePath = null;
+      // For Android, pull the file from device
+      if (platform == 'android' && devicePath != null && path != null) {
+        try {
+          await Process.run(_findAdb(), ['-s', 'emulator-5554', 'pull', devicePath, path]);
+        } catch (_) {}
+      }
       return {"path": path, "platform": platform, "success": true};
     }
 
@@ -2963,24 +2990,29 @@ Detailed diagnostic report with:
       final token = args['token'] as String;
       final key = args['key'] as String? ?? 'auth_token';
       final storageType = args['storage_type'] as String? ?? 'shared_preferences';
-      // For web: inject via JavaScript in the browser
-      if (storageType == 'cookie' || storageType == 'local_storage') {
+      // Detect platform from active connection
+      final platform = await _detectSimulatorPlatform();
+      
+      // For web/electron/tauri: inject via JavaScript
+      if (storageType == 'cookie' || storageType == 'local_storage' || platform == 'web') {
         final js = storageType == 'cookie'
             ? "document.cookie='$key=$token; path=/'"
             : "window.localStorage.setItem('$key','$token')";
-        // Use xcrun/adb to inject JS isn't directly possible on simulators
-        // Return the JS snippet for manual injection or use with web driver
-        return {"success": true, "storage_type": storageType, "key": key, "js_snippet": js, "note": "Execute this JS in your web app's console"};
-      }
-      // For shared_preferences on mobile: write to shared prefs file
-      try {
-        final platform = await _detectSimulatorPlatform();
-        if (platform == 'ios') {
-          // iOS shared prefs are in plist files - provide instruction
-          return {"success": true, "storage_type": storageType, "key": key, "token": token, "platform": "ios", "note": "Token prepared for injection. Use hot_restart to pick up changes."};
-        } else {
-          return {"success": true, "storage_type": storageType, "key": key, "token": token, "platform": "android", "note": "Token prepared for injection. Use hot_restart to pick up changes."};
+        // If connected to a bridge with eval support, execute directly
+        final client = _getClient(args);
+        if (client is BridgeDriver) {
+          try {
+            final evalResult = await client.callMethod('eval', {'expression': js});
+            return {"success": true, "storage_type": storageType, "key": key, "platform": platform, "injected": true, "eval_result": evalResult};
+          } catch (_) {
+            // Fall back to returning snippet
+          }
         }
+        return {"success": true, "storage_type": storageType, "key": key, "js_snippet": js, "platform": platform, "note": "Execute this JS in your web app's console"};
+      }
+      // For shared_preferences on mobile: provide instruction
+      try {
+        return {"success": true, "storage_type": storageType, "key": key, "token": token, "platform": platform, "note": "Token prepared for injection. Use hot_restart to pick up changes."};
       } catch (e) {
         return {"success": false, "error": e.toString()};
       }
@@ -3022,8 +3054,7 @@ Detailed diagnostic report with:
           await file.writeAsBytes(base64.decode(imageBase64));
           return {"mode": "vision", "path": file.path, "success": true};
         }
-        final snapshotDriver = _asFlutterClient(client!, 'snapshot');
-        final structured = await snapshotDriver.getInteractiveElementsStructured();
+        final structured = await client!.getInteractiveElementsStructured();
         final snapshotElements = structured['elements'] as List<dynamic>? ?? [];
         
         // Also get all elements (including non-interactive) for richer snapshot
@@ -4724,7 +4755,26 @@ if (mounted) {
   }
 
   /// Detect if iOS simulator or Android emulator is running
+    /// Find adb binary, checking ANDROID_HOME and common paths
+  String _findAdb() {
+    final androidHome = Platform.environment['ANDROID_HOME'] ?? 
+                        Platform.environment['ANDROID_SDK_ROOT'] ??
+                        '${Platform.environment['HOME']}/Library/Android/sdk';
+    final adbPath = '$androidHome/platform-tools/adb';
+    if (File(adbPath).existsSync()) return adbPath;
+    return 'adb'; // fallback to PATH
+  }
+
   Future<String> _detectSimulatorPlatform() async {
+    // Check if active session is a bridge connection (non-Flutter)
+    final client = _getClient({});
+    if (client is BridgeDriver) {
+      final fw = client.frameworkName.toLowerCase();
+      if (['electron', 'tauri', 'web', 'kmp'].contains(fw)) return 'web';
+      if (fw.contains('android') || fw == 'react-native' || fw == 'dotnet-maui') return 'android';
+      if (fw.contains('ios')) return 'ios';
+      return fw;
+    }
     try {
       final result = await Process.run('xcrun', ['simctl', 'list', 'devices', 'booted']);
       if (result.exitCode == 0 && result.stdout.toString().contains('Booted')) {
