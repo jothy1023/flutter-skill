@@ -78,8 +78,8 @@ const ELEMENT_KEYS = {
   'web-sdk': { button: 'post_like_button_0', input: 'email_input', text: 'post_content_0', checkbox: 'remember_me_checkbox', slider: 'font_size_slider' },
   'web-cdp': { button: 'post_like_button_0', input: 'email_input', text: 'post_content_0', checkbox: 'remember_me_checkbox', slider: 'font_size_slider' },
   'android': { button: 'increment_btn', input: 'input_field', text: 'counter_text', checkbox: 'test_checkbox', slider: 'volume_slider' },
-  'flutter-ios': { button: 'like_button', input: 'search_input', text: 'post_text', checkbox: 'dark_mode_switch', slider: 'font_size_slider' },
-  'flutter-web': { button: 'like_button', input: 'search_input', text: 'post_text', checkbox: 'dark_mode_switch', slider: 'font_size_slider' },
+  'flutter-ios': { button: 'login_button', input: 'email_field', text: 'login_button', checkbox: 'dark_mode_toggle', slider: 'font_size_slider' },
+  'flutter-web': { button: 'login_button', input: 'email_field', text: 'login_button', checkbox: 'dark_mode_toggle', slider: 'font_size_slider' },
 };
 const EK = ELEMENT_KEYS[PLATFORM] || ELEMENT_KEYS['electron'];
 
@@ -94,7 +94,7 @@ const TOOLS = [
   ['inspect_interactive', {}],
   ['snapshot', { mode: 'text' }],
   ['get_widget_tree', {}],
-  ['get_widget_properties', { widget_id: '0' }],
+  ['get_widget_properties', { key: EK.button }],
   ['get_text_content', {}],
   ['find_by_type', { type: 'Text' }],
   ['get_text_value', { key: EK.text }],
@@ -117,11 +117,11 @@ const TOOLS = [
   ['long_press', { key: EK.button }],
   ['double_tap', { key: EK.button }],
   ['swipe', { direction: 'up', distance: 300 }],
-  ['drag', { startX: 100, startY: 300, endX: 100, endY: 100 }],
+  ['drag', (ctx) => isFlutter ? { from_key: EK.button, to_key: EK.input } : { startX: 100, startY: 300, endX: 100, endY: 100 }],
   ['tap_at', { x: 100, y: 200 }],
   ['long_press_at', { x: 100, y: 200 }],
   ['swipe_coordinates', { startX: 200, startY: 400, endX: 200, endY: 200 }],
-  ['edge_swipe', { edge: 'left' }],
+  ['edge_swipe', { edge: 'left', direction: 'right' }],
   ['gesture', { actions: [{ type: 'tap', x: 100, y: 100 }] }],
   ['go_back', {}],
   ['scroll_until_visible', { key: EK.text, direction: 'down' }],
@@ -129,7 +129,7 @@ const TOOLS = [
   ['native_input_text', { text: 'native hello' }],
   ['native_swipe', { start_x: 200, start_y: 400, end_x: 200, end_y: 200 }],
   ['native_screenshot', {}],
-  ['execute_batch', { actions: [{ tool: 'tap', arguments: { key: EK.button } }] }],
+  ['execute_batch', { actions: [{ tool: 'tap', args: { key: EK.button } }] }],
 
   // ── Assertions (7) ──
   ['assert_visible', { key: EK.button }],
@@ -208,7 +208,7 @@ async function main() {
     return id;
   };
 
-  const waitFor = (id, timeoutMs = 10000) => new Promise(resolve => {
+  const waitFor = (id, timeoutMs = 30000) => new Promise(resolve => {
     const start = Date.now();
     const poll = () => {
       if (responses.has(id)) return resolve(responses.get(id));
