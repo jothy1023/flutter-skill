@@ -2242,7 +2242,36 @@ can visually compare them. Also returns text snapshots for structural comparison
           },
         },
       },
+      // === Plugin Tools ===
+      {
+        "name": "list_plugins",
+        "description": "List all loaded custom plugin tools with their descriptions.",
+        "inputSchema": {"type": "object", "properties": {}},
+      },
+      // === Test Report Generation ===
+      {
+        "name": "generate_report",
+        "description": "Generate a test report from recorded test steps and assertions. Supports HTML, JSON, and Markdown formats.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "format": {"type": "string", "enum": ["html", "json", "markdown"], "description": "Report format (default: html)"},
+            "title": {"type": "string", "description": "Report title"},
+            "output_path": {"type": "string", "description": "Where to save the report file"},
+            "include_screenshots": {"type": "boolean", "description": "Embed screenshots in report (default: true)"},
+          },
+        },
+      },
     ];
+
+    // Append plugin-defined tools
+    for (final plugin in _pluginTools) {
+      allTools.add({
+        "name": plugin['name'],
+        "description": plugin['description'] ?? 'Custom plugin tool',
+        "inputSchema": {"type": "object", "properties": {}},
+      });
+    }
 
     // Smart filtering: when connected, only return relevant tools
     if (!hasConnection) return allTools; // No connection = show all for discovery
@@ -2280,6 +2309,224 @@ can visually compare them. Also returns text snapshots for structural comparison
   /// Generate a unique session ID
   String _generateSessionId() {
     return 'session_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  /// Load plugin tools from the plugins directory
+  Future<void> _loadPlugins() async {
+    final dir = Directory(_pluginsDir);
+    if (!await dir.exists()) {
+      stderr.writeln('Plugins directory not found: $_pluginsDir (skipping)');
+      return;
+    }
+    await for (final entity in dir.list()) {
+      if (entity is File && entity.path.endsWith('.json')) {
+        try {
+          final content = await entity.readAsString();
+          final plugin = jsonDecode(content) as Map<String, dynamic>;
+          final name = plugin['name'] as String?;
+          final description = plugin['description'] as String? ?? 'Custom plugin';
+          final steps = (plugin['steps'] as List<dynamic>?) ?? [];
+          if (name == null || steps.isEmpty) continue;
+          _pluginTools.add({
+            'name': name,
+            'description': description,
+            'steps': steps,
+            'source': entity.path,
+          });
+          stderr.writeln('Loaded plugin: $name (${steps.length} steps)');
+        } catch (e) {
+          stderr.writeln('Failed to load plugin ${entity.path}: $e');
+        }
+      }
+    }
+    if (_pluginTools.isNotEmpty) {
+      stderr.writeln('Loaded ${_pluginTools.length} plugin(s)');
+    }
+  }
+
+  /// Execute a plugin by running its steps sequentially
+  Future<dynamic> _executePlugin(Map<String, dynamic> plugin, Map<String, dynamic> args) async {
+    final steps = (plugin['steps'] as List<dynamic>);
+    final results = <Map<String, dynamic>>[];
+    for (int i = 0; i < steps.length; i++) {
+      final step = steps[i] as Map<String, dynamic>;
+      final toolName = step['tool'] as String;
+      final toolArgs = Map<String, dynamic>.from((step['args'] as Map<String, dynamic>?) ?? {});
+      // Allow overriding step args from the call args
+      toolArgs.addAll(args);
+      final stopwatch = Stopwatch()..start();
+      try {
+        final result = await _executeToolInner(toolName, toolArgs);
+        stopwatch.stop();
+        results.add({
+          'step': i + 1,
+          'tool': toolName,
+          'success': true,
+          'result': result,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+      } catch (e) {
+        stopwatch.stop();
+        results.add({
+          'step': i + 1,
+          'tool': toolName,
+          'success': false,
+          'error': e.toString(),
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+        break;
+      }
+    }
+    final passed = results.where((r) => r['success'] == true).length;
+    return {
+      'plugin': plugin['name'],
+      'steps_total': steps.length,
+      'steps_executed': results.length,
+      'steps_passed': passed,
+      'success': passed == results.length,
+      'results': results,
+    };
+  }
+
+  /// Generate test report from recorded steps
+  Future<dynamic> _generateReport(Map<String, dynamic> args) async {
+    final format = (args['format'] as String?) ?? 'html';
+    final title = (args['title'] as String?) ?? 'Flutter Skill Test Report';
+    final outputPath = args['output_path'] as String?;
+    // ignore: unused_local_variable
+    final includeScreenshots = (args['include_screenshots'] as bool?) ?? true;
+    final now = DateTime.now();
+
+    final steps = _recordedSteps;
+    final passed = steps.where((s) => s['result'] == true).length;
+    final failed = steps.length - passed;
+    final passRate = steps.isEmpty ? 100.0 : (passed / steps.length * 100);
+
+    if (format == 'json') {
+      final report = {
+        'title': title,
+        'generated_at': now.toIso8601String(),
+        'version': currentVersion,
+        'summary': {'total': steps.length, 'passed': passed, 'failed': failed, 'pass_rate': passRate},
+        'steps': steps,
+      };
+      if (outputPath != null) {
+        await File(outputPath).writeAsString(const JsonEncoder.withIndent('  ').convert(report));
+        return {'format': 'json', 'output_path': outputPath, 'step_count': steps.length};
+      }
+      return report;
+    }
+
+    if (format == 'markdown') {
+      final buf = StringBuffer();
+      buf.writeln('# $title');
+      buf.writeln('');
+      buf.writeln('**Generated:** ${now.toIso8601String()}  ');
+      buf.writeln('**Version:** flutter-skill v$currentVersion  ');
+      buf.writeln('**Summary:** $passed passed, $failed failed (${passRate.toStringAsFixed(1)}%)');
+      buf.writeln('');
+      buf.writeln('| # | Tool | Args | Result | Duration |');
+      buf.writeln('|---|------|------|--------|----------|');
+      for (final step in steps) {
+        final stepNum = step['step'] ?? '-';
+        final tool = step['tool'] ?? '';
+        final argsStr = jsonEncode(step['params'] ?? {});
+        final result = step['result'] == true ? '✅ Pass' : '❌ Fail';
+        final dur = step['duration_ms'] ?? '-';
+        buf.writeln('| $stepNum | $tool | `$argsStr` | $result | ${dur}ms |');
+      }
+      final md = buf.toString();
+      if (outputPath != null) {
+        await File(outputPath).writeAsString(md);
+        return {'format': 'markdown', 'output_path': outputPath, 'step_count': steps.length};
+      }
+      return {'format': 'markdown', 'content': md, 'step_count': steps.length};
+    }
+
+    // HTML format
+    final stepsHtml = StringBuffer();
+    for (int i = 0; i < steps.length; i++) {
+      final step = steps[i];
+      final rowClass = i % 2 == 0 ? 'even' : 'odd';
+      final resultClass = step['result'] == true ? 'pass' : 'fail';
+      final resultText = step['result'] == true ? '✅ Pass' : '❌ Fail';
+      final argsStr = _htmlEscape(jsonEncode(step['params'] ?? {}));
+      stepsHtml.writeln('<tr class="$rowClass">');
+      stepsHtml.writeln('  <td>${step['step'] ?? i + 1}</td>');
+      stepsHtml.writeln('  <td><code>${_htmlEscape(step['tool'] ?? '')}</code></td>');
+      stepsHtml.writeln('  <td><code>$argsStr</code></td>');
+      stepsHtml.writeln('  <td class="$resultClass">$resultText</td>');
+      stepsHtml.writeln('  <td>${step['duration_ms'] ?? '-'}ms</td>');
+      stepsHtml.writeln('</tr>');
+    }
+
+    final html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${_htmlEscape(title)}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; }
+  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px 40px; }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header .meta { opacity: 0.85; font-size: 14px; }
+  .summary { display: flex; gap: 24px; padding: 24px 40px; background: white; border-bottom: 1px solid #e2e8f0; }
+  .summary .stat { text-align: center; }
+  .summary .stat .value { font-size: 32px; font-weight: 700; }
+  .summary .stat .label { font-size: 12px; text-transform: uppercase; color: #718096; margin-top: 4px; }
+  .stat.passed .value { color: #38a169; }
+  .stat.failed .value { color: #e53e3e; }
+  .stat.rate .value { color: #667eea; }
+  .content { padding: 24px 40px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  th { background: #edf2f7; padding: 12px 16px; text-align: left; font-size: 13px; text-transform: uppercase; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 16px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+  tr.odd { background: #f7fafc; }
+  tr.even { background: white; }
+  td.pass { color: #38a169; font-weight: 600; }
+  td.fail { color: #e53e3e; font-weight: 600; }
+  code { background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-size: 12px; word-break: break-all; }
+  .footer { padding: 24px 40px; text-align: center; color: #a0aec0; font-size: 13px; }
+  .screenshots img { max-width: 200px; cursor: pointer; border-radius: 4px; margin: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: transform 0.2s; }
+  .screenshots img:hover { transform: scale(1.05); }
+  .screenshots img.expanded { max-width: 100%; }
+</style>
+<script>
+function toggleImg(el) { el.classList.toggle('expanded'); }
+</script>
+</head>
+<body>
+<div class="header">
+  <h1>${_htmlEscape(title)}</h1>
+  <div class="meta">${now.toIso8601String()} &bull; flutter-skill v$currentVersion</div>
+</div>
+<div class="summary">
+  <div class="stat"><div class="value">${steps.length}</div><div class="label">Total Steps</div></div>
+  <div class="stat passed"><div class="value">$passed</div><div class="label">Passed</div></div>
+  <div class="stat failed"><div class="value">$failed</div><div class="label">Failed</div></div>
+  <div class="stat rate"><div class="value">${passRate.toStringAsFixed(1)}%</div><div class="label">Pass Rate</div></div>
+</div>
+<div class="content">
+  <table>
+    <thead><tr><th>#</th><th>Tool</th><th>Args</th><th>Result</th><th>Duration</th></tr></thead>
+    <tbody>$stepsHtml</tbody>
+  </table>
+</div>
+<div class="footer">Generated by flutter-skill v$currentVersion</div>
+</body>
+</html>''';
+
+    if (outputPath != null) {
+      await File(outputPath).writeAsString(html);
+      return {'format': 'html', 'output_path': outputPath, 'step_count': steps.length};
+    }
+    return {'format': 'html', 'content': html, 'step_count': steps.length};
+  }
+
+  String _htmlEscape(String text) {
+    return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   }
 
   /// Check if an error is retryable (transient connection/timeout issues)
@@ -4798,7 +5045,29 @@ can visually compare them. Also returns text snapshots for structural comparison
         final fc = _asFlutterClient(client!, 'diagnose');
         return await _performDiagnosis(args, fc);
 
+      case 'list_plugins':
+        return {
+          'plugins': _pluginTools.map((p) => {
+            'name': p['name'],
+            'description': p['description'],
+            'steps': (p['steps'] as List).length,
+            'source': p['source'],
+          }).toList(),
+          'count': _pluginTools.length,
+        };
+
+      case 'generate_report':
+        return await _generateReport(args);
+
       default:
+        // Check plugin tools
+        final plugin = _pluginTools.cast<Map<String, dynamic>?>().firstWhere(
+          (p) => p!['name'] == name,
+          orElse: () => null,
+        );
+        if (plugin != null) {
+          return await _executePlugin(plugin, args);
+        }
         throw Exception("Unknown tool: $name");
     }
   }
