@@ -15,6 +15,11 @@ class CdpDriver implements AppDriver {
   final String _url;
   final int _port;
   final bool _launchChrome;
+  final bool _headless;
+  final String? _chromePath;
+  final String? _proxy;
+  final bool _ignoreSsl;
+  final int _maxTabs;
 
   WebSocket? _ws;
   bool _connected = false;
@@ -30,13 +35,28 @@ class CdpDriver implements AppDriver {
   /// [url] is the page to navigate to.
   /// [port] is the Chrome remote debugging port.
   /// [launchChrome] whether to launch a new Chrome instance.
+  /// [headless] run Chrome in headless mode (default: false).
+  /// [chromePath] custom Chrome/Chromium executable path.
+  /// [proxy] proxy server URL (e.g. 'http://proxy:8080').
+  /// [ignoreSsl] ignore SSL certificate errors.
+  /// [maxTabs] maximum number of tabs to allow (prevents runaway tab creation).
   CdpDriver({
     required String url,
     int port = 9222,
     bool launchChrome = true,
+    bool headless = false,
+    String? chromePath,
+    String? proxy,
+    bool ignoreSsl = false,
+    int maxTabs = 20,
   })  : _url = url,
         _port = port,
-        _launchChrome = launchChrome;
+        _launchChrome = launchChrome,
+        _headless = headless,
+        _chromePath = chromePath,
+        _proxy = proxy,
+        _ignoreSsl = ignoreSsl,
+        _maxTabs = maxTabs;
 
   @override
   String get frameworkName => 'CDP (Web)';
@@ -1413,6 +1433,14 @@ class CdpDriver implements AppDriver {
   }
 
   Future<Map<String, dynamic>> newTab(String url) async {
+    // Enforce max_tabs limit to prevent runaway tab creation
+    try {
+      final tabs = await getTabs();
+      final tabList = tabs['tabs'] as List?;
+      if (tabList != null && tabList.length >= _maxTabs) {
+        return {"success": false, "error": "Max tabs limit reached ($_maxTabs). Close some tabs first."};
+      }
+    } catch (_) {}
     final result = await _call('Target.createTarget', {'url': url});
     return {"success": true, "targetId": result['targetId']};
   }
@@ -1622,21 +1650,31 @@ class CdpDriver implements AppDriver {
       chromePaths.add(r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe');
     }
 
+    // Allow custom Chrome path
+    if (_chromePath != null) {
+      chromePaths.insert(0, _chromePath!);
+    }
+
     // Create a temporary user data dir so we don't conflict with existing Chrome
     final tmpDir = await Directory.systemTemp.createTemp('cdp_chrome_');
 
+    final chromeArgs = [
+      '--remote-debugging-port=$_port',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--user-data-dir=${tmpDir.path}',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      if (_headless) '--headless=new',
+      if (_proxy != null) '--proxy-server=$_proxy',
+      if (_ignoreSsl) '--ignore-certificate-errors',
+      _url,
+    ];
+
     for (final chromePath in chromePaths) {
       try {
-        _chromeProcess = await Process.start(chromePath, [
-          '--remote-debugging-port=$_port',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--user-data-dir=${tmpDir.path}',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          _url,
-        ]);
+        _chromeProcess = await Process.start(chromePath, chromeArgs);
         return;
       } catch (_) {
         continue;
@@ -1739,6 +1777,36 @@ class CdpDriver implements AppDriver {
     );
   }
 
+  /// JavaScript helper that pierces Shadow DOM when querying elements.
+  /// Use `deepQuery(selector)` instead of `document.querySelector(selector)`
+  /// and `deepQueryAll(selector)` instead of `document.querySelectorAll(selector)`.
+  static const String _shadowDomHelper = '''
+function deepQuery(selector, root) {
+  root = root || document;
+  let el = root.querySelector(selector);
+  if (el) return el;
+  const shadows = root.querySelectorAll('*');
+  for (const node of shadows) {
+    if (node.shadowRoot) {
+      el = deepQuery(selector, node.shadowRoot);
+      if (el) return el;
+    }
+  }
+  return null;
+}
+function deepQueryAll(selector, root) {
+  root = root || document;
+  let results = Array.from(root.querySelectorAll(selector));
+  const nodes = root.querySelectorAll('*');
+  for (const node of nodes) {
+    if (node.shadowRoot) {
+      results = results.concat(deepQueryAll(selector, node.shadowRoot));
+    }
+  }
+  return results;
+}
+''';
+
   Future<Map<String, dynamic>> _evalJs(String expression) async {
     return _call('Runtime.evaluate', {
       'expression': expression,
@@ -1780,18 +1848,37 @@ class CdpDriver implements AppDriver {
 
   /// Generate JS code to find an element by selector or text.
   String _jsFindElement(String selector, {String? text, String? ref}) {
+    // Deep query helper pierces Shadow DOM
+    const deepQ = '''
+function _dq(sel, root) {
+  root = root || document;
+  let el = root.querySelector(sel);
+  if (el) return el;
+  for (const n of root.querySelectorAll('*')) {
+    if (n.shadowRoot) { el = _dq(sel, n.shadowRoot); if (el) return el; }
+  }
+  return null;
+}
+function _dqAll(sel, root) {
+  root = root || document;
+  let r = Array.from(root.querySelectorAll(sel));
+  for (const n of root.querySelectorAll('*')) {
+    if (n.shadowRoot) r = r.concat(_dqAll(sel, n.shadowRoot));
+  }
+  return r;
+}
+''';
+
     if (text != null) {
       final escaped = text.replaceAll("'", "\\'").replaceAll('\n', '\\n');
       return '''(() => {
-        // Try CSS selector first
-        let el = document.querySelector('$selector');
+        $deepQ
+        let el = _dq('$selector');
         if (el) return el;
-        // Search by text content
-        const all = document.querySelectorAll('a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, li, td, th, [role]');
+        const all = _dqAll('a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, li, td, th, [role]');
         for (const e of all) {
           if (e.textContent && e.textContent.trim() === '$escaped') return e;
         }
-        // Partial match
         for (const e of all) {
           if (e.textContent && e.textContent.trim().includes('$escaped')) return e;
         }
@@ -1818,7 +1905,8 @@ class CdpDriver implements AppDriver {
             tagSelector = '*';
         }
         return '''(() => {
-          const candidates = document.querySelectorAll('$tagSelector');
+          $deepQ
+          const candidates = _dqAll('$tagSelector');
           for (const e of candidates) {
             const t = (e.textContent || '').trim();
             const label = e.getAttribute('aria-label') || e.getAttribute('placeholder') || '';
@@ -1832,7 +1920,10 @@ class CdpDriver implements AppDriver {
         })()''';
       }
     }
-    return "document.querySelector('$selector')";
+    return '''(() => {
+      $deepQ
+      return _dq('$selector');
+    })()''';
   }
 
   /// Get element bounds (returns {x, y, w, h, cx, cy} or null).

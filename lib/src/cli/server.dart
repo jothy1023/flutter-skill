@@ -711,6 +711,46 @@ They will automatically route through the CDP connection.""",
               "description":
                   "Launch a new Chrome instance (default: true). Set to false to connect to already-running Chrome."
             },
+            "headless": {
+              "type": "boolean",
+              "description": "Run Chrome in headless mode (default: false). Useful for CI/CD."
+            },
+            "chrome_path": {
+              "type": "string",
+              "description": "Custom Chrome/Chromium executable path."
+            },
+            "proxy": {
+              "type": "string",
+              "description": "Proxy server URL (e.g. 'http://proxy:8080' or 'socks5://proxy:1080')."
+            },
+            "ignore_ssl": {
+              "type": "boolean",
+              "description": "Ignore SSL certificate errors (default: false)."
+            },
+            "max_tabs": {
+              "type": "integer",
+              "description": "Maximum number of tabs allowed (default: 20). Prevents runaway tab creation."
+            },
+          },
+          "required": ["url"],
+        },
+      },
+
+      // HTTP Request tool (API testing)
+      {
+        "name": "http_request",
+        "description": """Make an HTTP request for API testing.
+
+Supports GET, POST, PUT, PATCH, DELETE with JSON bodies, custom headers, and authentication.
+Returns status code, headers, and response body.""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {"type": "string", "description": "Request URL"},
+            "method": {"type": "string", "description": "HTTP method (GET, POST, PUT, PATCH, DELETE). Default: GET"},
+            "headers": {"type": "object", "description": "Request headers as key-value pairs"},
+            "body": {"type": "string", "description": "Request body (typically JSON string)"},
+            "timeout": {"type": "integer", "description": "Timeout in milliseconds (default: 30000)"},
           },
           "required": ["url"],
         },
@@ -3379,10 +3419,78 @@ function toggleImg(el) { el.classList.toggle('expanded'); }
       };
     }
 
+    if (name == 'http_request') {
+      final url = args['url'] as String;
+      final method = (args['method'] as String? ?? 'GET').toUpperCase();
+      final headers = (args['headers'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v.toString())) ?? {};
+      final body = args['body'] as String?;
+      final timeout = args['timeout'] as int? ?? 30000;
+
+      try {
+        final client = http.Client();
+        final uri = Uri.parse(url);
+        http.Response response;
+
+        final reqHeaders = Map<String, String>.from(headers);
+        if (body != null && !reqHeaders.containsKey('content-type') && !reqHeaders.containsKey('Content-Type')) {
+          reqHeaders['Content-Type'] = 'application/json';
+        }
+
+        switch (method) {
+          case 'POST':
+            response = await client.post(uri, headers: reqHeaders, body: body)
+                .timeout(Duration(milliseconds: timeout));
+            break;
+          case 'PUT':
+            response = await client.put(uri, headers: reqHeaders, body: body)
+                .timeout(Duration(milliseconds: timeout));
+            break;
+          case 'PATCH':
+            response = await client.patch(uri, headers: reqHeaders, body: body)
+                .timeout(Duration(milliseconds: timeout));
+            break;
+          case 'DELETE':
+            response = await client.delete(uri, headers: reqHeaders)
+                .timeout(Duration(milliseconds: timeout));
+            break;
+          default: // GET
+            response = await client.get(uri, headers: reqHeaders)
+                .timeout(Duration(milliseconds: timeout));
+        }
+        client.close();
+
+        // Try to parse JSON body
+        dynamic responseBody;
+        try {
+          responseBody = jsonDecode(response.body);
+        } catch (_) {
+          responseBody = response.body.length > 10000
+              ? '${response.body.substring(0, 10000)}... (truncated)'
+              : response.body;
+        }
+
+        return {
+          "status": response.statusCode,
+          "headers": response.headers,
+          "body": responseBody,
+          "content_length": response.contentLength,
+          "method": method,
+          "url": url,
+        };
+      } catch (e) {
+        return {"error": e.toString(), "method": method, "url": url};
+      }
+    }
+
     if (name == 'connect_cdp') {
       final url = args['url'] as String;
       final port = args['port'] as int? ?? 9222;
       final launchChrome = args['launch_chrome'] ?? true;
+      final headless = args['headless'] ?? false;
+      final chromePath = args['chrome_path'] as String?;
+      final proxy = args['proxy'] as String?;
+      final ignoreSsl = args['ignore_ssl'] ?? false;
+      final maxTabs = args['max_tabs'] as int? ?? 20;
 
       // Disconnect existing CDP connection if any
       if (_cdpDriver != null) {
@@ -3391,7 +3499,16 @@ function toggleImg(el) { el.classList.toggle('expanded'); }
       }
 
       try {
-        final driver = CdpDriver(url: url, port: port, launchChrome: launchChrome);
+        final driver = CdpDriver(
+          url: url,
+          port: port,
+          launchChrome: launchChrome,
+          headless: headless,
+          chromePath: chromePath,
+          proxy: proxy,
+          ignoreSsl: ignoreSsl,
+          maxTabs: maxTabs,
+        );
         await driver.connect();
         _cdpDriver = driver;
 
