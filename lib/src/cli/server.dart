@@ -1920,6 +1920,31 @@ Detailed diagnostic report with:
           },
         },
       },
+      {
+        "name": "assert_batch",
+        "description": "Run multiple assertions in a single call. Returns all results (does not fail-fast).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "assertions": {
+              "type": "array",
+              "description": "List of assertions to run",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string", "enum": ["visible", "not_visible", "text", "element_count"], "description": "Assertion type"},
+                  "key": {"type": "string", "description": "Element key"},
+                  "text": {"type": "string", "description": "Text to find (for visible/not_visible) or expected text (for text assertion)"},
+                  "expected": {"type": "string", "description": "Expected value for text assertion"},
+                  "count": {"type": "integer", "description": "Expected count for element_count assertion"},
+                },
+                "required": ["type"],
+              },
+            },
+          },
+          "required": ["assertions"],
+        },
+      },
 
       // === NEW: Page State ===
       {
@@ -2137,7 +2162,78 @@ Detailed diagnostic report with:
     return 'session_${DateTime.now().millisecondsSinceEpoch}';
   }
 
+  /// Check if an error is retryable (transient connection/timeout issues)
+  bool _isRetryableError(dynamic error) {
+    final msg = error.toString().toLowerCase();
+    // NOT retryable
+    if (msg.contains('unknown tool')) return false;
+    if (msg.contains('required') && msg.contains('parameter')) return false;
+    if (msg.contains('element not found')) return false;
+    if (msg.contains('is required')) return false;
+    // Retryable
+    if (msg.contains('websocket')) return true;
+    if (msg.contains('connection closed')) return true;
+    if (msg.contains('connection reset')) return true;
+    if (msg.contains('not connected')) return true;
+    if (msg.contains('connection lost')) return true;
+    if (msg.contains('timed out') || msg.contains('timeout')) return true;
+    if (msg.contains('socket') && (msg.contains('closed') || msg.contains('error'))) return true;
+    return false;
+  }
+
+  /// Attempt auto-reconnect using last known connection info
+  Future<bool> _attemptAutoReconnect() async {
+    if (_lastConnectionUri != null) {
+      stderr.writeln('Attempting auto-reconnect to $_lastConnectionUri (port: $_lastConnectionPort)...');
+      try {
+        final client = _clients[_activeSessionId];
+        if (client is BridgeDriver) {
+          await client.connect();
+          stderr.writeln('Auto-reconnect successful');
+          return true;
+        }
+      } catch (e) {
+        stderr.writeln('Auto-reconnect failed: $e');
+      }
+    }
+    if (_cdpDriver != null && !_cdpDriver!.isConnected) {
+      stderr.writeln('CDP connection lost, attempting reconnect...');
+      try {
+        await _cdpDriver!.connect();
+        stderr.writeln('CDP auto-reconnect successful');
+        return true;
+      } catch (e) {
+        stderr.writeln('CDP auto-reconnect failed: $e');
+      }
+    }
+    return false;
+  }
+
   Future<dynamic> _executeTool(String name, Map<String, dynamic> args) async {
+    const maxRetries = 2;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final result = await _executeToolInner(name, args);
+        return result;
+      } catch (e) {
+        if (attempt < maxRetries && _isRetryableError(e)) {
+          stderr.writeln('Retryable error on attempt ${attempt + 1}: $e');
+          // Try auto-reconnect on connection errors
+          final msg = e.toString().toLowerCase();
+          if (msg.contains('not connected') || msg.contains('connection lost') || msg.contains('connection closed')) {
+            await _attemptAutoReconnect();
+          }
+          await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+          continue;
+        }
+        rethrow;
+      }
+    }
+    // Unreachable, but satisfies analyzer
+    throw StateError('Retry loop exited unexpectedly');
+  }
+
+  Future<dynamic> _executeToolInner(String name, Map<String, dynamic> args) async {
     // Session management tools
     if (name == 'list_sessions') {
       return {
@@ -2267,6 +2363,10 @@ Detailed diagnostic report with:
 
           // Always switch to the newly created session
           _activeSessionId = sessionId;
+
+          // Store for auto-reconnect
+          _lastConnectionUri = uri;
+          _lastConnectionPort = int.tryParse(uri.split(':').last.split('/').first);
 
           return {
             "success": true,
@@ -4207,6 +4307,44 @@ Detailed diagnostic report with:
         }
         final fc = _asFlutterClient(client!, 'scroll_until_visible');
         return await _scrollUntilVisible(args, fc);
+
+      // === Batch Assertions ===
+      case 'assert_batch':
+        final assertions = (args['assertions'] as List<dynamic>?) ?? [];
+        final results = <Map<String, dynamic>>[];
+        int passed = 0;
+        int failed = 0;
+        for (final assertion in assertions) {
+          final a = assertion as Map<String, dynamic>;
+          final aType = a['type'] as String;
+          try {
+            final toolName = aType == 'visible' ? 'assert_visible'
+                : aType == 'not_visible' ? 'assert_not_visible'
+                : aType == 'text' ? 'assert_text'
+                : aType == 'element_count' ? 'assert_element_count'
+                : aType;
+            final toolArgs = <String, dynamic>{
+              if (a['key'] != null) 'key': a['key'],
+              if (a['text'] != null) 'text': a['text'],
+              if (a['expected'] != null) 'expected': a['expected'],
+              if (a['count'] != null) 'expected_count': a['count'],
+            };
+            final result = await _executeToolInner(toolName, toolArgs);
+            final success = result is Map && result['success'] == true;
+            if (success) passed++; else failed++;
+            results.add({'type': aType, 'success': success, 'result': result});
+          } catch (e) {
+            failed++;
+            results.add({'type': aType, 'success': false, 'error': e.toString()});
+          }
+        }
+        return {
+          'success': failed == 0,
+          'total': assertions.length,
+          'passed': passed,
+          'failed': failed,
+          'results': results,
+        };
 
       // === NEW: Assertions ===
       case 'assert_visible':
