@@ -171,68 +171,54 @@
   // --------------- Screenshot helpers ---------------
 
   function screenshotFull() {
-    return new Promise(function (resolve) {
-      try {
-        var w = window.innerWidth;
-        var h = window.innerHeight;
-        var dpr = window.devicePixelRatio || 1;
-        var canvas = document.createElement('canvas');
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        var ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
+    // Simple DOM-info screenshot — avoids SVG foreignObject hangs and huge payloads
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    var canvas = document.createElement('canvas');
+    // Use 1x scale to keep payload small (~50KB vs 1MB+ at 2x DPR)
+    canvas.width = Math.min(w, 800);
+    canvas.height = Math.min(h, 600);
+    var ctx = canvas.getContext('2d');
+    var scaleX = canvas.width / w;
+    var scaleY = canvas.height / h;
+    ctx.scale(scaleX, scaleY);
 
-        // Timeout: if SVG approach doesn't resolve in 3s, return blank canvas
-        var resolved = false;
-        var timer = setTimeout(function () {
-          if (!resolved) {
-            resolved = true;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#000000';
-            ctx.font = '16px sans-serif';
-            ctx.fillText('Screenshot (timeout fallback) ' + w + 'x' + h, 20, 40);
-            resolve(canvas.toDataURL('image/png').split(',')[1]);
-          }
-        }, 3000);
+    // Draw page background
+    var bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
+    ctx.fillStyle = bg === 'rgba(0, 0, 0, 0)' ? '#ffffff' : bg;
+    ctx.fillRect(0, 0, w, h);
 
-        var data = new XMLSerializer().serializeToString(document.documentElement);
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
-          '<foreignObject width="100%" height="100%">' +
-          '<div xmlns="http://www.w3.org/1999/xhtml">' + data + '</div>' +
-          '</foreignObject></svg>';
-
-        var img = new Image();
-        var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        var url = URL.createObjectURL(blob);
-
-        img.onload = function () {
-          if (!resolved) {
-            resolved = true;
-            clearTimeout(timer);
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(url);
-            resolve(canvas.toDataURL('image/png').split(',')[1]);
-          }
-        };
-        img.onerror = function () {
-          if (!resolved) {
-            resolved = true;
-            clearTimeout(timer);
-            URL.revokeObjectURL(url);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#000000';
-            ctx.font = '16px sans-serif';
-            ctx.fillText('Screenshot (SVG error fallback) ' + w + 'x' + h, 20, 40);
-            resolve(canvas.toDataURL('image/png').split(',')[1]);
-          }
-        };
-        img.src = url;
-      } catch (e) {
-        resolve(null);
+    // Draw visible text elements as a lightweight representation
+    ctx.fillStyle = '#000000';
+    ctx.font = '14px sans-serif';
+    var y = 30;
+    var els = document.querySelectorAll('h1,h2,h3,p,button,a,input,label,span');
+    for (var i = 0; i < Math.min(els.length, 40); i++) {
+      var el = els[i];
+      var rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      var tag = el.tagName.toLowerCase();
+      var txt = (el.textContent || '').trim().substring(0, 60);
+      if (!txt && el.placeholder) txt = '[' + el.placeholder + ']';
+      if (!txt) continue;
+      // Draw element representation at its approximate position
+      if (tag === 'button' || tag === 'a') {
+        ctx.fillStyle = '#0066cc';
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(txt, rect.x + 4, rect.y + 16);
+        ctx.fillStyle = '#000000';
+      } else if (tag === 'input') {
+        ctx.strokeStyle = '#999999';
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        ctx.fillText(txt || el.value || '', rect.x + 4, rect.y + 16);
+      } else {
+        ctx.fillText(txt, rect.x, rect.y + 14);
       }
-    });
+    }
+
+    // Return as JPEG for smaller size
+    return Promise.resolve(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
   }
 
   function screenshotRegion(x, y, width, height) {
