@@ -160,6 +160,10 @@ class FlutterMcpServer {
   String? _autoConnectUrl;
   int? _autoConnectCdpPort;
 
+  // Plugin system
+  String _pluginsDir = '${Platform.environment['HOME'] ?? '.'}/.flutter-skill/plugins';
+  final List<Map<String, dynamic>> _pluginTools = [];
+
   // Last known connection info for auto-reconnect
   String? _lastConnectionUri;
   int? _lastConnectionPort;
@@ -2098,6 +2102,72 @@ Detailed diagnostic report with:
         "inputSchema": {"type": "object", "properties": {}},
       },
 
+      // AI Visual Verification
+      {
+        "name": "visual_verify",
+        "description": """Take a screenshot AND text snapshot for AI visual verification.
+
+Returns both a screenshot file and structured text snapshot so the calling AI can verify
+the UI matches the expected description. Optionally checks for specific elements.
+
+[USE WHEN]
+• Verifying UI looks correct after a series of actions
+• Checking that expected elements are present on screen
+• Visual QA of a screen against a description
+
+[RETURNS]
+Combined result with screenshot path, text snapshot, element matching results, and a hint
+for the AI to compare against the provided description.""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "What the UI should look like (e.g., 'login form with email and password fields')"
+            },
+            "check_elements": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Specific elements that should be visible (matched against snapshot refs and text)"
+            },
+            "quality": {
+              "type": "number",
+              "description": "Screenshot quality 0-1 (default 0.5)"
+            },
+          },
+        },
+      },
+      {
+        "name": "visual_diff",
+        "description": """Compare current screen against a baseline screenshot.
+
+Takes a new screenshot and returns both the current and baseline paths so the calling AI
+can visually compare them. Also returns text snapshots for structural comparison.
+
+[USE WHEN]
+• Visual regression testing
+• Comparing before/after states
+• Verifying no unintended UI changes""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "baseline_path": {
+              "type": "string",
+              "description": "Path to baseline screenshot file"
+            },
+            "description": {
+              "type": "string",
+              "description": "What to focus on when comparing (optional)"
+            },
+            "quality": {
+              "type": "number",
+              "description": "Screenshot quality 0-1 (default 0.5)"
+            },
+          },
+          "required": ["baseline_path"],
+        },
+      },
+
       // Parallel Multi-Device
       {
         "name": "parallel_snapshot",
@@ -2119,6 +2189,52 @@ Detailed diagnostic report with:
             "key": {"type": "string", "description": "Element key to tap"},
             "text": {"type": "string", "description": "Element text to tap"},
             "session_ids": {"type": "array", "items": {"type": "string"}, "description": "Session IDs (default: all)"},
+          },
+        },
+      },
+
+      // Cross-Platform Test Orchestration
+      {
+        "name": "multi_platform_test",
+        "description": "Run the same test steps across all connected platforms simultaneously. Great for cross-platform verification.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tool": {"type": "string"},
+                  "args": {"type": "object"},
+                },
+              },
+              "description": "Sequence of tool calls to execute on each platform"
+            },
+            "session_ids": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Specific sessions to test (default: all connected)"
+            },
+            "stop_on_failure": {
+              "type": "boolean",
+              "description": "Stop all platforms on first failure (default: false)"
+            },
+          },
+          "required": ["actions"],
+        },
+      },
+      {
+        "name": "compare_platforms",
+        "description": "Take snapshots from all connected platforms and compare element presence. Identifies cross-platform inconsistencies.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "session_ids": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Specific sessions to compare (default: all connected)"
+            },
           },
         },
       },
@@ -3545,6 +3661,149 @@ Detailed diagnostic report with:
       });
       final results = await Future.wait(futures);
       return {"results": results};
+    }
+
+    if (name == 'multi_platform_test') {
+      final actions = (args['actions'] as List<dynamic>?) ?? [];
+      final sessionIds = (args['session_ids'] as List<dynamic>?)?.cast<String>() ?? _sessions.keys.toList();
+      final stopOnFailure = args['stop_on_failure'] as bool? ?? false;
+      final savedSessionId = _activeSessionId;
+
+      final futures = sessionIds.map((sid) async {
+        final platform = _sessions[sid]?.deviceId ?? 'unknown';
+        final steps = <Map<String, dynamic>>[];
+        int passed = 0;
+        int failed = 0;
+        bool stopped = false;
+
+        for (final action in actions) {
+          if (stopped) break;
+          final toolName = (action as Map<String, dynamic>)['tool'] as String? ?? '';
+          final toolArgs = Map<String, dynamic>.from(
+            (action['args'] as Map<String, dynamic>?) ?? {},
+          );
+          toolArgs['session_id'] = sid;
+
+          final sw = Stopwatch()..start();
+          try {
+            // Temporarily switch active session for tools that rely on it
+            _activeSessionId = sid;
+            final result = await _executeToolInner(toolName, toolArgs);
+            sw.stop();
+            final success = result is Map ? (result['error'] == null) : true;
+            steps.add({'tool': toolName, 'success': success, 'time_ms': sw.elapsedMilliseconds});
+            if (success) {
+              passed++;
+            } else {
+              failed++;
+              if (stopOnFailure) stopped = true;
+            }
+          } catch (e) {
+            sw.stop();
+            steps.add({'tool': toolName, 'success': false, 'time_ms': sw.elapsedMilliseconds, 'error': e.toString()});
+            failed++;
+            if (stopOnFailure) stopped = true;
+          }
+        }
+
+        return MapEntry(sid, {
+          'platform': platform,
+          'steps': steps,
+          'passed': passed,
+          'failed': failed,
+        });
+      });
+
+      final entries = await Future.wait(futures);
+      _activeSessionId = savedSessionId;
+
+      final results = Map.fromEntries(entries);
+      final allPassed = results.values.where((r) => (r['failed'] as int) == 0).length;
+      final someFailed = results.values.where((r) => (r['failed'] as int) > 0).length;
+
+      return {
+        'platforms_tested': sessionIds.length,
+        'results': results,
+        'summary': {
+          'total_platforms': sessionIds.length,
+          'all_passed': allPassed,
+          'some_failed': someFailed,
+        },
+      };
+    }
+
+    if (name == 'compare_platforms') {
+      final sessionIds = (args['session_ids'] as List<dynamic>?)?.cast<String>() ?? _sessions.keys.toList();
+
+      // Take snapshots from all platforms in parallel
+      final futures = sessionIds.map((sid) async {
+        try {
+          final c = _clients[sid];
+          if (c == null) return MapEntry(sid, <String, dynamic>{'error': 'Not connected'});
+          if (c is FlutterSkillClient) {
+            final structured = await c.getInteractiveElementsStructured();
+            final elements = (structured is Map && structured['elements'] is List)
+                ? (structured['elements'] as List)
+                : <dynamic>[];
+            final elementKeys = <String>{};
+            for (final el in elements) {
+              if (el is Map) {
+                final type = el['type'] as String? ?? '';
+                final text = el['text'] as String? ?? el['label'] as String? ?? '';
+                elementKeys.add('$type:$text');
+              }
+            }
+            return MapEntry(sid, <String, dynamic>{
+              'platform': _sessions[sid]?.deviceId ?? 'unknown',
+              'element_count': elements.length,
+              'elements': elementKeys.toList(),
+            });
+          }
+          return MapEntry(sid, <String, dynamic>{'error': 'Not a Flutter client'});
+        } catch (e) {
+          return MapEntry(sid, <String, dynamic>{'error': e.toString()});
+        }
+      });
+
+      final entries = await Future.wait(futures);
+      final platformData = Map.fromEntries(entries);
+
+      // Find all unique element keys across platforms
+      final allElements = <String>{};
+      final platformElements = <String, Set<String>>{};
+      for (final entry in platformData.entries) {
+        if (entry.value.containsKey('elements')) {
+          final elems = (entry.value['elements'] as List).cast<String>().toSet();
+          platformElements[entry.key] = elems;
+          allElements.addAll(elems);
+        }
+      }
+
+      // Build presence matrix and find inconsistencies
+      final inconsistencies = <Map<String, dynamic>>[];
+      final presenceMatrix = <String, Map<String, bool>>{};
+      for (final element in allElements) {
+        final presence = <String, bool>{};
+        for (final sid in platformElements.keys) {
+          presence[sid] = platformElements[sid]!.contains(element);
+        }
+        presenceMatrix[element] = presence;
+        // If not present on all platforms, it's an inconsistency
+        if (presence.values.any((v) => !v)) {
+          inconsistencies.add({
+            'element': element,
+            'present_on': presence.entries.where((e) => e.value).map((e) => e.key).toList(),
+            'missing_on': presence.entries.where((e) => !e.value).map((e) => e.key).toList(),
+          });
+        }
+      }
+
+      return {
+        'platforms': platformData,
+        'total_unique_elements': allElements.length,
+        'inconsistencies': inconsistencies,
+        'consistent': inconsistencies.isEmpty,
+      };
     }
 
     // Auth inject session
