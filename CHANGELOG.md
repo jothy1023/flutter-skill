@@ -1,3 +1,12 @@
+## 0.8.2
+
+**Zero-config CDP, 143 device presets, smart tool filtering, 5 codegen formats, retry/reconnect**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.8.1
 
 **139 MCP tools, CDP browser testing, 10-platform support, screenshot fixes**
