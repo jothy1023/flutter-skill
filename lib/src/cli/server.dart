@@ -2294,6 +2294,102 @@ can visually compare them. Also returns text snapshots for structural comparison
     }).toList();
   }
 
+  Future<Map<String, dynamic>> _executeBatchAssertions(Map<String, dynamic> args, AppDriver client) async {
+    final assertions = (args['assertions'] as List<dynamic>?) ?? [];
+    final results = <Map<String, dynamic>>[];
+    int passed = 0, failed = 0;
+    for (final assertion in assertions) {
+      final a = assertion as Map<String, dynamic>;
+      final aType = a['type'] as String;
+      try {
+        final toolName = aType == 'visible' ? 'assert_visible'
+            : aType == 'not_visible' ? 'assert_not_visible'
+            : aType == 'text' ? 'assert_text'
+            : aType == 'element_count' ? 'assert_element_count'
+            : aType;
+        final toolArgs = <String, dynamic>{
+          if (a['key'] != null) 'key': a['key'],
+          if (a['text'] != null) 'text': a['text'],
+          if (a['expected'] != null) 'expected': a['expected'],
+          if (a['count'] != null) 'expected_count': a['count'],
+        };
+        final result = await _executeToolInner(toolName, toolArgs);
+        final success = result is Map && result['success'] != false;
+        if (success) passed++; else failed++;
+        results.add({'type': aType, 'success': success, 'result': result});
+      } catch (e) {
+        failed++;
+        results.add({'type': aType, 'success': false, 'error': e.toString()});
+      }
+    }
+    return {'success': failed == 0, 'total': assertions.length, 'passed': passed, 'failed': failed, 'results': results};
+  }
+
+  Future<Map<String, dynamic>> _executeVisualVerify(Map<String, dynamic> args, AppDriver client) async {
+    final quality = (args['quality'] as num?)?.toDouble() ?? 0.5;
+    final desc = args['description'] as String? ?? '';
+    final checkElements = (args['check_elements'] as List?)?.cast<String>() ?? [];
+
+    final imageBase64 = await client.takeScreenshot(quality: quality, maxWidth: 800);
+    String? screenshotPath;
+    if (imageBase64 != null) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${Directory.systemTemp.path}/flutter_skill_verify_$ts.png');
+      await file.writeAsBytes(base64.decode(imageBase64));
+      screenshotPath = file.path;
+    }
+
+    String snapshotText = '';
+    List<String> found = [], missing = [];
+    int elementCount = 0;
+    try {
+      final structured = await client.getInteractiveElementsStructured();
+      final els = structured['elements'] as List<dynamic>? ?? [];
+      elementCount = els.length;
+      final buf = StringBuffer();
+      for (final el in els) {
+        if (el is Map<String, dynamic>) {
+          buf.writeln('[${el['ref'] ?? ''}] "${el['text'] ?? el['label'] ?? ''}"');
+        }
+      }
+      snapshotText = buf.toString();
+      if (checkElements.isNotEmpty) {
+        final lower = snapshotText.toLowerCase();
+        for (final c in checkElements) {
+          (lower.contains(c.toLowerCase()) ? found : missing).add(c);
+        }
+      }
+    } catch (e) {
+      snapshotText = 'Error: $e';
+    }
+    return {
+      'success': true, 'screenshot': screenshotPath, 'snapshot': snapshotText,
+      'elements_found': found, 'elements_missing': missing, 'element_count': elementCount,
+      'description_to_verify': desc,
+      'hint': 'Compare the screenshot and snapshot against the description.',
+    };
+  }
+
+  Future<Map<String, dynamic>> _executeVisualDiff(Map<String, dynamic> args, AppDriver client) async {
+    final quality = (args['quality'] as num?)?.toDouble() ?? 0.5;
+    final baselinePath = args['baseline_path'] as String? ?? '';
+    if (baselinePath.isEmpty || !await File(baselinePath).exists()) {
+      return {'success': false, 'error': 'Baseline file not found: $baselinePath'};
+    }
+    final imageBase64 = await client.takeScreenshot(quality: quality, maxWidth: 800);
+    String? currentPath;
+    if (imageBase64 != null) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${Directory.systemTemp.path}/flutter_skill_diff_$ts.png');
+      await file.writeAsBytes(base64.decode(imageBase64));
+      currentPath = file.path;
+    }
+    return {
+      'success': true, 'baseline_path': baselinePath, 'current_screenshot': currentPath,
+      'hint': 'Compare baseline with current screenshot for visual differences.',
+    };
+  }
+
   /// Get the client for a specific session or the active session
   AppDriver? _getClient(Map<String, dynamic> args) {
     final sessionId = args['session_id'] as String?;
@@ -4090,9 +4186,32 @@ function toggleImg(el) { el.classList.toggle('expanded'); }
       }
     }
 
+    // Platform-agnostic tools that work on any connection type
+    if (name == 'list_plugins') {
+      return _pluginTools.isEmpty
+          ? {"plugins": [], "message": "No plugins loaded"}
+          : {"plugins": _pluginTools.map((p) => {"name": p['name'], "description": p['description']}).toList()};
+    }
+
+    if (name == 'generate_report') {
+      return _generateReport(args);
+    }
+
     // Require connection for all other tools
     final client = _getClient(args);
     _requireConnection(client);
+
+    if (name == 'assert_batch') {
+      return _executeBatchAssertions(args, client!);
+    }
+
+    if (name == 'visual_verify') {
+      return _executeVisualVerify(args, client!);
+    }
+
+    if (name == 'visual_diff') {
+      return _executeVisualDiff(args, client!);
+    }
 
     // Route to CDP driver if active connection is CDP
     if (client is CdpDriver) {
