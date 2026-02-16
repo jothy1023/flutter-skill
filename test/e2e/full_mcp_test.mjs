@@ -50,7 +50,7 @@ const CDP_ONLY     = new Set([
   'install_dialog_handler', 'handle_dialog', 'intercept_requests', 'clear_interceptions',
   'block_urls', 'throttle_network', 'go_offline', 'clear_browser_data',
   'accessibility_audit', 'set_geolocation', 'set_timezone', 'set_color_scheme',
-  'upload_file', 'compare_screenshot',
+  'upload_file', 'compare_screenshot', 'get_visible_text',
 ]);
 const BRIDGE_OR_CDP = new Set(['hover', 'fill', 'select_option', 'set_checkbox', 'focus', 'blur', 'eval', 'type_text']);
 const NO_WEB       = new Set(['auth_deeplink', 'auth_biometric']);
@@ -155,6 +155,13 @@ const TOOLS = [
   ['blur', { key: EK.input }],
   ['eval', { expression: '1+1' }],
 
+  // ── Assert batch ──
+  ['assert_batch', { assertions: [
+    { type: 'visible', key: EK.button },
+    { type: 'visible', key: EK.input },
+    { type: 'not_visible', key: 'nonexistent_xyz' }
+  ]}],
+
   // ── Assertions (7) ──
   ['assert_visible', { key: EK.button }],
   ['assert_not_visible', { key: 'nonexistent_xyz_999' }],
@@ -170,10 +177,16 @@ const TOOLS = [
   ['auth_otp', { secret: 'JBSWY3DPEHPK3PXP' }],
   ['auth_deeplink', { url: 'myapp://test?token=abc123' }],
 
-  // ── Recording v0.8.1 (7) ──
+  // ── Recording v0.8.1 ──
   ['record_start', {}],
+  ['tap', { key: EK.button }],
   ['record_stop', {}],
   ['record_export', { format: 'jest' }],
+  ['record_export', { format: 'playwright' }],
+  ['record_export', { format: 'cypress' }],
+  ['record_export', { format: 'selenium' }],
+  ['record_export', { format: 'xcuitest' }],
+  ['record_export', { format: 'espresso' }],
   ['video_start', {}],
   ['video_stop', {}],
   ['parallel_snapshot', {}],
@@ -191,9 +204,23 @@ const TOOLS = [
   ['clear_logs', {}],
   ['clear_network_requests', {}],
 
+  // ── P2 tools ──
+  ['visual_verify', { description: 'A social media app with login form', check_elements: [EK.button, EK.input] }],
+  ['visual_diff', { baseline_path: '/tmp/nonexistent-baseline.png' }],
+  ['generate_report', { format: 'html', title: 'E2E Test Report' }],
+  ['generate_report', { format: 'json' }],
+  ['generate_report', { format: 'markdown' }],
+  ['list_plugins', {}],
+  ['multi_platform_test', { actions: [{ tool: 'snapshot', args: { mode: 'text' } }] }],
+  ['compare_platforms', {}],
+
   // ── CDP — Browser State (16) ──
   ['get_title', {}],
   ['get_page_source', {}],
+  ['get_page_source', { removeScripts: true, minify: true }],
+  ['get_page_source', { selector: 'body', cleanHtml: true }],
+  ['get_visible_text', {}],
+  ['get_visible_text', { selector: 'body' }],
   ['count_elements', { selector: 'button' }],
   ['is_visible', { key: EK.button }],
   ['get_attribute', { key: EK.input, attribute: 'type' }],
@@ -215,6 +242,9 @@ const TOOLS = [
   ['go_forward', {}],
   ['set_viewport', { width: 1280, height: 720 }],
   ['emulate_device', { device: 'iphone-14' }],
+  ['emulate_device', { device: 'iPhone 14 Pro' }],
+  ['emulate_device', { device: 'Pixel 7' }],
+  ['emulate_device', { device: 'Desktop Chrome' }],
   ['set_viewport', { width: 1280, height: 720 }],  // reset after emulate
   ['generate_pdf', {}],
   ['wait_for_navigation', { timeout_ms: 5000 }],
@@ -369,18 +399,21 @@ async function main() {
     0: 'Pre-connect',
     3: 'Inspection',
     22: 'Interaction',
-    41: 'Cross-platform extras',
-    53: 'Assertions',
-    60: 'Auth',
-    64: 'Recording',
-    71: 'Utility',
-    81: 'CDP — Browser State',
-    97: 'CDP — Page Control',
-    106: 'CDP — Tabs & Frames',
-    115: 'CDP — Network Control',
-    123: 'CDP — Environment',
-    129: 'CDP Connection',
-    130: 'Connection Lifecycle',
+    37: 'Cross-platform extras',
+    49: 'Assert batch',
+    50: 'Assertions',
+    57: 'Auth',
+    61: 'Recording',
+    74: 'Utility',
+    84: 'P2 tools',
+    92: 'CDP — Browser State',
+    112: 'CDP — Page Control',
+    124: 'CDP — Tabs & Frames',
+    133: 'CDP — Network Control',
+    141: 'CDP — Environment',
+    147: 'CDP Connection',
+    148: 'Native',
+    152: 'Connection Lifecycle',
   };
 
   for (let i = 0; i < TOOLS.length; i++) {
@@ -473,9 +506,7 @@ async function main() {
 
     // Small delay for state-dependent tools (video needs time)
     if (toolName === 'video_start') await new Promise(r => setTimeout(r, 2000));
-    if (toolName === 'record_start') {
-      await callTool('tap', { key: EK.button }).catch(() => {});
-    }
+    // record_start tap is now explicit in TOOLS array
   }
 
   // ── Summary table ────────────────────────────────────────────────────────
