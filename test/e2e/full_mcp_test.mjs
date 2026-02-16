@@ -139,10 +139,6 @@ const TOOLS = [
   ['gesture', { actions: [{ type: 'tap', x: 100, y: 100 }] }],
   ['go_back', {}],
   ['scroll_until_visible', { key: EK.text, direction: 'down' }],
-  ['native_tap', { x: 100, y: 200 }],
-  ['native_input_text', { text: 'native hello' }],
-  ['native_swipe', { start_x: 200, start_y: 400, end_x: 200, end_y: 200 }],
-  ['native_screenshot', {}],
   ['execute_batch', { actions: [{ tool: 'tap', args: { key: EK.button } }] }],
 
   // ── Cross-platform extras ──
@@ -255,6 +251,12 @@ const TOOLS = [
 
   // ── CDP-specific connection (1) ──
   ['connect_cdp', (ctx) => ({ url: ctx.URL || 'http://localhost:9222' })],
+
+  // ── Native (at end — these can hang due to macOS Accessibility API) ──
+  ['native_tap', { x: 100, y: 200 }],
+  ['native_input_text', { text: 'native hello' }],
+  ['native_swipe', { start_x: 200, start_y: 400, end_x: 200, end_y: 200 }],
+  ['native_screenshot', {}],
 
   // ── Connection lifecycle (tested last to avoid breaking other tests) ──
   ['switch_session', { session_id: 'default' }],

@@ -171,51 +171,66 @@
   // --------------- Screenshot helpers ---------------
 
   function screenshotFull() {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
       try {
-        // Use html2canvas-lite approach: draw document to canvas
         var w = window.innerWidth;
         var h = window.innerHeight;
         var dpr = window.devicePixelRatio || 1;
+        var canvas = document.createElement('canvas');
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
 
-        // Attempt using the experimental API if available
-        if (document.documentElement && typeof document.documentElement.scrollWidth === 'number') {
-          // Create a foreignObject SVG approach
-          var data = new XMLSerializer().serializeToString(document.documentElement);
-          var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
-            '<foreignObject width="100%" height="100%">' +
-            '<div xmlns="http://www.w3.org/1999/xhtml">' + data + '</div>' +
-            '</foreignObject></svg>';
-
-          var canvas = document.createElement('canvas');
-          canvas.width = w * dpr;
-          canvas.height = h * dpr;
-          var ctx = canvas.getContext('2d');
-          ctx.scale(dpr, dpr);
-
-          var img = new Image();
-          var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-          var url = URL.createObjectURL(blob);
-
-          img.onload = function () {
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(url);
-            resolve(canvas.toDataURL('image/png').split(',')[1]);
-          };
-          img.onerror = function () {
-            URL.revokeObjectURL(url);
-            // Fallback: return a blank screenshot with page info
+        // Timeout: if SVG approach doesn't resolve in 3s, return blank canvas
+        var resolved = false;
+        var timer = setTimeout(function () {
+          if (!resolved) {
+            resolved = true;
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, w, h);
             ctx.fillStyle = '#000000';
             ctx.font = '16px sans-serif';
-            ctx.fillText('Screenshot captured (DOM serialization limited by CORS)', 20, 40);
+            ctx.fillText('Screenshot (timeout fallback) ' + w + 'x' + h, 20, 40);
             resolve(canvas.toDataURL('image/png').split(',')[1]);
-          };
-          img.src = url;
-        }
+          }
+        }, 3000);
+
+        var data = new XMLSerializer().serializeToString(document.documentElement);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+          '<foreignObject width="100%" height="100%">' +
+          '<div xmlns="http://www.w3.org/1999/xhtml">' + data + '</div>' +
+          '</foreignObject></svg>';
+
+        var img = new Image();
+        var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+
+        img.onload = function () {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL('image/png').split(',')[1]);
+          }
+        };
+        img.onerror = function () {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            URL.revokeObjectURL(url);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#000000';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('Screenshot (SVG error fallback) ' + w + 'x' + h, 20, 40);
+            resolve(canvas.toDataURL('image/png').split(',')[1]);
+          }
+        };
+        img.src = url;
       } catch (e) {
-        reject(e);
+        resolve(null);
       }
     });
   }
