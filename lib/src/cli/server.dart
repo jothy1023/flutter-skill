@@ -310,7 +310,42 @@ class FlutterMcpServer {
   }
 
   List<Map<String, dynamic>> _getToolsList() {
-    return [
+    // Determine current connection mode for smart filtering
+    final hasCdp = _cdpDriver != null;
+    final hasBridge = _client is BridgeDriver && _cdpDriver == null;
+    final hasFlutter = _client is FlutterSkillClient && _client is! BridgeDriver;
+    final hasConnection = _client != null || hasCdp;
+
+    // CDP-only tools that don't apply to bridge/Flutter platforms
+    const cdpOnlyTools = <String>{
+      'connect_cdp', 'get_title', 'get_page_source', 'get_visible_text',
+      'count_elements', 'is_visible', 'get_attribute', 'get_css_property',
+      'get_bounding_box', 'get_cookies', 'set_cookie', 'clear_cookies',
+      'get_local_storage', 'set_local_storage', 'clear_local_storage',
+      'get_session_storage', 'get_console_messages', 'get_network_requests',
+      'navigate', 'go_forward', 'reload', 'set_viewport', 'emulate_device',
+      'generate_pdf', 'wait_for_navigation', 'wait_for_network_idle',
+      'get_tabs', 'new_tab', 'close_tab', 'switch_tab', 'get_frames',
+      'eval_in_frame', 'get_window_handles', 'install_dialog_handler',
+      'handle_dialog', 'intercept_requests', 'clear_interceptions',
+      'block_urls', 'throttle_network', 'go_offline', 'clear_browser_data',
+      'accessibility_audit', 'set_geolocation', 'set_timezone',
+      'set_color_scheme', 'upload_file', 'compare_screenshot',
+    };
+
+    // Flutter VM Service-only tools
+    const flutterOnlyTools = <String>{
+      'get_widget_tree', 'get_widget_properties', 'find_by_type',
+      'hot_reload', 'hot_restart',
+    };
+
+    // Mobile-only tools
+    const mobileOnlyTools = <String>{
+      'native_tap', 'native_input_text', 'native_swipe', 'native_screenshot',
+      'auth_biometric', 'auth_deeplink',
+    };
+
+    final allTools = <Map<String, dynamic>>[
       // Session Management
       {
         "name": "list_sessions",
@@ -688,7 +723,8 @@ After starting, point the web SDK at ws://127.0.0.1:<port>.""",
       {"name": "blur", "description": "Remove focus from an element", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
       {"name": "count_elements", "description": "Count elements matching a CSS selector", "inputSchema": {"type": "object", "properties": {"selector": {"type": "string"}}, "required": ["selector"]}},
       {"name": "is_visible", "description": "Check if an element is visible on page", "inputSchema": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
-      {"name": "get_page_source", "description": "Get the full HTML source of the current page", "inputSchema": {"type": "object", "properties": {}}},
+      {"name": "get_page_source", "description": "Get the HTML source of the current page with optional cleaning", "inputSchema": {"type": "object", "properties": {"selector": {"type": "string", "description": "CSS selector to get HTML for a specific element only"}, "remove_scripts": {"type": "boolean", "description": "Strip <script> tags"}, "remove_styles": {"type": "boolean", "description": "Strip <style> tags"}, "remove_comments": {"type": "boolean", "description": "Strip HTML comments"}, "remove_meta": {"type": "boolean", "description": "Strip <meta> tags"}, "minify": {"type": "boolean", "description": "Collapse whitespace"}, "clean_html": {"type": "boolean", "description": "Convenience: removes scripts, styles, comments, and meta tags"}}}},
+      {"name": "get_visible_text", "description": "Get only visible text content from the page (skips display:none, visibility:hidden elements). CDP only.", "inputSchema": {"type": "object", "properties": {"selector": {"type": "string", "description": "CSS selector to scope text extraction"}}}},
       {"name": "get_window_handles", "description": "Get all browser window/tab handles", "inputSchema": {"type": "object", "properties": {}}},
       {"name": "install_dialog_handler", "description": "Install auto-handler for JS dialogs (alert/confirm/prompt)", "inputSchema": {"type": "object", "properties": {"auto_accept": {"type": "boolean", "description": "Auto-accept dialogs (default: true)"}}}},
       {"name": "wait_for_navigation", "description": "Wait for page navigation to complete", "inputSchema": {"type": "object", "properties": {"timeout_ms": {"type": "integer", "description": "Timeout in ms (default: 30000)"}}}},
@@ -4651,7 +4687,18 @@ Detailed diagnostic report with:
         return {"visible": await cdp.isVisible(key), "key": key};
 
       case 'get_page_source':
-        return {"source": await cdp.getPageSource()};
+        return {"source": await cdp.getPageSource(
+          selector: args['selector'] as String?,
+          removeScripts: args['remove_scripts'] == true,
+          removeStyles: args['remove_styles'] == true,
+          removeComments: args['remove_comments'] == true,
+          removeMeta: args['remove_meta'] == true,
+          minify: args['minify'] == true,
+          cleanHtml: args['clean_html'] == true,
+        )};
+
+      case 'get_visible_text':
+        return {"text": await cdp.getVisibleText(selector: args['selector'] as String?)};
 
       case 'get_window_handles':
         return await cdp.getWindowHandles();

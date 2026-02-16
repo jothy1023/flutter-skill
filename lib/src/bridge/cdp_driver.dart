@@ -1155,9 +1155,60 @@ class CdpDriver implements AppDriver {
     return (result['result']?['value'] as String?) ?? '';
   }
 
-  /// Get page HTML.
-  Future<String> getPageSource() async {
-    final result = await _evalJs('document.documentElement.outerHTML');
+  /// Get page HTML with optional cleaning.
+  Future<String> getPageSource({
+    String? selector,
+    bool removeScripts = false,
+    bool removeStyles = false,
+    bool removeComments = false,
+    bool removeMeta = false,
+    bool minify = false,
+    bool cleanHtml = false,
+  }) async {
+    if (cleanHtml) {
+      removeScripts = true;
+      removeStyles = true;
+      removeComments = true;
+      removeMeta = true;
+    }
+    final selectorJs = selector != null
+        ? 'var el = document.querySelector(${jsonEncode(selector)}); el ? el.outerHTML : ""'
+        : 'document.documentElement.outerHTML';
+    final result = await _evalJs(selectorJs);
+    var html = (result['result']?['value'] as String?) ?? '';
+    if (removeScripts) html = html.replaceAll(RegExp(r'<script[\s\S]*?<\/script>', caseSensitive: false), '');
+    if (removeStyles) html = html.replaceAll(RegExp(r'<style[\s\S]*?<\/style>', caseSensitive: false), '');
+    if (removeComments) html = html.replaceAll(RegExp(r'<!--[\s\S]*?-->'), '');
+    if (removeMeta) html = html.replaceAll(RegExp(r'<meta[^>]*/?>', caseSensitive: false), '');
+    if (minify) html = html.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return html;
+  }
+
+  /// Get visible text content (skips hidden elements).
+  Future<String> getVisibleText({String? selector}) async {
+    final root = selector != null ? 'document.querySelector(${jsonEncode(selector)})' : 'document.body';
+    final js = '''
+(function() {
+  var root = $root;
+  if (!root) return '';
+  var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(node) {
+      var el = node.parentElement;
+      if (!el) return NodeFilter.FILTER_REJECT;
+      var style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  var texts = [];
+  while (walker.nextNode()) {
+    var t = walker.currentNode.textContent.trim();
+    if (t) texts.push(t);
+  }
+  return texts.join(' ');
+})()
+''';
+    final result = await _evalJs(js);
     return (result['result']?['value'] as String?) ?? '';
   }
 
