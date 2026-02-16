@@ -711,7 +711,7 @@ After starting, point the web SDK at ws://127.0.0.1:<port>.""",
       {"name": "get_console_messages", "description": "Get browser console log messages", "inputSchema": {"type": "object", "properties": {}}},
       {"name": "get_network_requests", "description": "Get all network requests made by the page (via Performance API)", "inputSchema": {"type": "object", "properties": {}}},
       {"name": "set_viewport", "description": "Set browser viewport size (responsive testing)", "inputSchema": {"type": "object", "properties": {"width": {"type": "integer"}, "height": {"type": "integer"}, "device_scale_factor": {"type": "number"}}, "required": ["width", "height"]}},
-      {"name": "emulate_device", "description": "Emulate a mobile device (viewport + user agent). Devices: iphone-12, iphone-14, pixel-7, ipad-pro, desktop-1080p", "inputSchema": {"type": "object", "properties": {"device": {"type": "string"}}, "required": ["device"]}},
+      {"name": "emulate_device", "description": "Emulate a device viewport + user agent. 143+ presets: iPhone 12-16 (all sizes), SE, Pixel 5-9, Galaxy S21-S24, Z Fold/Flip, OnePlus, Xiaomi, Huawei, iPad Pro/Air/Mini, Galaxy Tab, Surface Pro, MacBook Air/Pro, Dell XPS, desktop resolutions (1080p/1440p/4K) with Chrome/Firefox/Safari/Edge UAs. Supports flexible naming: 'iPhone 14 Pro', 'iphone-14-pro', 'iphone14pro' all work. Pass empty device to list all available presets.", "inputSchema": {"type": "object", "properties": {"device": {"type": "string", "description": "Device name (e.g. 'iphone-16-pro-max', 'pixel-8', 'galaxy-s24-ultra', 'ipad-pro-11', 'macbook-pro-16', 'desktop-1080p'). Empty string lists all devices."}}, "required": ["device"]}},
       {"name": "generate_pdf", "description": "Generate a PDF of the current page", "inputSchema": {"type": "object", "properties": {}}},
       {"name": "navigate", "description": "Navigate to a URL", "inputSchema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
       {"name": "go_forward", "description": "Navigate forward in browser history", "inputSchema": {"type": "object", "properties": {}}},
@@ -4583,7 +4583,7 @@ Detailed diagnostic report with:
         );
 
       case 'emulate_device':
-        return await cdp.emulateDevice(args['device'] as String? ?? 'iphone-14');
+        return await cdp.emulateDevice(args['device'] as String? ?? '');
 
       case 'generate_pdf':
         return await cdp.generatePdf();

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../drivers/app_driver.dart';
+import 'device_presets.dart';
 
 /// AppDriver that communicates with any web page via Chrome DevTools Protocol.
 ///
@@ -1003,26 +1004,54 @@ class CdpDriver implements AppDriver {
 
   /// Emulate device (mobile/tablet).
   Future<Map<String, dynamic>> emulateDevice(String device) async {
-    final devices = <String, Map<String, dynamic>>{
-      'iphone-12': {'width': 390, 'height': 844, 'scale': 3.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)'},
-      'iphone-14': {'width': 393, 'height': 852, 'scale': 3.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)'},
-      'pixel-7': {'width': 412, 'height': 915, 'scale': 2.625, 'mobile': true, 'ua': 'Mozilla/5.0 (Linux; Android 13; Pixel 7)'},
-      'ipad-pro': {'width': 1024, 'height': 1366, 'scale': 2.0, 'mobile': true, 'ua': 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)'},
-      'desktop-1080p': {'width': 1920, 'height': 1080, 'scale': 1.0, 'mobile': false, 'ua': null},
-    };
-    final d = devices[device];
-    if (d == null) return {"success": false, "message": "Unknown device: $device", "available": devices.keys.toList()};
+    // Empty/blank device name → list all available devices
+    if (device.trim().isEmpty) {
+      final categories = listDevicesByCategory();
+      return {
+        "success": true,
+        "action": "list",
+        "total": devicePresets.length,
+        "devices": categories,
+      };
+    }
+
+    final preset = lookupDevice(device);
+    if (preset == null) {
+      // Find close matches for helpful error
+      final normalized = device.trim().toLowerCase().replaceAll(RegExp(r'[\s_]+'), '-');
+      final suggestions = devicePresets.keys
+          .where((k) => k.contains(normalized) || normalized.contains(k))
+          .take(10)
+          .toList();
+      return {
+        "success": false,
+        "message": "Unknown device: $device",
+        "suggestions": suggestions,
+        "total_available": devicePresets.length,
+        "hint": "Pass an empty device name to list all available devices.",
+      };
+    }
 
     await _call('Emulation.setDeviceMetricsOverride', {
-      'width': d['width'],
-      'height': d['height'],
-      'deviceScaleFactor': d['scale'],
-      'mobile': d['mobile'],
+      'width': preset.width,
+      'height': preset.height,
+      'deviceScaleFactor': preset.deviceScaleFactor,
+      'mobile': preset.isMobile,
     });
-    if (d['ua'] != null) {
-      await _call('Emulation.setUserAgentOverride', {'userAgent': d['ua']});
+    if (preset.hasTouch) {
+      await _call('Emulation.setTouchEmulationEnabled', {'enabled': true});
     }
-    return {"success": true, "device": device, "viewport": {"width": d['width'], "height": d['height']}};
+    if (preset.userAgent != null) {
+      await _call('Emulation.setUserAgentOverride', {'userAgent': preset.userAgent});
+    }
+    return {
+      "success": true,
+      "device": device,
+      "viewport": {"width": preset.width, "height": preset.height},
+      "deviceScaleFactor": preset.deviceScaleFactor,
+      "isMobile": preset.isMobile,
+      "hasTouch": preset.hasTouch,
+    };
   }
 
   /// Generate PDF (headless Chrome only).
