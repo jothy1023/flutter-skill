@@ -30,7 +30,7 @@ class FlutterSkillElectron {
           capabilities: [
             'initialize', 'inspect', 'inspect_interactive', 'tap', 'enter_text', 'get_text',
             'find_element', 'wait_for_element', 'scroll', 'swipe',
-            'screenshot', 'go_back', 'get_logs', 'clear_logs', 'press_key',
+            'screenshot', 'screenshot_region', 'screenshot_element', 'go_back', 'get_logs', 'clear_logs', 'press_key',
           ],
         }));
       } else {
@@ -280,6 +280,12 @@ class FlutterSkillElectron {
 
       case 'screenshot':
         return this._screenshot(win);
+
+      case 'screenshot_region':
+        return this._screenshotRegion(win, params);
+
+      case 'screenshot_element':
+        return this._screenshotElement(win, params);
 
       case 'go_back':
         return this._goBack(win);
@@ -786,6 +792,39 @@ class FlutterSkillElectron {
   async _screenshot(win) {
     if (!win) return { success: false, message: 'No window' };
     const image = await win.webContents.capturePage();
+    const base64 = image.toPNG().toString('base64');
+    return { success: true, image: base64, format: 'png', encoding: 'base64' };
+  }
+
+  async _screenshotRegion(win, params) {
+    if (!win) return { success: false, message: 'No window' };
+    const x = Math.round(params.x || 0);
+    const y = Math.round(params.y || 0);
+    const width = Math.round(params.width || 300);
+    const height = Math.round(params.height || 300);
+    const image = await win.webContents.capturePage({ x, y, width, height });
+    const base64 = image.toPNG().toString('base64');
+    return { success: true, image: base64, format: 'png', encoding: 'base64' };
+  }
+
+  async _screenshotElement(win, params) {
+    if (!win) return { success: false, message: 'No window' };
+    const sel = this._resolveSelector(params);
+    const refId = params.ref;
+
+    const bounds = await win.webContents.executeJavaScript(`
+      (function() {
+        ${refId ? this._getRefResolutionScript() : ''}
+        let el = ${refId ? `findElementByRef(${JSON.stringify(refId)})` : 'null'};
+        if (!el && ${JSON.stringify(sel)}) el = document.querySelector(${JSON.stringify(sel || '')});
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
+      })();
+    `);
+
+    if (!bounds) return { success: false, message: 'Element not found' };
+    const image = await win.webContents.capturePage(bounds);
     const base64 = image.toPNG().toString('base64');
     return { success: true, image: base64, format: 'png', encoding: 'base64' };
   }

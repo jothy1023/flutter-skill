@@ -63,7 +63,7 @@ object FlutterSkillBridge {
 
     // Capabilities advertised in health check
     private val capabilities = listOf(
-        "initialize", "screenshot", "inspect", "inspect_interactive", "tap", "enter_text",
+        "initialize", "screenshot", "screenshot_region", "screenshot_element", "inspect", "inspect_interactive", "tap", "enter_text",
         "swipe", "scroll", "find_element", "get_text", "wait_for_element",
         "get_logs", "clear_logs", "go_back", "press_key",
     )
@@ -454,6 +454,8 @@ object FlutterSkillBridge {
             "get_text"            -> handleGetText(params)
             "wait_for_element"    -> handleWaitForElement(params)
             "screenshot"          -> handleScreenshot()
+            "screenshot_region"   -> handleScreenshotRegion(params)
+            "screenshot_element"  -> handleScreenshotElement(params)
             "get_logs"            -> handleGetLogs()
             "clear_logs"          -> handleClearLogs()
             "go_back"             -> handleGoBack()
@@ -986,6 +988,75 @@ object FlutterSkillBridge {
         scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
         scaledBitmap.recycle()
         return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+    }
+
+    private fun handleScreenshotRegion(params: JSONObject): JSONObject {
+        val screenshotResult = handleScreenshot()
+        if (!screenshotResult.optBoolean("success", false)) return screenshotResult
+
+        val fullBase64 = screenshotResult.optString("image", "")
+        if (fullBase64.isEmpty()) return screenshotResult
+
+        val x = params.optInt("x", 0)
+        val y = params.optInt("y", 0)
+        val width = params.optInt("width", 300)
+        val height = params.optInt("height", 300)
+
+        return try {
+            val bytes = Base64.decode(fullBase64, Base64.NO_WRAP)
+            val fullBitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            // Clamp to bitmap bounds
+            val cx = x.coerceIn(0, fullBitmap.width - 1)
+            val cy = y.coerceIn(0, fullBitmap.height - 1)
+            val cw = width.coerceAtMost(fullBitmap.width - cx)
+            val ch = height.coerceAtMost(fullBitmap.height - cy)
+            val cropped = Bitmap.createBitmap(fullBitmap, cx, cy, cw, ch)
+            fullBitmap.recycle()
+            val b64 = bitmapToBase64(cropped)
+            JSONObject().apply {
+                put("success", true)
+                put("image", b64)
+                put("format", "jpeg")
+                put("encoding", "base64")
+            }
+        } catch (e: Exception) {
+            JSONObject().apply {
+                put("success", false)
+                put("message", "Failed to crop screenshot: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleScreenshotElement(params: JSONObject): JSONObject {
+        val key = params.optString("key", "")
+        val refId = params.optString("ref", "")
+
+        if (key.isEmpty() && refId.isEmpty()) {
+            return JSONObject().apply { put("success", false); put("message", "Missing key or ref") }
+        }
+
+        val activity = currentActivity
+            ?: return JSONObject().apply { put("success", false); put("message", "No active activity") }
+
+        val bounds = runOnMainThreadBlocking {
+            val root = activity.window.decorView.rootView
+            var view: View? = null
+            if (refId.isNotEmpty()) view = findViewByRefId(root, refId)
+            if (view == null && key.isNotEmpty()) view = ViewTraversal.findByKey(root, key)
+            if (view != null) {
+                val location = IntArray(2)
+                view.getLocationOnScreen(location)
+                intArrayOf(location[0], location[1], view.width, view.height)
+            } else null
+        } ?: return JSONObject().apply { put("success", false); put("message", "Element not found") }
+
+        val regionParams = JSONObject().apply {
+            put("x", bounds[0])
+            put("y", bounds[1])
+            put("width", bounds[2])
+            put("height", bounds[3])
+        }
+        return handleScreenshotRegion(regionParams)
     }
 
     private fun handleGetLogs(): JSONObject {
