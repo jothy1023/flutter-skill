@@ -346,7 +346,7 @@ class FlutterMcpServer {
       } else if (method == 'notifications/initialized') {
         // No op
       } else if (method == 'tools/list') {
-        _sendResult(id, {"tools": _getToolsList()});
+        _sendResult(id, {"tools": skillEngine.getAvailableTools()});
       } else if (method == 'tools/call') {
         final name = params['name'];
         final args = params['arguments'] as Map<String, dynamic>? ?? {};
