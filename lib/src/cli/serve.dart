@@ -239,6 +239,59 @@ Future<void> _handleRequest(
       }
 
       print('   🔧 Calling tool: $toolName');
+
+      // Built-in tools handled by serve
+      if (toolName == 'reset_app') {
+        final clearStorage = toolArgs['clear_storage'] ?? true;
+        final clearCookies = toolArgs['clear_cookies'] ?? true;
+        final actions = <String>[];
+        if (clearStorage) {
+          await cdp.call('Runtime.evaluate', {
+            'expression': 'localStorage.clear(); sessionStorage.clear();',
+            'returnByValue': true,
+          });
+          actions.add('storage cleared');
+        }
+        if (clearCookies) {
+          try {
+            await cdp.call('Network.enable');
+            await cdp.call('Network.clearBrowserCookies');
+          } catch (_) {}
+          actions.add('cookies cleared');
+        }
+        await cdp.call('Page.reload', {'ignoreCache': true});
+        await Future.delayed(const Duration(seconds: 2));
+        // Re-scan tools after reset
+        state.tools = await _discoverTools(cdp);
+        state.updatedAt = DateTime.now();
+        actions.add('page reloaded');
+        response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({
+            'success': true,
+            'actions': actions,
+            'tools': state.tools.length,
+          }));
+        await response.close();
+        return;
+      }
+
+      if (toolName == 'snapshot') {
+        // Redirect to /snapshot
+        final result = await cdp.call('Runtime.evaluate', {
+          'expression': _snapshotJs,
+          'returnByValue': true,
+        });
+        final text = result['result']?['value'] as String? ?? '';
+        response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'snapshot': text, 'length': text.length}));
+        await response.close();
+        return;
+      }
+
       final result = await cdp.callTool(toolName, toolArgs);
       response
         ..statusCode = 200
