@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/ai-dashboad/flutter-skill">
-    <img src="assets/demo-teaser.gif" alt="AI testing a TikTok clone across 8 platforms" width="640">
+    <img src="assets/demo-teaser.gif" alt="AI testing a TikTok clone across 10 platforms" width="640">
   </a>
 </p>
 
@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Give any AI agent eyes and hands inside any running app.</strong><br>
-  8 platforms. Zero test code. One MCP server.
+  10 platforms. Zero test code. One MCP server.
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 <p align="center">
   <a href="#30-second-demo">Demo</a> •
   <a href="#quick-start">Quick Start</a> •
-  <a href="#8-platforms-one-tool">Platforms</a> •
+  <a href="#10-platforms-one-tool">Platforms</a> •
   <a href="#why-not-playwright--appium--detox">vs Others</a> •
   <a href="docs/USAGE_GUIDE.md">Docs</a>
 </p>
@@ -48,7 +48,7 @@ Writing E2E tests is painful. Maintaining them is worse. **flutter-skill** takes
 - 🔌 **Connects any AI agent** (Claude, Cursor, Windsurf, Copilot, OpenClaw) directly to your running app via [MCP](https://modelcontextprotocol.io/)
 - 👀 **The agent sees your screen** — taps buttons, types text, scrolls, navigates — like a human tester who never sleeps
 - ✅ **Zero test code** — no Page Objects, no XPath, no brittle selectors. Just plain English
-- ⚡ **Zero config** — 2 lines of code, works on all 8 platforms
+- ⚡ **Zero config** — 2 lines of code, works on all 10 platforms
 
 ```
 You: "Test the checkout flow with an empty cart, then add 3 items and complete purchase"
@@ -118,9 +118,9 @@ That's it. **Zero configuration. Zero test code. Works in under 60 seconds.**
 
 ---
 
-## 8 Platforms, One Tool
+## 10 Platforms, One Tool
 
-Most testing tools work on 1-2 platforms. flutter-skill works on **8**.
+Most testing tools work on 1-2 platforms. flutter-skill works on **10**.
 
 | Platform | SDK | Test Score |
 |----------|-----|:----------:|
@@ -132,6 +132,8 @@ Most testing tools work on 1-2 platforms. flutter-skill works on **8**.
 | **KMP Desktop** | [`sdks/kmp`](sdks/kmp/) | ✅ 75/75 |
 | **.NET MAUI** | [`sdks/dotnet-maui`](sdks/dotnet-maui/) | ✅ 75/75 |
 | **iOS** (Swift/UIKit) | [`sdks/ios`](sdks/ios/) | ✅ 19/19 |
+| **Web** (any website) | [`sdks/web`](sdks/web/) | ✅ |
+| **Web CDP** (zero-config) | No SDK needed | ✅ 141/156 |
 
 **Total: 656/664 tests passing (98.8%)** — each platform tested against a complex social media app with 50+ elements.
 
@@ -164,7 +166,7 @@ Real benchmarks from automated test runs against a complex social media app:
 | **Setup time** | 30 sec | Minutes | Hours | Hours |
 | **Test code needed** | ❌ None | ✅ Yes | ✅ Yes | ✅ Yes |
 | **AI-native (MCP)** | ✅ | ❌ | ❌ | ❌ |
-| **Platforms** | 8 | 3 (web) | Mobile | React Native |
+| **Platforms** | 10 | 3 (web) | Mobile | React Native |
 | **Natural language** | ✅ | ❌ | ❌ | ❌ |
 | **Maintenance** | Zero | High | High | Medium |
 | **Flutter support** | ✅ Native | Partial | Partial | ❌ |
@@ -220,7 +222,7 @@ Real benchmarks from automated test runs against a complex social media app:
 </table>
 
 <details>
-<summary><strong>40+ tools — full reference</strong></summary>
+<summary><strong>160+ tools — full reference</strong></summary>
 
 **Launch & Connect:** `launch_app`, `scan_and_connect`, `hot_reload`, `hot_restart`, `list_sessions`, `switch_session`, `close_session`
 
