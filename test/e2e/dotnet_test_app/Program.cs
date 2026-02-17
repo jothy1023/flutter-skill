@@ -466,7 +466,7 @@ class Program
         var bridge = new TestBridge(port);
         bridge.Start();
         Console.WriteLine($"[flutter-skill-dotnet] Test bridge on port {port}. Press Enter to stop.");
-        Console.ReadLine();
+        System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
         bridge.Stop();
     }
 }

@@ -11,14 +11,29 @@ extension _BfScreenshot on FlutterMcpServer {
         final saveToFile =
             args['save_to_file'] ?? false; // Return base64 by default for speed
 
-        final imageBase64 =
+        var imageBase64 =
             await client!.takeScreenshot(quality: quality, maxWidth: maxWidth);
+
+        // Fallback to native screenshot if bridge returns null
+        // (e.g. React Native returns _needs_native flag)
+        if (imageBase64 == null) {
+          try {
+            final nDriver = await _getNativeDriver(args);
+            if (nDriver != null) {
+              final nResult = await nDriver.screenshot(saveToFile: false);
+              imageBase64 = nResult.base64Image;
+            }
+          } catch (_) {
+            // Native fallback failed, continue to error
+          }
+        }
 
         if (imageBase64 == null) {
           return {
             "success": false,
             "error": "Failed to capture screenshot",
-            "message": "Screenshot returned null"
+            "message":
+                "Screenshot returned null. Try 'native_screenshot' tool instead."
           };
         }
 

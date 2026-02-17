@@ -159,6 +159,10 @@ class BridgeDriver implements AppDriver {
       'quality': quality,
       if (maxWidth != null) 'maxWidth': maxWidth,
     });
+    // Some SDKs (e.g. React Native) return _needs_native flag when
+    // in-app screenshot is not available; caller should fall back to
+    // native_screenshot in that case.
+    if (result['_needs_native'] == true) return null;
     return result['image'] as String?;
   }
 

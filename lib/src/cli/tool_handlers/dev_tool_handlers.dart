@@ -114,17 +114,20 @@ extension _DevToolHandlers on FlutterMcpServer {
           });
           return {'success': true, 'platform': 'bridge', 'result': result};
         } catch (_) {
-          // Fallback: hot restart if bridge doesn't support reset
+          // Fallback: try go_back to home, then re-initialize
           try {
-            await client.callMethod('hot_restart');
-            return {
-              'success': true,
-              'platform': 'bridge',
-              'fallback': 'hot_restart'
-            };
-          } catch (e) {
-            return {'success': false, 'error': e.toString()};
-          }
+            await client.callMethod('go_back');
+          } catch (_) {}
+          try {
+            await client.callMethod('initialize', {'client_name': 'reset'});
+          } catch (_) {}
+          return {
+            'success': true,
+            'platform': 'bridge',
+            'fallback': 'go_back+reinitialize',
+            'note':
+                'Full reset not supported on this platform; navigated back and re-initialized',
+          };
         }
       }
 

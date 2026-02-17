@@ -793,11 +793,10 @@ async fn handle_method<R: Runtime>(
                     var tools = (window.__flutter_skill_tools__ || []).map(function(t) {
                         return { name: t.name, description: t.description || '', params: t.params || {}, source: t.source || 'js-registered' };
                     });
-                    return JSON.stringify({ tools: tools, count: tools.length });
+                    return { tools: tools, count: tools.length };
                 })()
             "#;
-            let res = window.eval(js).map_err(|e| e.to_string())?;
-            Ok(serde_json::from_str(&res.to_string()).unwrap_or(json!({"tools": [], "count": 0})))
+            eval_js_with_result(window, js, 5000, result_tx).await
         }
 
         "call_tool" => {
@@ -807,14 +806,13 @@ async fn handle_method<R: Runtime>(
                 (function() {{
                     var tools = window.__flutter_skill_tools__ || [];
                     var tool = tools.find(function(t) {{ return t.name === '{}'; }});
-                    if (!tool) return JSON.stringify({{ error: 'Tool not found: {}' }});
-                    if (!tool.handler) return JSON.stringify({{ error: 'Tool has no handler' }});
+                    if (!tool) return {{ error: 'Tool not found: {}' }};
+                    if (!tool.handler) return {{ error: 'Tool has no handler' }};
                     var result = tool.handler({});
-                    return JSON.stringify({{ success: true, tool: '{}', result: result }});
+                    return {{ success: true, tool: '{}', result: result }};
                 }})()
             "#, name, name, serde_json::to_string(&args).unwrap_or_default(), name);
-            let res = window.eval(&js).map_err(|e| e.to_string())?;
-            Ok(serde_json::from_str(&res.to_string()).unwrap_or(json!({"error": "parse error"})))
+            eval_js_with_result(window, &js, 5000, result_tx).await
         }
 
         _ => Err(format!("Unknown method: {method}")),

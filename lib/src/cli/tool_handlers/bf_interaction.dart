@@ -176,6 +176,64 @@ extension _BfInteraction on FlutterMcpServer {
             key: args['key'], text: args['text'], timeout: timeout);
         return {"gone": gone};
 
+      case 'press_key':
+        final key = args['key'] as String? ?? '';
+        if (key.isEmpty) {
+          return {"success": false, "error": "Missing 'key' argument"};
+        }
+        if (client is BridgeDriver) {
+          await client.callMethod('press_key', {'key': key});
+          return {"success": true, "message": "Key pressed: $key"};
+        }
+        return {"success": false, "error": "press_key not supported on this platform. Use CDP mode or a bridge SDK."};
+
+      case 'scroll':
+        final direction = args['direction'] as String? ?? 'down';
+        final amount = (args['amount'] as num?)?.toDouble() ?? 300;
+        if (client is BridgeDriver) {
+          await client.callMethod('scroll', {
+            'direction': direction,
+            'amount': amount,
+          });
+          return {"success": true, "message": "Scrolled $direction by $amount"};
+        }
+        // Flutter: use scrollTo with key/text if provided
+        if (args['key'] != null || args['text'] != null) {
+          final fc = _asFlutterClient(client!, 'scroll');
+          await fc.scrollTo(key: args['key'] as String?, text: args['text'] as String?);
+          return {"success": true, "message": "Scrolled to element"};
+        }
+        return {"success": false, "error": "scroll on Flutter requires 'key' or 'text' argument"};
+
+      case 'find_element':
+        final text = args['text'] as String?;
+        final key = args['key'] as String?;
+        if (text == null && key == null) {
+          return {"success": false, "error": "Provide 'text' or 'key'"};
+        }
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('find_element', {
+            if (text != null) 'text': text,
+            if (key != null) 'key': key,
+          });
+          return result;
+        }
+        final fc2 = _asFlutterClient(client!, 'find_element');
+        final elements = await fc2.findByType(text ?? key ?? '');
+        return {"found": elements.isNotEmpty, "count": elements.length};
+
+      case 'get_text':
+        if (client is BridgeDriver) {
+          final result = await client.callMethod('get_text', {
+            if (args['ref'] != null) 'ref': args['ref'],
+            if (args['key'] != null) 'key': args['key'],
+          });
+          return result;
+        }
+        final fc3 = _asFlutterClient(client!, 'get_text');
+        final textContent = await fc3.getTextContent();
+        return {"text": textContent};
+
       // Screenshot
       default:
         return null;
