@@ -8,6 +8,7 @@ import 'package:flutter_skill/src/cli/setup_priority.dart';
 import 'package:flutter_skill/src/cli/doctor.dart';
 import 'package:flutter_skill/src/cli/init.dart';
 import 'package:flutter_skill/src/cli/demo.dart';
+import 'package:flutter_skill/src/cli/serve.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {
@@ -21,6 +22,7 @@ void main(List<String> args) async {
     print('  inspect      Inspect interactive elements');
     print('  act          Perform actions (tap, enter_text, scroll)');
     print('  screenshot   Take a screenshot of the running app');
+    print('  serve <url>  Zero-config WebMCP server — any site → AI tools');
     print('  test <url>   Zero-config web testing — launch Chrome + CDP');
     print('  doctor       Check installation and environment health');
     print('  setup        Install tool priority rules for Claude Code');
@@ -89,6 +91,9 @@ void main(List<String> args) async {
       break;
     case 'report-error':
       await runReportError(commandArgs);
+      break;
+    case 'serve':
+      await runServe(commandArgs);
       break;
     case 'test':
       // Convenience wrapper: `flutter-skill test <url>` → `server --url=<url>`
