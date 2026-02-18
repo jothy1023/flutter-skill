@@ -163,7 +163,7 @@ Real benchmarks from automated test runs against a complex social media app:
 
 | | flutter-skill | Playwright MCP | Appium | Detox |
 |---|:---:|:---:|:---:|:---:|
-| **MCP tools** | **207** | ~33 | ❌ | ❌ |
+| **MCP tools** | **237** | ~33 | ❌ | ❌ |
 | **Platforms** | **10** | 1 (web) | Mobile | React Native |
 | **Setup time** | 30 sec | Minutes | Hours | Hours |
 | **Test code needed** | ❌ None | ✅ Yes | ✅ Yes | ✅ Yes |
@@ -181,7 +181,11 @@ Real benchmarks from automated test runs against a complex social media app:
 | **Flutter support** | ✅ Native | Partial | Partial | ❌ |
 | **Desktop apps** | ✅ | ✅ | ❌ | ❌ |
 
-**flutter-skill is the only AI-native E2E testing tool that works across mobile, web, and desktop — with 6× more tools than the nearest competitor.**
+| **AI page understanding** | ✅ AX Tree | ❌ Screenshots | ❌ | ❌ |
+| **Boundary/security test** | ✅ 13 payloads | ❌ | ❌ | ❌ |
+| **Batch actions** | ✅ 5+/call | 1/call | 1/call | 1/call |
+
+**flutter-skill is the only AI-native E2E testing tool that works across mobile, web, and desktop — with 7× more tools than the nearest competitor.**
 
 ---
 
@@ -200,6 +204,48 @@ flutter-skill test --url https://my-app.com --platforms web,electron,android
 # 🌐 Zero-config WebMCP server — any website becomes testable
 flutter-skill serve https://my-app.com
 ```
+
+---
+
+## 🧠 AI-Native: 95% Fewer Tokens
+
+Most AI testing tools send **screenshots** to the LLM — each one costs ~4,000 tokens.
+
+flutter-skill uses Chrome's **Accessibility Tree** to give your AI a compact semantic summary of any page:
+
+```json
+// page_summary → ~200 tokens (vs ~4,000 for a screenshot)
+{
+  "title": "Shopping Cart",
+  "nav": ["Home", "Products", "Cart", "Account"],
+  "forms": [{"input:Coupon Code": "text"}],
+  "buttons": ["Apply", "Checkout", "Continue Shopping"],
+  "features": {"search": true, "pagination": true},
+  "links": 47, "inputs": 3
+}
+```
+
+Then batch multiple actions in one call:
+
+```json
+// explore_actions → 5 actions per call (vs 5 separate tool calls)
+{"actions": [
+  {"type": "fill", "target": "input:Coupon Code", "value": "SAVE20"},
+  {"type": "tap", "target": "button:Apply"},
+  {"type": "tap", "target": "button:Checkout"},
+  {"type": "fill", "target": "input:Email", "value": "test@example.com"},
+  {"type": "tap", "target": "button:Continue"}
+]}
+```
+
+**Result:** Your AI agent tests faster, costs less, and understands pages better than screenshot-based tools.
+
+| | flutter-skill | Screenshot-based tools |
+|---|:---:|:---:|
+| Tokens per page | **~200** | ~4,000 |
+| Actions per call | **5+** | 1 |
+| Understands semantics | ✅ roles, names, state | ❌ pixels only |
+| Works with Shadow DOM | ✅ | ❌ |
 
 ---
 
@@ -249,7 +295,9 @@ flutter-skill serve https://my-app.com
 </table>
 
 <details>
-<summary><strong>207 tools — full reference</strong></summary>
+<summary><strong>237 tools — full reference</strong></summary>
+
+**AI Explore:** `page_summary`, `explore_actions`, `boundary_test`, `explore_report`
 
 **Launch & Connect:** `launch_app`, `scan_and_connect`, `connect_cdp`, `hot_reload`, `hot_restart`, `list_sessions`, `switch_session`, `close_session`, `disconnect`, `stop_app`
 
