@@ -161,18 +161,45 @@ Real benchmarks from automated test runs against a complex social media app:
 
 ## Why Not Playwright / Appium / Detox?
 
-| | flutter-skill | Playwright | Appium | Detox |
+| | flutter-skill | Playwright MCP | Appium | Detox |
 |---|:---:|:---:|:---:|:---:|
+| **MCP tools** | **207** | ~33 | ❌ | ❌ |
+| **Platforms** | **10** | 1 (web) | Mobile | React Native |
 | **Setup time** | 30 sec | Minutes | Hours | Hours |
 | **Test code needed** | ❌ None | ✅ Yes | ✅ Yes | ✅ Yes |
-| **AI-native (MCP)** | ✅ | ❌ | ❌ | ❌ |
-| **Platforms** | 10 | 3 (web) | Mobile | React Native |
+| **AI-native (MCP)** | ✅ | ✅ | ❌ | ❌ |
+| **Self-healing tests** | ✅ | ❌ | ❌ | ❌ |
+| **Monkey/fuzz testing** | ✅ | ❌ | ❌ | ❌ |
+| **Visual regression** | ✅ | ❌ | ❌ | ❌ |
+| **Network mock/replay** | ✅ | ❌ | ❌ | ❌ |
+| **API + UI testing** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-device sync** | ✅ | ❌ | Partial | ❌ |
+| **Accessibility audit** | ✅ | ❌ | ❌ | ❌ |
+| **i18n testing** | ✅ | ❌ | ❌ | ❌ |
+| **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
 | **Natural language** | ✅ | ❌ | ❌ | ❌ |
-| **Maintenance** | Zero | High | High | Medium |
 | **Flutter support** | ✅ Native | Partial | Partial | ❌ |
 | **Desktop apps** | ✅ | ✅ | ❌ | ❌ |
 
-**flutter-skill is the only AI-native E2E testing tool that works across mobile, web, and desktop.**
+**flutter-skill is the only AI-native E2E testing tool that works across mobile, web, and desktop — with 6× more tools than the nearest competitor.**
+
+---
+
+## CLI Commands
+
+```bash
+# 🤖 AI autonomous exploration — finds bugs automatically
+flutter-skill explore https://my-app.com --depth=3
+
+# 🐒 Monkey/fuzz testing — random actions, crash detection
+flutter-skill monkey https://my-app.com --actions=100 --seed=42
+
+# 🚀 Parallel multi-platform testing
+flutter-skill test --url https://my-app.com --platforms web,electron,android
+
+# 🌐 Zero-config WebMCP server — any website becomes testable
+flutter-skill serve https://my-app.com
+```
 
 ---
 
@@ -222,17 +249,45 @@ Real benchmarks from automated test runs against a complex social media app:
 </table>
 
 <details>
-<summary><strong>160+ tools — full reference</strong></summary>
+<summary><strong>207 tools — full reference</strong></summary>
 
-**Launch & Connect:** `launch_app`, `scan_and_connect`, `hot_reload`, `hot_restart`, `list_sessions`, `switch_session`, `close_session`
+**Launch & Connect:** `launch_app`, `scan_and_connect`, `connect_cdp`, `hot_reload`, `hot_restart`, `list_sessions`, `switch_session`, `close_session`, `disconnect`, `stop_app`
 
-**Screen:** `screenshot`, `screenshot_region`, `screenshot_element`, `native_screenshot`, `inspect`, `inspect_interactive`, `get_widget_tree`, `find_by_type`, `get_text_content`
+**Screen:** `screenshot`, `screenshot_region`, `screenshot_element`, `native_screenshot`, `inspect`, `inspect_interactive`, `snapshot`, `get_widget_tree`, `find_by_type`, `get_text_content`, `get_visible_text`
 
-**Interaction:** `tap`, `double_tap`, `long_press`, `enter_text`, `set_text`, `clear_text`, `swipe`, `scroll_to`, `drag`, `go_back`, `press_key`, `native_tap`, `native_input_text`, `native_swipe`
+**Interaction:** `tap`, `double_tap`, `long_press`, `enter_text`, `set_text`, `clear_text`, `swipe`, `scroll_to`, `drag`, `go_back`, `press_key`, `type_text`, `hover`, `fill`, `select_option`, `set_checkbox`, `focus`, `blur`, `native_tap`, `native_input_text`, `native_swipe`
 
-**Assertions:** `assert_text`, `assert_visible`, `assert_not_visible`, `assert_element_count`, `wait_for_element`, `wait_for_gone`, `get_checkbox_state`, `get_slider_value`, `get_text_value`
+**Smart Testing:** `smart_tap`, `smart_enter_text`, `smart_assert` (self-healing with fuzzy match)
 
-**Debug:** `get_logs`, `get_errors`, `get_performance`, `get_memory_stats`
+**Assertions:** `assert_text`, `assert_visible`, `assert_not_visible`, `assert_element_count`, `assert_batch`, `wait_for_element`, `wait_for_gone`, `wait_for_idle`, `wait_for_stable`, `wait_for_url`, `wait_for_text`, `wait_for_element_count`
+
+**Visual Regression:** `visual_baseline_save`, `visual_baseline_compare`, `visual_baseline_update`, `visual_regression_report`, `visual_verify`, `visual_diff`, `compare_screenshot`
+
+**Network Mock:** `mock_api`, `mock_clear`, `record_network`, `replay_network`, `intercept_requests`, `clear_interceptions`, `block_urls`, `http_request`
+
+**API Testing:** `api_request`, `api_assert`
+
+**Coverage & Reliability:** `coverage_start`, `coverage_stop`, `coverage_report`, `coverage_gaps`, `retry_on_fail`, `stability_check`
+
+**Data-Driven:** `test_with_data`, `generate_test_data`
+
+**Multi-Device:** `multi_connect`, `multi_action`, `multi_compare`, `multi_disconnect`, `parallel_snapshot`, `parallel_tap`
+
+**Accessibility:** `accessibility_audit`, `a11y_full_audit`, `a11y_tab_order`, `a11y_color_contrast`, `a11y_screen_reader`
+
+**i18n:** `set_locale`, `verify_translations`, `i18n_snapshot`
+
+**Performance:** `perf_start`, `perf_stop`, `perf_report`, `get_performance`, `get_frame_stats`, `get_memory_stats`
+
+**Session:** `save_session`, `restore_session`, `session_diff`
+
+**Recording & Export:** `record_start`, `record_stop`, `record_export` (Playwright, Cypress, XCUITest, Espresso, Detox, Maestro, +5 more), `video_start`, `video_stop`
+
+**Auth:** `auth_inject_session`, `auth_biometric`, `auth_otp`, `auth_deeplink`
+
+**CDP Browser:** `navigate`, `reload`, `go_forward`, `get_title`, `get_page_source`, `eval`, `get_tabs`, `new_tab`, `switch_tab`, `close_tab`, `get_cookies`, `set_cookie`, `clear_cookies`, `get_local_storage`, `set_local_storage`, `clear_local_storage`, `generate_pdf`, `set_viewport`, `emulate_device`, `throttle_network`, `go_offline`, `set_geolocation`, `set_timezone`, `set_color_scheme`
+
+**Debug:** `get_logs`, `get_errors`, `get_console_messages`, `get_network_requests`, `diagnose`, `diagnose_project`, `reset_app`
 
 </details>
 
