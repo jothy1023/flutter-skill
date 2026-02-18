@@ -12,7 +12,7 @@ Future<void> runExplore(List<String> args) async {
   String? url;
   int depth = 3;
   String reportPath = './explore-report.html';
-  int cdpPort = 9222;
+  int cdpPort = 0; // 0 = auto-assign random port
   bool headless = true;
   int maxPages = 10;
   int maxLinks = 20;
@@ -150,8 +150,15 @@ class _ExploreAgent {
       // Queue discovered links (limited by maxLinks)
       if (currentDepth < maxDepth) {
         final linksToFollow = result.discoveredLinks.take(maxLinks).toList();
+        final baseNorm = _normalizeUrl(pageUrl);
         for (final link in linksToFollow) {
+          // Skip fragment-only links (same page anchors)
+          if (link.contains('#')) {
+            final withoutFrag = link.split('#')[0];
+            if (withoutFrag.isEmpty || _normalizeUrl(withoutFrag) == baseNorm) continue;
+          }
           final normLink = _normalizeUrl(link);
+          if (normLink == baseNorm) continue; // Same page after normalization
           if (!_visited.containsKey(normLink) &&
               _isSameOrigin(link, startUrl)) {
             _queue.add((link, currentDepth + 1));

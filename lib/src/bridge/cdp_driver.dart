@@ -18,7 +18,7 @@ part 'cdp_appmcp_methods.dart';
 /// and controls any web page (React, Vue, Angular, plain HTML, etc.).
 class CdpDriver implements AppDriver {
   final String _url;
-  final int _port;
+  int _port;
   final bool _launchChrome;
   final bool _headless;
   final String? _chromePath;
@@ -75,6 +75,12 @@ class CdpDriver implements AppDriver {
   @override
   Future<void> connect() async {
     if (_launchChrome) {
+      // Auto-assign random port if 0
+      if (_port == 0) {
+        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        _port = server.port;
+        await server.close();
+      }
       await _launchChromeProcess();
       // Poll for CDP readiness instead of fixed delay
       await _waitForCdpReady();

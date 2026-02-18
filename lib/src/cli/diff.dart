@@ -12,7 +12,7 @@ Future<void> runDiff(List<String> args) async {
   String? url;
   String baselinePath = './.flutter-skill-baseline';
   String reportPath = 'diff-report.html';
-  int cdpPort = 9222;
+  int cdpPort = 0; // 0 = auto-assign random port
   bool headless = true;
   int depth = 2;
   double threshold = 0.05;

@@ -15,7 +15,7 @@ Future<void> runMonkey(List<String> args) async {
   int maxActions = 100;
   int? seed;
   String reportPath = './monkey-report.html';
-  int cdpPort = 9222;
+  int cdpPort = 0; // 0 = auto-assign random port
   bool headless = true;
   bool stayOnSite = true;
 

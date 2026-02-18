@@ -12,7 +12,7 @@ Future<void> runSecurity(List<String> args) async {
   String? url;
   int depth = 2;
   String reportPath = 'security-report.html';
-  int cdpPort = 9222;
+  int cdpPort = 0; // 0 = auto-assign random port
   bool headless = true;
   int maxPages = 10;
   int maxLinks = 20;

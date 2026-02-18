@@ -13,7 +13,7 @@ Future<void> runPlan(List<String> args) async {
   int depth = 3;
   String? outputPath;
   String format = 'yaml';
-  int cdpPort = 9222;
+  int cdpPort = 0; // 0 = auto-assign random port
   bool headless = true;
   bool includeSecurity = true;
   bool includeA11y = true;
