@@ -124,8 +124,8 @@ extension _CdpToolHandlers on FlutterMcpServer {
         return {"success": true, "image": image};
 
       case 'screenshot_element':
-        final key = args['key'] as String? ?? args['text'] as String?;
-        if (key == null) return {"error": "Element key or text required"};
+        final key = args['selector'] as String? ?? args['key'] as String? ?? args['text'] as String?;
+        if (key == null || key.isEmpty) return {"error": "selector, key, or text required"};
         final image = await cdp.takeElementScreenshot(key);
         if (image == null) return {"error": "Screenshot failed"};
         return {"image": image};
@@ -277,11 +277,13 @@ extension _CdpToolHandlers on FlutterMcpServer {
             maxScrolls: maxScrolls, direction: direction);
 
       case 'get_checkbox_state':
-        final key = args['key'] as String? ?? '';
+        final key = args['selector'] as String? ?? args['key'] as String? ?? '';
+        if (key.isEmpty) return {'success': false, 'error': 'selector or key is required'};
         return await cdp.getCheckboxState(key);
 
       case 'get_slider_value':
-        final key = args['key'] as String? ?? '';
+        final key = args['selector'] as String? ?? args['key'] as String? ?? '';
+        if (key.isEmpty) return {'success': false, 'error': 'selector or key is required'};
         return await cdp.getSliderValue(key);
 
       case 'get_page_state':
@@ -591,9 +593,12 @@ extension _CdpToolHandlers on FlutterMcpServer {
         );
 
       case 'highlight_element':
-        final selector = args['key'] as String? ?? args['ref'] as String? ?? '';
+        final selector = args['selector'] as String? ?? args['key'] as String? ?? args['ref'] as String? ?? '';
         final color = args['color'] as String? ?? 'red';
         final duration = (args['duration_ms'] as num?)?.toInt() ?? 3000;
+        if (selector.isEmpty) {
+          return {'success': false, 'error': 'selector, key, or ref is required'};
+        }
         return await cdp.highlightElement(selector,
             color: color, duration: duration);
 

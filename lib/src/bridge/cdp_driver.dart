@@ -110,13 +110,19 @@ class CdpDriver implements AppDriver {
       _call('Runtime.enable'),
     ]);
 
-    // Navigate to URL and wait for load event
-    await _call('Page.navigate', {'url': _url});
-    // Wait for DOMContentLoaded or timeout (much faster than fixed 2s delay)
-    try {
-      await _waitForLoad();
-    } catch (_) {
-      // Timeout is acceptable — page may be slow but still usable
+    // Navigate to URL and wait for load event.
+    // When connecting to an existing instance (launchChrome=false),
+    // skip navigation if URL is about:blank or matches the CDP port
+    // (the target already has content loaded).
+    final skipNav = !_launchChrome && (_url == 'about:blank' || _url.contains('localhost:$_port'));
+    if (!skipNav) {
+      await _call('Page.navigate', {'url': _url});
+      // Wait for DOMContentLoaded or timeout (much faster than fixed 2s delay)
+      try {
+        await _waitForLoad();
+      } catch (_) {
+        // Timeout is acceptable — page may be slow but still usable
+      }
     }
   }
 
@@ -660,7 +666,7 @@ class CdpDriver implements AppDriver {
   /// Drag from one point to another.
   Future<Map<String, dynamic>> drag(
       double startX, double startY, double endX, double endY) async {
-    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left');
+    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left', clickCount: 1);
     // Smooth drag in steps
     const steps = 10;
     for (var i = 1; i <= steps; i++) {
@@ -668,22 +674,22 @@ class CdpDriver implements AppDriver {
       final y = startY + (endY - startY) * i / steps;
       await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
     }
-    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left');
+    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left', clickCount: 1);
     return {"success": true};
   }
 
   /// Long press at coordinates.
   Future<void> longPressAt(double x, double y) async {
-    await _dispatchMouseEvent('mousePressed', x, y, button: 'left');
+    await _dispatchMouseEvent('mousePressed', x, y, button: 'left', clickCount: 1);
     await Future.delayed(const Duration(milliseconds: 800));
-    await _dispatchMouseEvent('mouseReleased', x, y, button: 'left');
+    await _dispatchMouseEvent('mouseReleased', x, y, button: 'left', clickCount: 1);
   }
 
   /// Swipe between coordinates.
   Future<Map<String, dynamic>> swipeCoordinates(
       double startX, double startY, double endX, double endY,
       {int durationMs = 300}) async {
-    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left');
+    await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left', clickCount: 1);
     const steps = 8;
     for (var i = 1; i <= steps; i++) {
       final x = startX + (endX - startX) * i / steps;
@@ -691,7 +697,7 @@ class CdpDriver implements AppDriver {
       await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
       await Future.delayed(Duration(milliseconds: durationMs ~/ steps));
     }
-    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left');
+    await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left', clickCount: 1);
     return {"success": true};
   }
 
@@ -1173,6 +1179,17 @@ class CdpDriver implements AppDriver {
         // Prefer tab already showing the target URL
         for (final tab in tabs) {
           if (tab is Map && tab['type'] == 'page' && tab['url'] == _url) {
+            return tab['webSocketDebuggerUrl'] as String?;
+          }
+        }
+        // Prefer page with actual content (not devtools/about:blank)
+        for (final tab in tabs) {
+          if (tab is Map &&
+              tab['type'] == 'page' &&
+              tab['url'] is String &&
+              !tab['url'].toString().startsWith('devtools://') &&
+              !tab['url'].toString().startsWith('chrome://') &&
+              tab['url'] != 'about:blank') {
             return tab['webSocketDebuggerUrl'] as String?;
           }
         }

@@ -212,7 +212,7 @@ class _ExploreAgent {
     _cdp = CdpDriver(
       url: startUrl,
       port: cdpPort,
-      launchChrome: true,
+      launchChrome: cdpPort == 0,
       headless: headless,
     );
     await _cdp.connect();

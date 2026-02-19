@@ -70,7 +70,7 @@ Future<void> runDiff(List<String> args) async {
   final cdp = CdpDriver(
     url: url,
     port: cdpPort,
-    launchChrome: true,
+    launchChrome: cdpPort == 0,
     headless: headless,
   );
   try {

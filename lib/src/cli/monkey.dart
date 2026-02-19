@@ -71,7 +71,7 @@ Future<void> runMonkey(List<String> args) async {
     url: url,
     port: cdpPort,
     headless: headless,
-    launchChrome: true,
+    launchChrome: cdpPort == 0,
   );
 
   try {
