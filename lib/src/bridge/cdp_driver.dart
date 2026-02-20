@@ -769,7 +769,7 @@ class CdpDriver implements AppDriver {
     for (var i = 0; i < maxScrolls; i++) {
       final result = await _evalJs('''
         (() => {
-          const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+          const el = ${_jsResolveElement(key)};
           if (!el) return false;
           const rect = el.getBoundingClientRect();
           return rect.top >= 0 && rect.bottom <= window.innerHeight;
@@ -791,76 +791,39 @@ class CdpDriver implements AppDriver {
   Future<Map<String, dynamic>> getCheckboxState(String key) async {
     final result = await _evalJs('''
       (() => {
-        let el = document.getElementById('$key') || 
-                 document.querySelector('[data-testid="$key"]') ||
-                 document.querySelector('[name="$key"]') ||
-                 document.querySelector('$key');
-        
-        // If selector didn't work, try text content search for checkboxes
+        let el = ${_jsResolveElement(key)};
+        // Fallback: search checkboxes by label/value
         if (!el) {
-          const checkboxes = document.querySelectorAll('input[type="checkbox"], [role="checkbox"]');
-          for (const cb of checkboxes) {
+          for (const cb of document.querySelectorAll('input[type="checkbox"], [role="checkbox"]')) {
             const label = cb.closest('label') || document.querySelector('label[for="' + cb.id + '"]');
-            const text = (label ? label.textContent : cb.getAttribute('aria-label') || '').trim();
-            if (text.toLowerCase().includes('$key'.toLowerCase()) || cb.value === '$key') {
-              el = cb;
-              break;
-            }
+            const t = (label ? label.textContent : cb.getAttribute('aria-label') || '').trim();
+            if (t.toLowerCase().includes('$key'.toLowerCase()) || cb.value === '$key') { el = cb; break; }
           }
         }
-        
         if (!el) return JSON.stringify({ success: false, error: "Element not found" });
-        
-        if (el.type === 'checkbox') {
-          return JSON.stringify({ success: true, checked: el.checked });
-        }
-        
-        const cb = el.querySelector('input[type="checkbox"]');
-        if (cb) {
-          return JSON.stringify({ success: true, checked: cb.checked });
-        }
-        
-        // Check aria-checked attribute
-        const ariaChecked = el.getAttribute('aria-checked');
-        return JSON.stringify({ success: true, checked: ariaChecked === 'true' });
+        if (el.type === 'checkbox') return JSON.stringify({ success: true, checked: el.checked });
+        const cb = el.querySelector && el.querySelector('input[type="checkbox"]');
+        if (cb) return JSON.stringify({ success: true, checked: cb.checked });
+        return JSON.stringify({ success: true, checked: el.getAttribute('aria-checked') === 'true' });
       })()
     ''');
-    
-    final value = result['result']?['value'];
-    if (value is String) {
-      try { return jsonDecode(value) as Map<String, dynamic>; } catch (_) {}
-    }
-    if (value is Map) return value as Map<String, dynamic>;
-    if (value == null) return {"success": false, "error": "Element not found"};
-    return {"success": false, "error": "Unexpected result format"};
+    return _parseJsonEval(result) ?? {"success": false, "error": "Element not found"};
   }
 
   /// Get slider value.
   Future<Map<String, dynamic>> getSliderValue(String key) async {
     final result = await _evalJs('''
       (() => {
-        let el = document.getElementById('$key') || 
-                 document.querySelector('[data-testid="$key"]') ||
-                 document.querySelector('[name="$key"]') ||
-                 document.querySelector('$key');
-        
-        // If selector didn't work, try to find sliders by type or role
+        let el = ${_jsResolveElement(key)};
+        // Fallback: search sliders by label/name
         if (!el) {
-          const sliders = document.querySelectorAll('input[type="range"], [role="slider"]');
-          for (const slider of sliders) {
-            const label = slider.closest('label') || document.querySelector('label[for="' + slider.id + '"]');
-            const text = (label ? label.textContent : slider.getAttribute('aria-label') || '').trim();
-            if (text.toLowerCase().includes('$key'.toLowerCase()) || slider.name === '$key') {
-              el = slider;
-              break;
-            }
+          for (const s of document.querySelectorAll('input[type="range"], [role="slider"]')) {
+            const label = s.closest('label') || document.querySelector('label[for="' + s.id + '"]');
+            const t = (label ? label.textContent : s.getAttribute('aria-label') || '').trim();
+            if (t.toLowerCase().includes('$key'.toLowerCase()) || s.name === '$key') { el = s; break; }
           }
         }
-        
-        if (!el) {
-          return JSON.stringify({ success: false, error: "Element not found" });
-        }
-        
+        if (!el) return JSON.stringify({ success: false, error: "Element not found" });
         return JSON.stringify({ 
           success: true, 
           value: parseFloat(el.value || el.getAttribute('aria-valuenow') || 0), 
@@ -869,14 +832,7 @@ class CdpDriver implements AppDriver {
         });
       })()
     ''');
-    
-    final value = result['result']?['value'];
-    if (value is String) {
-      try { return jsonDecode(value) as Map<String, dynamic>; } catch (_) {}
-    }
-    if (value is Map) return value as Map<String, dynamic>;
-    if (value == null) return {"success": false, "error": "Element not found"};
-    return {"success": false, "error": "Unexpected result format"};
+    return _parseJsonEval(result) ?? {"success": false, "error": "Element not found"};
   }
 
   /// Get page state (title, url, scroll, viewport).
@@ -956,7 +912,7 @@ class CdpDriver implements AppDriver {
   Future<Map<String, dynamic>> assertText(String text, {String? key}) async {
     final result = await _evalJs('''
       (() => {
-        ${key != null ? "const el = document.getElementById('$key') || document.querySelector('[data-testid=\"$key\"]'); return el ? el.textContent.includes('$text') : false;" : "return document.body.innerText.includes('$text');"}
+        ${key != null ? "const el = ${_jsResolveElement(key)}; return el ? el.textContent.includes('$text') : false;" : "return document.body.innerText.includes('$text');"}
       })()
     ''');
     final found = result['result']?['value'] == true;
@@ -1075,7 +1031,7 @@ class CdpDriver implements AppDriver {
   Future<Map<String, dynamic>> selectOption(String key, String value) async {
     final result = await _evalJs('''
       (() => {
-        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]') || document.querySelector('select[name="$key"]');
+        const el = ${_jsResolveElement(key)};
         if (!el || el.tagName !== 'SELECT') return JSON.stringify({success: false, message: 'Select element not found'});
         el.value = '$value';
         el.dispatchEvent(new Event('change', {bubbles: true}));
@@ -1091,24 +1047,22 @@ class CdpDriver implements AppDriver {
   Future<Map<String, dynamic>> setCheckbox(String key, bool checked) async {
     final result = await _evalJs('''
       (() => {
-        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]');
+        const el = ${_jsResolveElement(key)};
         if (!el) return JSON.stringify({success: false, message: 'Element not found'});
-        const cb = el.type === 'checkbox' ? el : el.querySelector('input[type="checkbox"]');
+        const cb = el.type === 'checkbox' ? el : (el.querySelector && el.querySelector('input[type="checkbox"]'));
         if (!cb) return JSON.stringify({success: false, message: 'Checkbox not found'});
         if (cb.checked !== $checked) { cb.click(); }
         return JSON.stringify({success: true, checked: cb.checked});
       })()
     ''');
-    final v = result['result']?['value'] as String?;
-    if (v == null) return {"success": false};
-    return jsonDecode(v) as Map<String, dynamic>;
+    return _parseJsonEval(result) ?? {"success": false};
   }
 
   /// Fill input (clear + type — faster than enterText for forms).
   Future<Map<String, dynamic>> fill(String key, String value) async {
     final result = await _evalJs('''
       (() => {
-        const el = document.getElementById('$key') || document.querySelector('[data-testid="$key"]') || document.querySelector('[name="$key"]');
+        const el = ${_jsResolveElement(key)};
         if (!el) return JSON.stringify({success: false, message: 'Element not found'});
         el.focus();
         el.value = '';
@@ -1129,85 +1083,29 @@ class CdpDriver implements AppDriver {
   /// Highlight an element on the page.
   Future<Map<String, dynamic>> highlightElement(String selector, 
       {String color = 'red', int duration = 3000}) async {
+    // Parse color to rgba for background (20% opacity)
+    final bgAlpha = '0.1';
+    final shadowAlpha = '0.5';
     final result = await _evalJs('''
       (() => {
-        let el = document.querySelector('$selector');
-        
-        // If CSS selector fails, try by ID, name, or text content
-        if (!el) {
-          el = document.getElementById('$selector') || 
-               document.querySelector('[name="$selector"]') ||
-               document.querySelector('[data-testid="$selector"]');
-        }
-        
-        // Last resort: find by text content
-        if (!el) {
-          const allElements = document.querySelectorAll('*');
-          for (const elem of allElements) {
-            if (elem.textContent && elem.textContent.trim() === '$selector') {
-              el = elem;
-              break;
-            }
-          }
-        }
-        
-        if (!el) {
-          return JSON.stringify({ success: false, error: 'Element not found' });
-        }
-        
-        // Create highlight overlay
-        const highlight = document.createElement('div');
-        highlight.id = '__fs_highlight_' + Math.random().toString(36).substr(2, 9);
+        const el = ${_jsResolveElement(selector)};
+        if (!el) return JSON.stringify({ success: false, error: 'Element not found' });
         const rect = el.getBoundingClientRect();
-        
-        highlight.style.cssText = \`
-          position: fixed;
-          top: \${rect.top}px;
-          left: \${rect.left}px;
-          width: \${rect.width}px;
-          height: \${rect.height}px;
-          border: 3px solid $color;
-          background: rgba(255, 0, 0, 0.1);
-          pointer-events: none;
-          z-index: 9999;
-          box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-          animation: pulse 0.5s infinite alternate;
-        \`;
-        
-        // Add pulse animation
-        if (!document.getElementById('__fs_highlight_style')) {
-          const style = document.createElement('style');
-          style.id = '__fs_highlight_style';
-          style.textContent = \`
-            @keyframes pulse {
-              0% { opacity: 0.3; }
-              100% { opacity: 0.8; }
-            }
-          \`;
-          document.head.appendChild(style);
+        const hl = document.createElement('div');
+        hl.id = '__fs_hl_' + Math.random().toString(36).substr(2, 9);
+        hl.style.cssText = 'position:fixed;top:'+rect.top+'px;left:'+rect.left+'px;width:'+rect.width+'px;height:'+rect.height+'px;border:3px solid $color;background:$color'.replace(/\\/[^/]*\$/, '')+'${bgAlpha};pointer-events:none;z-index:9999;box-shadow:0 0 10px $color'.replace(/\\/[^/]*\$/, '')+'${shadowAlpha};animation:__fs_pulse 0.5s infinite alternate';
+        if (!document.getElementById('__fs_hl_style')) {
+          const s = document.createElement('style');
+          s.id = '__fs_hl_style';
+          s.textContent = '@keyframes __fs_pulse{0%{opacity:.3}100%{opacity:.8}}';
+          document.head.appendChild(s);
         }
-        
-        document.body.appendChild(highlight);
-        
-        // Auto-remove after duration
-        setTimeout(() => {
-          if (highlight.parentNode) {
-            highlight.parentNode.removeChild(highlight);
-          }
-        }, $duration);
-        
+        document.body.appendChild(hl);
+        setTimeout(() => hl.remove(), $duration);
         return JSON.stringify({ success: true, element_found: true, duration: $duration });
       })()
     ''');
-    
-    final value = result['result']?['value'];
-    if (value is String) {
-      try {
-        return jsonDecode(value) as Map<String, dynamic>;
-      } catch (_) {}
-    }
-    if (value is Map) return value as Map<String, dynamic>;
-    return {"success": false, "error": "Eval failed"};
+    return _parseJsonEval(result) ?? {"success": false, "error": "Eval failed"};
   }
 
   // ── Internal helpers ──
@@ -1465,6 +1363,39 @@ function deepQueryAll(selector, root) {
     return '*';
   }
 
+  /// Parse a JSON-stringified eval result into a Map.
+  /// Handles both String (from JSON.stringify) and Map (from returnByValue).
+  Map<String, dynamic>? _parseJsonEval(Map<String, dynamic> result) {
+    final value = result['result']?['value'];
+    if (value is String && value != 'null') {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map<String, dynamic>) return decoded;
+      } catch (_) {}
+    }
+    if (value is Map) return value as Map<String, dynamic>;
+    return null;
+  }
+
+  /// Generate JS that resolves an element by multiple strategies:
+  /// CSS selector, ID, name, data-testid, then text content.
+  /// Returns an IIFE string that evaluates to the element or null.
+  String _jsResolveElement(String key) {
+    return '''(() => {
+      let el = document.querySelector('$key');
+      if (!el) el = document.getElementById('$key');
+      if (!el) el = document.querySelector('[name="$key"]');
+      if (!el) el = document.querySelector('[data-testid="$key"]');
+      if (!el) el = document.querySelector('[data-test*="$key"]');
+      if (!el) {
+        for (const e of document.querySelectorAll('*')) {
+          if (e.textContent && e.textContent.trim() === '$key') { el = e; break; }
+        }
+      }
+      return el;
+    })()''';
+  }
+
   /// Generate JS code to find an element by selector or text.
   String _jsFindElement(String selector, {String? text, String? ref}) {
     // Deep query helper pierces Shadow DOM
@@ -1565,13 +1496,7 @@ function _dqAll(sel, root) {
       })()
     ''');
 
-    final value = result['result']?['value'];
-    Map<String, dynamic>? parsed;
-    if (value is String && value != 'null') {
-      try { parsed = jsonDecode(value) as Map<String, dynamic>; } catch (_) {}
-    } else if (value is Map) {
-      parsed = value as Map<String, dynamic>;
-    }
+    final parsed = _parseJsonEval(result);
     if (parsed != null) {
       return {
         'x': (parsed['x'] as num).toDouble(),
