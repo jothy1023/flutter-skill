@@ -24,8 +24,7 @@ extension _ApiHandlers on FlutterMcpServer {
       return {'success': false, 'error': 'url is required'};
     }
 
-    final method =
-        (args['method'] as String?)?.toUpperCase() ?? 'GET';
+    final method = (args['method'] as String?)?.toUpperCase() ?? 'GET';
     final headers = (args['headers'] as Map<String, dynamic>?) ?? {};
     final body = args['body'] as String?;
     final expectStatus = args['expect_status'] as int?;
@@ -51,8 +50,7 @@ extension _ApiHandlers on FlutterMcpServer {
       }
 
       final response = await request.close();
-      final responseBody =
-          await response.transform(utf8.decoder).join();
+      final responseBody = await response.transform(utf8.decoder).join();
       final statusCode = response.statusCode;
 
       // Build response headers map
@@ -142,14 +140,10 @@ extension _ApiHandlers on FlutterMcpServer {
     final urlStr = args['url'] as String?;
     final jsonPath = args['json_path'] as String?;
     if (urlStr == null || jsonPath == null) {
-      return {
-        'success': false,
-        'error': 'url and json_path are required'
-      };
+      return {'success': false, 'error': 'url and json_path are required'};
     }
 
-    final method =
-        (args['method'] as String?)?.toUpperCase() ?? 'GET';
+    final method = (args['method'] as String?)?.toUpperCase() ?? 'GET';
     final headers = (args['headers'] as Map<String, dynamic>?) ?? {};
     final expectedValue = args['expected_value'];
     final comparison = args['comparison'] as String? ?? 'equals';
@@ -163,8 +157,7 @@ extension _ApiHandlers on FlutterMcpServer {
       }
 
       final response = await request.close();
-      final responseBody =
-          await response.transform(utf8.decoder).join();
+      final responseBody = await response.transform(utf8.decoder).join();
 
       dynamic json;
       try {
@@ -246,31 +239,29 @@ extension _ApiHandlers on FlutterMcpServer {
     final savePath = args['save_path'] as String?;
 
     if (urlStr == null || savePath == null) {
-      return {
-        'success': false,
-        'error': 'url and save_path are required'
-      };
+      return {'success': false, 'error': 'url and save_path are required'};
     }
 
     try {
       final uri = Uri.parse(urlStr);
       final client = HttpClient();
-      
+
       final request = await client.getUrl(uri);
       final response = await request.close();
-      
+
       if (response.statusCode != 200) {
         client.close();
         return {
           'success': false,
-          'error': 'HTTP ${response.statusCode}: Failed to download from $urlStr'
+          'error':
+              'HTTP ${response.statusCode}: Failed to download from $urlStr'
         };
       }
 
       final file = File(savePath);
       // Create parent directories if they don't exist
       await file.parent.create(recursive: true);
-      
+
       final sink = file.openWrite();
       await sink.addStream(response);
       await sink.close();
@@ -285,10 +276,7 @@ extension _ApiHandlers on FlutterMcpServer {
         'status_code': response.statusCode,
       };
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Download failed: $e'
-      };
+      return {'success': false, 'error': 'Download failed: $e'};
     }
   }
 

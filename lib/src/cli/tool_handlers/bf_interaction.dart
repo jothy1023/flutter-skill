@@ -185,7 +185,11 @@ extension _BfInteraction on FlutterMcpServer {
           await client.callMethod('press_key', {'key': key});
           return {"success": true, "message": "Key pressed: $key"};
         }
-        return {"success": false, "error": "press_key not supported on this platform. Use CDP mode or a bridge SDK."};
+        return {
+          "success": false,
+          "error":
+              "press_key not supported on this platform. Use CDP mode or a bridge SDK."
+        };
 
       case 'scroll':
         final direction = args['direction'] as String? ?? 'down';
@@ -200,10 +204,14 @@ extension _BfInteraction on FlutterMcpServer {
         // Flutter: use scrollTo with key/text if provided
         if (args['key'] != null || args['text'] != null) {
           final fc = _asFlutterClient(client!, 'scroll');
-          await fc.scrollTo(key: args['key'] as String?, text: args['text'] as String?);
+          await fc.scrollTo(
+              key: args['key'] as String?, text: args['text'] as String?);
           return {"success": true, "message": "Scrolled to element"};
         }
-        return {"success": false, "error": "scroll on Flutter requires 'key' or 'text' argument"};
+        return {
+          "success": false,
+          "error": "scroll on Flutter requires 'key' or 'text' argument"
+        };
 
       case 'find_element':
         final text = args['text'] as String?;

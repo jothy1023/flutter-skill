@@ -30,10 +30,9 @@ extension _SecurityHandlers on FlutterMcpServer {
     final checks = (args['checks'] as List?)?.cast<String>() ??
         ['xss', 'csrf', 'headers', 'sensitive_data', 'mixed_content'];
 
-    final currentUrl =
-        (await _cdpDriver!.evaluate('window.location.href'))['result']
-                ?['value'] as String? ??
-            'unknown';
+    final currentUrl = (await _cdpDriver!
+            .evaluate('window.location.href'))['result']?['value'] as String? ??
+        'unknown';
 
     final scanner = SecurityScanner(
       startUrl: currentUrl,
@@ -43,8 +42,7 @@ extension _SecurityHandlers on FlutterMcpServer {
       reportPath: 'security-report.html',
     );
 
-    final findings =
-        await scanner.runChecks(cdp: _cdpDriver!, checks: checks);
+    final findings = await scanner.runChecks(cdp: _cdpDriver!, checks: checks);
 
     return {
       'status': 'complete',
@@ -69,10 +67,9 @@ extension _SecurityHandlers on FlutterMcpServer {
 
     final customPayloads = (args['payloads'] as List?)?.cast<String>();
 
-    final currentUrl =
-        (await _cdpDriver!.evaluate('window.location.href'))['result']
-                ?['value'] as String? ??
-            'unknown';
+    final currentUrl = (await _cdpDriver!
+            .evaluate('window.location.href'))['result']?['value'] as String? ??
+        'unknown';
 
     final scanner = SecurityScanner(
       startUrl: currentUrl,
@@ -102,10 +99,9 @@ extension _SecurityHandlers on FlutterMcpServer {
       return {'error': 'No CDP connection. Connect to a web app first.'};
     }
 
-    final currentUrl =
-        (await _cdpDriver!.evaluate('window.location.href'))['result']
-                ?['value'] as String? ??
-            'unknown';
+    final currentUrl = (await _cdpDriver!
+            .evaluate('window.location.href'))['result']?['value'] as String? ??
+        'unknown';
 
     final scanner = SecurityScanner(
       startUrl: currentUrl,
@@ -134,10 +130,9 @@ extension _SecurityHandlers on FlutterMcpServer {
       return {'error': 'No CDP connection. Connect to a web app first.'};
     }
 
-    final currentUrl =
-        (await _cdpDriver!.evaluate('window.location.href'))['result']
-                ?['value'] as String? ??
-            'unknown';
+    final currentUrl = (await _cdpDriver!
+            .evaluate('window.location.href'))['result']?['value'] as String? ??
+        'unknown';
 
     final scanner = SecurityScanner(
       startUrl: currentUrl,
@@ -170,10 +165,9 @@ extension _SecurityHandlers on FlutterMcpServer {
     final includeSecurity = args['include_security'] as bool? ?? true;
     final includeA11y = args['include_a11y'] as bool? ?? true;
 
-    final currentUrl =
-        (await _cdpDriver!.evaluate('window.location.href'))['result']
-                ?['value'] as String? ??
-            'unknown';
+    final currentUrl = (await _cdpDriver!
+            .evaluate('window.location.href'))['result']?['value'] as String? ??
+        'unknown';
 
     // Use a single-page plan generator that works with existing CDP connection
     final generator = _McpPlanGenerator(
@@ -281,16 +275,14 @@ class _McpPlanGenerator {
         });
       }
 
-      final submitBtn = buttons
-          .where((b) {
-            final t = (b['text'] as String).toLowerCase();
-            return t.contains('submit') ||
-                t.contains('sign') ||
-                t.contains('login') ||
-                t.contains('send') ||
-                t.contains('save');
-          })
-          .firstOrNull;
+      final submitBtn = buttons.where((b) {
+        final t = (b['text'] as String).toLowerCase();
+        return t.contains('submit') ||
+            t.contains('sign') ||
+            t.contains('login') ||
+            t.contains('send') ||
+            t.contains('save');
+      }).firstOrNull;
 
       if (submitBtn != null) {
         positiveSteps.add({
@@ -428,7 +420,8 @@ class _McpPlanGenerator {
       }
     }
 
-    final totalTests = totalPositive + totalNegative + totalSecurity + totalA11y;
+    final totalTests =
+        totalPositive + totalNegative + totalSecurity + totalA11y;
 
     return {
       'test_plan': {

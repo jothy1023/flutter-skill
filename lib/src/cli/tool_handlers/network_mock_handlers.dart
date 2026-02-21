@@ -27,13 +27,12 @@ class _MockRule {
 
   bool matches(String url, String requestMethod) {
     // Check method
-    if (method != null && method!.toUpperCase() != requestMethod.toUpperCase()) {
+    if (method != null &&
+        method!.toUpperCase() != requestMethod.toUpperCase()) {
       return false;
     }
     // Glob-style matching: * matches anything
-    final pattern = urlPattern
-        .replaceAll('.', r'\.')
-        .replaceAll('*', '.*');
+    final pattern = urlPattern.replaceAll('.', r'\.').replaceAll('*', '.*');
     return RegExp('^$pattern\$').hasMatch(url);
   }
 }
@@ -95,8 +94,9 @@ extension _NetworkMockHandlers on FlutterMcpServer {
     final urlPattern = args['url_pattern'] as String?;
     if (urlPattern == null) {
       return {
-        'success': false, 
-        'error': 'url_pattern parameter is required. Provide a URL pattern to mock (e.g., "*api/users*").'
+        'success': false,
+        'error':
+            'url_pattern parameter is required. Provide a URL pattern to mock (e.g., "*api/users*").'
       };
     }
 
@@ -170,7 +170,8 @@ extension _NetworkMockHandlers on FlutterMcpServer {
       final requestId = params['requestId']?.toString();
       if (requestId != null) {
         // Try to get response body asynchronously
-        cdp.sendCommand('Network.getResponseBody', {'requestId': requestId}).then((bodyResult) {
+        cdp.sendCommand('Network.getResponseBody',
+            {'requestId': requestId}).then((bodyResult) {
           final body = bodyResult['body']?.toString() ?? '';
           recording.entries.add(_RecordedEntry(
             url: url,
@@ -195,7 +196,8 @@ extension _NetworkMockHandlers on FlutterMcpServer {
     return {
       'success': true,
       'recording_id': id,
-      'message': 'Recording started${filterUrl != null ? ' (filter: $filterUrl)' : ''}',
+      'message':
+          'Recording started${filterUrl != null ? ' (filter: $filterUrl)' : ''}',
     };
   }
 
@@ -208,8 +210,9 @@ extension _NetworkMockHandlers on FlutterMcpServer {
     final recordingId = args['recording_id'] as String?;
     if (recordingId == null) {
       return {
-        'success': false, 
-        'error': 'recording_id parameter is required. Provide the ID from a previous network recording.'
+        'success': false,
+        'error':
+            'recording_id parameter is required. Provide the ID from a previous network recording.'
       };
     }
 
@@ -284,7 +287,8 @@ extension _NetworkMockHandlers on FlutterMcpServer {
         // Build response headers
         final responseHeaders = <Map<String, String>>[
           {'name': 'Content-Type', 'value': 'application/json'},
-          ...matchedRule.headers.entries.map((e) => {'name': e.key, 'value': e.value}),
+          ...matchedRule.headers.entries
+              .map((e) => {'name': e.key, 'value': e.value}),
         ];
 
         // Fulfill with mock response

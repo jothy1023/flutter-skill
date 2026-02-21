@@ -26,8 +26,7 @@ extension _DiffHandlers on FlutterMcpServer {
       };
     }
 
-    final baselinePath =
-        args['path'] as String? ?? './.flutter-skill-baseline';
+    final baselinePath = args['path'] as String? ?? './.flutter-skill-baseline';
     final depth = args['depth'] as int? ?? 2;
     final maxPages = args['max_pages'] as int? ?? 10;
 
@@ -42,7 +41,8 @@ extension _DiffHandlers on FlutterMcpServer {
     }
 
     // Discover pages
-    final pages = await _diffDiscoverPages(cdp, startUrl, depth, maxPages: maxPages);
+    final pages =
+        await _diffDiscoverPages(cdp, startUrl, depth, maxPages: maxPages);
     final savedPages = <String>[];
 
     for (final page in pages) {
@@ -82,8 +82,7 @@ extension _DiffHandlers on FlutterMcpServer {
   }
 
   /// Compare current state against a saved baseline.
-  Future<Map<String, dynamic>> _diffCompare(
-      Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _diffCompare(Map<String, dynamic> args) async {
     final cdp = _cdpDriver;
     if (cdp == null || !cdp.isConnected) {
       return {
@@ -131,9 +130,8 @@ extension _DiffHandlers on FlutterMcpServer {
         if (!baselineFile.existsSync()) {
           changes.add('New page (not in baseline)');
         } else {
-          final baselineSnapshot =
-              jsonDecode(await baselineFile.readAsString())
-                  as Map<String, dynamic>;
+          final baselineSnapshot = jsonDecode(await baselineFile.readAsString())
+              as Map<String, dynamic>;
           final currentSnapshot = await _diffGetPageSnapshot(cdp);
 
           // Element count changes
@@ -176,12 +174,10 @@ extension _DiffHandlers on FlutterMcpServer {
           // Screenshot diff
           final baselineScreenshotFile = File('$baselinePath/$safeName.png');
           if (baselineScreenshotFile.existsSync()) {
-            final currentScreenshot =
-                await cdp.takeScreenshot(quality: 1.0);
+            final currentScreenshot = await cdp.takeScreenshot(quality: 1.0);
             if (currentScreenshot != null) {
               final currentBytes = base64.decode(currentScreenshot);
-              final baselineBytes =
-                  await baselineScreenshotFile.readAsBytes();
+              final baselineBytes = await baselineScreenshotFile.readAsBytes();
               final diffPercent =
                   _diffPixelCompare(currentBytes, baselineBytes);
               if (diffPercent > threshold * 100) {
@@ -221,8 +217,7 @@ extension _DiffHandlers on FlutterMcpServer {
   }
 
   /// Compare two specific URLs side by side.
-  Future<Map<String, dynamic>> _diffPages(
-      Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _diffPages(Map<String, dynamic> args) async {
     final cdp = _cdpDriver;
     if (cdp == null || !cdp.isConnected) {
       return {
@@ -234,10 +229,7 @@ extension _DiffHandlers on FlutterMcpServer {
     final urlA = args['url_a'] as String?;
     final urlB = args['url_b'] as String?;
     if (urlA == null || urlB == null) {
-      return {
-        'success': false,
-        'error': 'Both url_a and url_b are required'
-      };
+      return {'success': false, 'error': 'Both url_a and url_b are required'};
     }
 
     // Capture page A
@@ -278,8 +270,7 @@ extension _DiffHandlers on FlutterMcpServer {
       pixelDiff = _diffPixelCompare(
           base64.decode(screenshotA), base64.decode(screenshotB));
       if (pixelDiff > 5.0) {
-        differences
-            .add('Visual diff: ${pixelDiff.toStringAsFixed(2)}%');
+        differences.add('Visual diff: ${pixelDiff.toStringAsFixed(2)}%');
       }
     }
 
@@ -310,7 +301,8 @@ extension _DiffHandlers on FlutterMcpServer {
   // --- Helpers ---
 
   Future<List<String>> _diffDiscoverPages(
-      CdpDriver cdp, String startUrl, int maxDepth, {int maxPages = 10}) async {
+      CdpDriver cdp, String startUrl, int maxDepth,
+      {int maxPages = 10}) async {
     final visited = <String>{};
     final toVisit = <String>[startUrl];
     final baseUri = Uri.parse(startUrl);

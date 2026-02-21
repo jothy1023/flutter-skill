@@ -17,14 +17,13 @@ extension _ReliabilityHandlers on FlutterMcpServer {
   Future<Map<String, dynamic>> _handleRetryOnFail(
       Map<String, dynamic> args) async {
     final action = args['action'] as String?;
-    final arguments =
-        (args['arguments'] as Map<String, dynamic>?) ?? {};
+    final arguments = (args['arguments'] as Map<String, dynamic>?) ?? {};
     final maxRetries = args['max_retries'] as int? ?? 3;
     final delayMs = args['delay_ms'] as int? ?? 1000;
 
     if (action == null) {
       return {
-        'success': false, 
+        'success': false,
         'error': 'action parameter is required. Specify the tool name to retry.'
       };
     }
@@ -76,8 +75,7 @@ extension _ReliabilityHandlers on FlutterMcpServer {
       } catch (e) {
         lastError = e;
         if (attempt <= maxRetries) {
-          stderr.writeln(
-              '[retry_on_fail] $action attempt $attempt threw: $e');
+          stderr.writeln('[retry_on_fail] $action attempt $attempt threw: $e');
           await Future.delayed(Duration(milliseconds: delayMs));
           continue;
         }
@@ -96,8 +94,7 @@ extension _ReliabilityHandlers on FlutterMcpServer {
   Future<Map<String, dynamic>> _handleStabilityCheck(
       Map<String, dynamic> args) async {
     final action = args['action'] as String?;
-    final arguments =
-        (args['arguments'] as Map<String, dynamic>?) ?? {};
+    final arguments = (args['arguments'] as Map<String, dynamic>?) ?? {};
     final runs = args['runs'] as int? ?? 5;
 
     if (action == null) {
@@ -114,8 +111,7 @@ extension _ReliabilityHandlers on FlutterMcpServer {
         final result = await _executeToolInner(action, Map.from(arguments));
         sw.stop();
 
-        final success =
-            result is! Map || result['success'] != false;
+        final success = result is! Map || result['success'] != false;
 
         if (success) {
           passed++;
@@ -127,8 +123,7 @@ extension _ReliabilityHandlers on FlutterMcpServer {
           'run': i,
           'success': success,
           'time_ms': sw.elapsedMilliseconds,
-          if (!success)
-            'error': result['error'],
+          if (!success) 'error': result['error'],
         });
       } catch (e) {
         sw.stop();

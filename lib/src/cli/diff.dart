@@ -111,8 +111,7 @@ Future<void> runDiff(List<String> args) async {
 
       print('');
       print('✅ Baseline created at $baselinePath');
-      print(
-          '   Run the same command again to compare against this baseline.');
+      print('   Run the same command again to compare against this baseline.');
     } else {
       // Compare against baseline
       print('');
@@ -162,8 +161,7 @@ Future<void> runDiff(List<String> args) async {
       print('   Report saved to: $reportPath');
 
       // Summary
-      final changed =
-          results.where((r) => r['status'] != 'unchanged').length;
+      final changed = results.where((r) => r['status'] != 'unchanged').length;
       final total = results.length;
       print('');
       if (changed == 0) {
@@ -183,7 +181,8 @@ Future<void> runDiff(List<String> args) async {
 
 /// Discover pages by crawling links
 Future<List<String>> _discoverPages(
-    CdpDriver cdp, String startUrl, int maxDepth, {int maxPages = 10}) async {
+    CdpDriver cdp, String startUrl, int maxDepth,
+    {int maxPages = 10}) async {
   final visited = <String>{};
   final toVisit = <String>[startUrl];
   final baseUri = Uri.parse(startUrl);
@@ -497,8 +496,7 @@ Future<void> _generateDiffReport(
 
   // Summary
   final total = results.length;
-  final unchanged =
-      results.where((r) => r['status'] == 'unchanged').length;
+  final unchanged = results.where((r) => r['status'] == 'unchanged').length;
   final changed = results.where((r) => r['status'] == 'changed').length;
   final removed = results.where((r) => r['status'] == 'removed').length;
 
@@ -520,8 +518,7 @@ Future<void> _generateDiffReport(
     final status = result['status'] as String;
     final pageUrl = result['url'] as String;
     final changes = result['changes'] as List? ?? [];
-    final details =
-        result['details'] as Map<String, dynamic>? ?? {};
+    final details = result['details'] as Map<String, dynamic>? ?? {};
 
     buf.writeln('<div class="page $status">');
     buf.writeln(
@@ -540,10 +537,8 @@ Future<void> _generateDiffReport(
     if (details['baseline_screenshot'] != null &&
         details['current_screenshot'] != null) {
       try {
-        final baselineFile =
-            File(details['baseline_screenshot'] as String);
-        final currentFile =
-            File(details['current_screenshot'] as String);
+        final baselineFile = File(details['baseline_screenshot'] as String);
+        final currentFile = File(details['current_screenshot'] as String);
         if (baselineFile.existsSync() && currentFile.existsSync()) {
           final baseB64 = base64.encode(await baselineFile.readAsBytes());
           final currB64 = base64.encode(await currentFile.readAsBytes());

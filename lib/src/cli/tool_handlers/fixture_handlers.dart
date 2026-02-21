@@ -18,8 +18,7 @@ extension _FixtureHandlers on FlutterMcpServer {
   }
 
   /// Load test fixture data into the app.
-  Future<Map<String, dynamic>> _fixtureLoad(
-      Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _fixtureLoad(Map<String, dynamic> args) async {
     final type = args['type'] as String? ?? 'localStorage';
     final data = args['data'] as Map<String, dynamic>?;
     final url = args['url'] as String?;
@@ -95,9 +94,9 @@ extension _FixtureHandlers on FlutterMcpServer {
           return {'success': false, 'error': 'data is required for cookies'};
         }
         // Get current URL domain for cookies
-        final currentUrlResult =
-            await cdp.eval('window.location.hostname');
-        final domain = (currentUrlResult['result']?['value'] as String?) ?? 'localhost';
+        final currentUrlResult = await cdp.eval('window.location.hostname');
+        final domain =
+            (currentUrlResult['result']?['value'] as String?) ?? 'localhost';
 
         for (final entry in data.entries) {
           await cdp.sendCommand('Network.setCookie', {
@@ -140,8 +139,7 @@ extension _FixtureHandlers on FlutterMcpServer {
   }
 
   /// Reset app to clean state.
-  Future<Map<String, dynamic>> _fixtureReset(
-      Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _fixtureReset(Map<String, dynamic> args) async {
     final resetApiUrl = args['reset_api_url'] as String?;
     final clearStorage = args['clear_storage'] as bool? ?? true;
     final clearCookies = args['clear_cookies'] as bool? ?? true;
@@ -197,8 +195,7 @@ extension _FixtureHandlers on FlutterMcpServer {
     }
 
     final role = args['role'] as String? ?? 'user';
-    final credentials =
-        args['credentials'] as Map<String, dynamic>? ?? {};
+    final credentials = args['credentials'] as Map<String, dynamic>? ?? {};
     final loginUrl = args['login_url'] as String?;
     final usernameField = args['username_field'] as String? ?? 'email';
     // passwordField reserved for future use
@@ -208,8 +205,8 @@ extension _FixtureHandlers on FlutterMcpServer {
     // If token is provided, inject it directly
     final token = credentials['token'] as String?;
     if (token != null) {
-      await cdp.eval(
-          "localStorage.setItem('auth_token', '${_escapeJs(token)}')");
+      await cdp
+          .eval("localStorage.setItem('auth_token', '${_escapeJs(token)}')");
       await cdp.eval('location.reload()');
       await Future.delayed(const Duration(seconds: 2));
       return {
@@ -325,8 +322,8 @@ extension _FixtureHandlers on FlutterMcpServer {
     final envVars = args['env_vars'] as Map<String, dynamic>?;
 
     // Inject environment variables into localStorage
-    await cdp.eval(
-        "localStorage.setItem('flutter_skill_env', '${_escapeJs(env)}')");
+    await cdp
+        .eval("localStorage.setItem('flutter_skill_env', '${_escapeJs(env)}')");
 
     if (envVars != null) {
       for (final entry in envVars.entries) {

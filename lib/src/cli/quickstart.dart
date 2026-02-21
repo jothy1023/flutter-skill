@@ -49,7 +49,8 @@ Future<void> runQuickstart(List<String> args) async {
     final platform = _parsePlatform(platformOverride);
     if (platform == _Platform.unknown) {
       print('  ❌ Unknown platform: $platformOverride');
-      print('  Available: web, web-sdk, flutter, electron, react-native, tauri, maui, kmp');
+      print(
+          '  Available: web, web-sdk, flutter, electron, react-native, tauri, maui, kmp');
       return;
     }
     await _runPlatformQuickstart(platform);
@@ -136,7 +137,8 @@ _Platform _detectPlatform(String dir) {
   final gradle = File('$dir/build.gradle.kts');
   if (gradle.existsSync()) {
     final content = gradle.readAsStringSync();
-    if (content.contains('multiplatform') || content.contains('KotlinMultiplatform')) {
+    if (content.contains('multiplatform') ||
+        content.contains('KotlinMultiplatform')) {
       return _Platform.kmp;
     }
   }
@@ -253,7 +255,8 @@ Future<void> _quickstartWebSdk() async {
   print('  Launching demo app with flutter-skill SDK injected...');
   print('');
 
-  final tempDir = await Directory.systemTemp.createTemp('flutter-skill-sdk-demo-');
+  final tempDir =
+      await Directory.systemTemp.createTemp('flutter-skill-sdk-demo-');
   final htmlFile = File('${tempDir.path}/index.html');
   await htmlFile.writeAsString(_demoHtmlWithSdk);
 
@@ -344,16 +347,19 @@ Future<void> _quickstartFlutter() async {
     );
 
     // Pipe output so user can see Flutter startup progress
-    flutterProcess.stdout.transform(const SystemEncoding().decoder).listen(
-        (data) => stdout.write('    $data'));
-    flutterProcess.stderr.transform(const SystemEncoding().decoder).listen(
-        (data) => stderr.write('    $data'));
+    flutterProcess.stdout
+        .transform(const SystemEncoding().decoder)
+        .listen((data) => stdout.write('    $data'));
+    flutterProcess.stderr
+        .transform(const SystemEncoding().decoder)
+        .listen((data) => stderr.write('    $data'));
 
     // Wait for app to be ready by polling the web port
     final appUrl = 'http://localhost:$webPort';
     final ready = await _waitForHttpReady(webPort, timeoutSeconds: 120);
     if (!ready) {
-      print('    ❌ Flutter app failed to start (timeout waiting for port $webPort)');
+      print(
+          '    ❌ Flutter app failed to start (timeout waiting for port $webPort)');
       return;
     }
 
@@ -383,8 +389,7 @@ Future<bool> _waitForHttpReady(int port, {int timeoutSeconds = 120}) async {
     try {
       final client = HttpClient();
       client.connectionTimeout = const Duration(milliseconds: 300);
-      final request = await client.getUrl(
-          Uri.parse('http://localhost:$port'));
+      final request = await client.getUrl(Uri.parse('http://localhost:$port'));
       final response = await request.close();
       await response.drain<void>();
       client.close();
@@ -416,7 +421,8 @@ Future<void> _quickstartElectron() async {
   print('');
 
   print('  ── Setting up demo ──');
-  final tempDir = await Directory.systemTemp.createTemp('flutter-skill-electron-demo-');
+  final tempDir =
+      await Directory.systemTemp.createTemp('flutter-skill-electron-demo-');
   Process? electronProcess;
   HttpServer? demoServer;
 
@@ -437,7 +443,8 @@ Future<void> _quickstartElectron() async {
   "main": "main.js"
 }''');
 
-    await File('${tempDir.path}/main.js').writeAsString(_electronMainJs(serverPort));
+    await File('${tempDir.path}/main.js')
+        .writeAsString(_electronMainJs(serverPort));
 
     print('    Installing Electron...');
     final npmInstall = await Process.run(
@@ -481,10 +488,11 @@ Future<void> _quickstartElectron() async {
 // ─── React Native Guide ──────────────────────────────────────────
 
 void _quickstartReactNativeGuide() {
-  final isRnProject = File('${Directory.current.path}/package.json').existsSync() &&
-      File('${Directory.current.path}/package.json')
-          .readAsStringSync()
-          .contains('"react-native"');
+  final isRnProject =
+      File('${Directory.current.path}/package.json').existsSync() &&
+          File('${Directory.current.path}/package.json')
+              .readAsStringSync()
+              .contains('"react-native"');
 
   if (isRnProject) {
     print('  📱 React Native project detected!');
@@ -605,7 +613,12 @@ Future<void> _runFullDemo(String url, {int? cdpPort}) async {
     '4/6  📋 Test Plan — Generate test cases from UI analysis': () =>
         runPlan([...baseArgs, '--depth=1', '--max-pages=3']),
     '5/6  📸 Visual Diff — Screenshot baseline for regression testing': () =>
-        runDiff([...baseArgs, '--depth=1', '--max-pages=3', '--baseline=${diffBaselineDir.path}']),
+        runDiff([
+          ...baseArgs,
+          '--depth=1',
+          '--max-pages=3',
+          '--baseline=${diffBaselineDir.path}'
+        ]),
     '6/6  🌐 Serve — Zero-config MCP server (tool discovery)': () =>
         _quickServeDemo(url, headless: true, cdpPort: cdpPort),
   };
@@ -633,7 +646,8 @@ Future<void> _runFullDemo(String url, {int? cdpPort}) async {
 
   print('');
   print('  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  print('  📊 Quickstart Results: $passed/${passed + failed} commands succeeded');
+  print(
+      '  📊 Quickstart Results: $passed/${passed + failed} commands succeeded');
   if (failed > 0) {
     print('     ($failed failed — check output above)');
   }
@@ -642,7 +656,8 @@ Future<void> _runFullDemo(String url, {int? cdpPort}) async {
 
 /// Quick serve demo: launch CDP, discover tools, print summary, close.
 /// Does NOT start an HTTP server — just shows what serve would find.
-Future<void> _quickServeDemo(String url, {bool headless = true, int? cdpPort}) async {
+Future<void> _quickServeDemo(String url,
+    {bool headless = true, int? cdpPort}) async {
   print('🌐 flutter-skill serve — Zero-Config MCP Tool Discovery');
   print('');
   print('   URL: $url');
@@ -688,12 +703,18 @@ Future<void> _quickServeDemo(String url, {bool headless = true, int? cdpPort}) a
       print('🔍 Discovered ${tools.length} interactive elements:');
       for (final tool in tools.take(10)) {
         final t = tool as Map;
-        final icon = t['tag'] == 'input' ? '📝' :
-                     t['tag'] == 'button' ? '🔘' :
-                     t['tag'] == 'a' ? '🔗' :
-                     t['tag'] == 'select' ? '📋' : '🎯';
+        final icon = t['tag'] == 'input'
+            ? '📝'
+            : t['tag'] == 'button'
+                ? '🔘'
+                : t['tag'] == 'a'
+                    ? '🔗'
+                    : t['tag'] == 'select'
+                        ? '📋'
+                        : '🎯';
         final label = t['text'] != '' ? t['text'] : t['role'];
-        print('   $icon ${t['tag']}${t['type'] != '' ? '[${t['type']}]' : ''}: $label');
+        print(
+            '   $icon ${t['tag']}${t['type'] != '' ? '[${t['type']}]' : ''}: $label');
       }
       if (tools.length > 10) {
         print('   ... and ${tools.length - 10} more');
@@ -772,8 +793,7 @@ Future<String?> _findFlutter() async {
 
 Future<String?> _findChrome() async {
   if (Platform.isMacOS) {
-    final path =
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    final path = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
     if (await File(path).exists()) return path;
   }
   // Try running it
@@ -847,7 +867,8 @@ void _printElectronSummary(int cdpPort) {
   print('    3. flutter-skill monkey http://localhost:9222');
   print('');
   print('  Add to package.json scripts:');
-  print('    "test:ai": "electron . --remote-debugging-port=9222 & flutter-skill explore http://localhost:9222"');
+  print(
+      '    "test:ai": "electron . --remote-debugging-port=9222 & flutter-skill explore http://localhost:9222"');
   print('═══════════════════════════════════════════════════════════');
   print('');
 }

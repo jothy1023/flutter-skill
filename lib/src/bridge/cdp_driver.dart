@@ -34,7 +34,8 @@ class CdpDriver implements AppDriver {
   /// Pending CDP calls keyed by request id.
   final Map<int, Completer<Map<String, dynamic>>> _pending = {};
   final Map<String, void Function()> _eventSubscriptions = {};
-  final Map<String, List<void Function(Map<String, dynamic>)>> _eventListeners = {};
+  final Map<String, List<void Function(Map<String, dynamic>)>> _eventListeners =
+      {};
   bool _dialogHandlerInstalled = false;
   final Map<String, Map<String, dynamic>> _interceptRules = {};
 
@@ -114,7 +115,10 @@ class CdpDriver implements AppDriver {
     // When connecting to an existing instance (launchChrome=false),
     // skip navigation if URL is about:blank or matches the CDP port
     // (the target already has content loaded).
-    final skipNav = !_launchChrome && (_url.isEmpty || _url == 'about:blank' || _url.contains('localhost:$_port'));
+    final skipNav = !_launchChrome &&
+        (_url.isEmpty ||
+            _url == 'about:blank' ||
+            _url.contains('localhost:$_port'));
     if (!skipNav) {
       await _call('Page.navigate', {'url': _url});
       // Wait for DOMContentLoaded or timeout (much faster than fixed 2s delay)
@@ -675,26 +679,33 @@ class CdpDriver implements AppDriver {
       double startX, double startY, double endX, double endY) async {
     try {
       return await Future(() async {
-        await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mousePressed', startX, startY,
+            button: 'left', clickCount: 1);
         const steps = 10;
         for (var i = 1; i <= steps; i++) {
           final x = startX + (endX - startX) * i / steps;
           final y = startY + (endY - startY) * i / steps;
           await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
         }
-        await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mouseReleased', endX, endY,
+            button: 'left', clickCount: 1);
         return {"success": true} as Map<String, dynamic>;
       }).timeout(const Duration(seconds: 10));
     } on TimeoutException {
-      return {"success": false, "error": "Drag timed out — mouse event not acknowledged by browser"};
+      return {
+        "success": false,
+        "error": "Drag timed out — mouse event not acknowledged by browser"
+      };
     }
   }
 
   /// Long press at coordinates.
   Future<void> longPressAt(double x, double y) async {
-    await _dispatchMouseEvent('mousePressed', x, y, button: 'left', clickCount: 1);
+    await _dispatchMouseEvent('mousePressed', x, y,
+        button: 'left', clickCount: 1);
     await Future.delayed(const Duration(milliseconds: 800));
-    await _dispatchMouseEvent('mouseReleased', x, y, button: 'left', clickCount: 1);
+    await _dispatchMouseEvent('mouseReleased', x, y,
+        button: 'left', clickCount: 1);
   }
 
   /// Swipe between coordinates.
@@ -703,7 +714,8 @@ class CdpDriver implements AppDriver {
       {int durationMs = 300}) async {
     try {
       return await Future(() async {
-        await _dispatchMouseEvent('mousePressed', startX, startY, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mousePressed', startX, startY,
+            button: 'left', clickCount: 1);
         const steps = 8;
         for (var i = 1; i <= steps; i++) {
           final x = startX + (endX - startX) * i / steps;
@@ -711,11 +723,15 @@ class CdpDriver implements AppDriver {
           await _dispatchMouseEvent('mouseMoved', x, y, button: 'left');
           await Future.delayed(Duration(milliseconds: durationMs ~/ steps));
         }
-        await _dispatchMouseEvent('mouseReleased', endX, endY, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mouseReleased', endX, endY,
+            button: 'left', clickCount: 1);
         return {"success": true} as Map<String, dynamic>;
       }).timeout(const Duration(seconds: 10));
     } on TimeoutException {
-      return {"success": false, "error": "Swipe timed out — mouse event not acknowledged by browser"};
+      return {
+        "success": false,
+        "error": "Swipe timed out — mouse event not acknowledged by browser"
+      };
     }
   }
 
@@ -765,21 +781,28 @@ class CdpDriver implements AppDriver {
     try {
       return await Future(() async {
         final first = points.first;
-        await _dispatchMouseEvent('mousePressed', (first['x'] as num).toDouble(),
-            (first['y'] as num).toDouble(), button: 'left');
+        await _dispatchMouseEvent('mousePressed',
+            (first['x'] as num).toDouble(), (first['y'] as num).toDouble(),
+            button: 'left');
         for (var i = 1; i < points.length; i++) {
-          await _dispatchMouseEvent('mouseMoved',
+          await _dispatchMouseEvent(
+              'mouseMoved',
               (points[i]['x'] as num).toDouble(),
-              (points[i]['y'] as num).toDouble(), button: 'left');
+              (points[i]['y'] as num).toDouble(),
+              button: 'left');
           await Future.delayed(const Duration(milliseconds: 20));
         }
         final last = points.last;
-        await _dispatchMouseEvent('mouseReleased', (last['x'] as num).toDouble(),
-            (last['y'] as num).toDouble(), button: 'left');
+        await _dispatchMouseEvent('mouseReleased',
+            (last['x'] as num).toDouble(), (last['y'] as num).toDouble(),
+            button: 'left');
         return {"success": true} as Map<String, dynamic>;
       }).timeout(const Duration(seconds: 10));
     } on TimeoutException {
-      return {"success": false, "error": "Gesture timed out — mouse event not acknowledged by browser"};
+      return {
+        "success": false,
+        "error": "Gesture timed out — mouse event not acknowledged by browser"
+      };
     }
   }
 
@@ -827,7 +850,8 @@ class CdpDriver implements AppDriver {
         return JSON.stringify({ success: true, checked: el.getAttribute('aria-checked') === 'true' });
       })()
     ''');
-    return _parseJsonEval(result) ?? {"success": false, "error": "Element not found"};
+    return _parseJsonEval(result) ??
+        {"success": false, "error": "Element not found"};
   }
 
   /// Get slider value.
@@ -852,7 +876,8 @@ class CdpDriver implements AppDriver {
         });
       })()
     ''');
-    return _parseJsonEval(result) ?? {"success": false, "error": "Element not found"};
+    return _parseJsonEval(result) ??
+        {"success": false, "error": "Element not found"};
   }
 
   /// Get page state (title, url, scroll, viewport).
@@ -1101,7 +1126,7 @@ class CdpDriver implements AppDriver {
   }
 
   /// Highlight an element on the page.
-  Future<Map<String, dynamic>> highlightElement(String selector, 
+  Future<Map<String, dynamic>> highlightElement(String selector,
       {String color = 'red', int duration = 3000}) async {
     // Parse color to rgba for background (20% opacity)
     final bgAlpha = '0.1';
@@ -1276,7 +1301,8 @@ class CdpDriver implements AppDriver {
       _call(method, params);
 
   /// Register a listener for a CDP event (supports multiple listeners per event).
-  void onEvent(String method, void Function(Map<String, dynamic> params) callback) {
+  void onEvent(
+      String method, void Function(Map<String, dynamic> params) callback) {
     _eventListeners.putIfAbsent(method, () => []);
     _eventListeners[method]!.add(callback);
   }

@@ -181,7 +181,8 @@ Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort) async {
     await Future.delayed(const Duration(seconds: 1));
     // Fetch the latest tab list from CDP
     final client = HttpClient();
-    final request = await client.getUrl(Uri.parse('http://localhost:$cdpPort/json'));
+    final request =
+        await client.getUrl(Uri.parse('http://localhost:$cdpPort/json'));
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     final tabs = (jsonDecode(body) as List).cast<Map<String, dynamic>>();
@@ -413,8 +414,11 @@ Future<void> _handleRequest(
           response
             ..statusCode = 200
             ..headers.contentType = ContentType.json
-            ..write(
-                jsonEncode({'navigated': navUrl, 'tools': state.tools.length, 'reconnected': true}));
+            ..write(jsonEncode({
+              'navigated': navUrl,
+              'tools': state.tools.length,
+              'reconnected': true
+            }));
         } else {
           response
             ..statusCode = 500

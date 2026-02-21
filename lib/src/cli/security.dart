@@ -122,15 +122,18 @@ final sensitivePatterns = {
   'API Key (api_key)': RegExp('api_key[=:]\\s*["\']?[a-zA-Z0-9_-]{16,}'),
   'API Key (apikey)': RegExp('apikey[=:]\\s*["\']?[a-zA-Z0-9_-]{16,}'),
   'AWS Access Key': RegExp(r'AKIA[0-9A-Z]{16}'),
-  'AWS Secret Key': RegExp('aws_secret_access_key[=:]\\s*["\']?[a-zA-Z0-9/+=]{40}'),
-  'JWT Token': RegExp(r'eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}'),
+  'AWS Secret Key':
+      RegExp('aws_secret_access_key[=:]\\s*["\']?[a-zA-Z0-9/+=]{40}'),
+  'JWT Token':
+      RegExp(r'eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}'),
   'Credit Card (Visa)': RegExp(r'\b4[0-9]{12}(?:[0-9]{3})?\b'),
   'Credit Card (Mastercard)': RegExp(r'\b5[1-5][0-9]{14}\b'),
   'Credit Card (Amex)': RegExp(r'\b3[47][0-9]{13}\b'),
   'Password in URL': RegExp(r'[?&]password=[^&]+'),
   'Password field value': RegExp('password["\\s]*[:=]\\s*["\'][^"\']{1,}["\']'),
   'Private Key': RegExp(r'-----BEGIN\s+(RSA\s+)?PRIVATE KEY-----'),
-  'Email Address': RegExp(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'),
+  'Email Address':
+      RegExp(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'),
   'Bearer Token': RegExp(r'Bearer\s+[a-zA-Z0-9_.=-]{20,}'),
   'GitHub Token': RegExp(r'gh[pousr]_[A-Za-z0-9_]{36,}'),
   'Google API Key': RegExp(r'AIza[0-9A-Za-z_-]{35}'),
@@ -284,10 +287,9 @@ class SecurityScanner {
   }) async {
     _cdp = cdp;
 
-    final currentUrl =
-        (await _cdp.evaluate('window.location.href'))['result']?['value']
-                as String? ??
-            startUrl;
+    final currentUrl = (await _cdp.evaluate('window.location.href'))['result']
+            ?['value'] as String? ??
+        startUrl;
 
     if (checks.contains('headers')) {
       await _checkSecurityHeaders(currentUrl);
@@ -342,7 +344,10 @@ class SecurityScanner {
         ''');
         final linksJson = linksResult['result']?['value'] as String?;
         if (linksJson != null) {
-          final links = (jsonDecode(linksJson) as List).cast<String>().take(maxLinks).toList();
+          final links = (jsonDecode(linksJson) as List)
+              .cast<String>()
+              .take(maxLinks)
+              .toList();
           for (final link in links) {
             final normLink = _normalizeUrl(link);
             if (!_visited.containsKey(normLink) &&
@@ -433,8 +438,7 @@ class SecurityScanner {
     }
   }
 
-  Future<void> _xssScan(String pageUrl,
-      {List<String>? customPayloads}) async {
+  Future<void> _xssScan(String pageUrl, {List<String>? customPayloads}) async {
     print('   💉 Testing XSS vulnerabilities...');
 
     final payloads = customPayloads ?? xssPayloads;
@@ -496,10 +500,9 @@ class SecurityScanner {
           await Future.delayed(const Duration(milliseconds: 200));
 
           // Check if dialog was triggered
-          final dialogResult = await _cdp
-              .evaluate('window.__xss_dialog_detected__');
-          dialogDetected =
-              dialogResult['result']?['value'] == true;
+          final dialogResult =
+              await _cdp.evaluate('window.__xss_dialog_detected__');
+          dialogDetected = dialogResult['result']?['value'] == true;
 
           if (dialogDetected) {
             _findings.add(SecurityFinding(
@@ -514,16 +517,14 @@ class SecurityScanner {
                   'Sanitize and escape all user input. Use Content-Security-Policy headers.',
             ));
             // Reset
-            await _cdp
-                .evaluate('window.__xss_dialog_detected__ = false');
+            await _cdp.evaluate('window.__xss_dialog_detected__ = false');
           }
 
           // Check if payload is reflected in DOM
           final reflectedResult = await _cdp.evaluate('''
             document.body.innerHTML.includes(${jsonEncode(payload)})
           ''');
-          final reflected =
-              reflectedResult['result']?['value'] == true;
+          final reflected = reflectedResult['result']?['value'] == true;
 
           if (reflected) {
             _findings.add(SecurityFinding(
@@ -562,13 +563,12 @@ class SecurityScanner {
         'JSON.stringify(Object.entries(sessionStorage))');
 
     // Check cookies
-    await _scanStorage(
-        pageUrl, 'cookies', 'JSON.stringify(document.cookie)');
+    await _scanStorage(pageUrl, 'cookies', 'JSON.stringify(document.cookie)');
 
     // Check page source
     try {
-      final sourceResult = await _cdp.evaluate(
-          'document.documentElement.outerHTML.substring(0, 50000)');
+      final sourceResult = await _cdp
+          .evaluate('document.documentElement.outerHTML.substring(0, 50000)');
       final source = sourceResult['result']?['value'] as String? ?? '';
 
       for (final entry in sensitivePatterns.entries) {
@@ -643,8 +643,7 @@ class SecurityScanner {
                 ? 'Critical'
                 : 'High',
             title: '${entry.key} found in $storageName',
-            description:
-                'Detected ${entry.key} pattern in $storageName.',
+            description: 'Detected ${entry.key} pattern in $storageName.',
             url: pageUrl,
             recommendation:
                 'Avoid storing sensitive data in $storageName. Use secure, HttpOnly cookies for tokens.',
@@ -688,13 +687,13 @@ class SecurityScanner {
         _findings.add(SecurityFinding(
           category: 'Mixed Content',
           severity: isActive ? 'High' : 'Medium',
-          title:
-              '${isActive ? "Active" : "Passive"} mixed content: <$tag>',
+          title: '${isActive ? "Active" : "Passive"} mixed content: <$tag>',
           description:
               'HTTPS page loads ${isActive ? "active" : "passive"} HTTP resource.',
           url: pageUrl,
           evidence: 'Source: $src',
-          recommendation: 'Use HTTPS for all resources. Update the URL to use https://.',
+          recommendation:
+              'Use HTTPS for all resources. Update the URL to use https://.',
         ));
       }
     } catch (_) {}
@@ -727,8 +726,7 @@ class SecurityScanner {
       final val = result['result']?['value'] as String?;
       if (val == null) return;
 
-      final forms =
-          (jsonDecode(val) as List).cast<Map<String, dynamic>>();
+      final forms = (jsonDecode(val) as List).cast<Map<String, dynamic>>();
 
       // Only report forms that are POST and have inputs but no CSRF token
       for (final form in forms) {
@@ -756,10 +754,25 @@ class SecurityScanner {
 
     try {
       final uri = Uri.parse(pageUrl);
-      final redirectParams = ['redirect', 'redirect_uri', 'redirect_url',
-          'callback', 'next', 'url', 'return', 'returnTo', 'return_url',
-          'continue', 'dest', 'destination', 'go', 'target', 'rurl',
-          'forward', 'forward_url'];
+      final redirectParams = [
+        'redirect',
+        'redirect_uri',
+        'redirect_url',
+        'callback',
+        'next',
+        'url',
+        'return',
+        'returnTo',
+        'return_url',
+        'continue',
+        'dest',
+        'destination',
+        'go',
+        'target',
+        'rurl',
+        'forward',
+        'forward_url'
+      ];
 
       for (final param in uri.queryParameters.keys) {
         if (redirectParams.contains(param.toLowerCase())) {
@@ -808,16 +821,13 @@ class SecurityScanner {
                 _findings.add(SecurityFinding(
                   category: 'Open Redirect',
                   severity: 'Medium',
-                  title:
-                      'Link with potential open redirect via "$param"',
+                  title: 'Link with potential open redirect via "$param"',
                   description:
                       'Found a link containing a redirect parameter with an external URL.',
                   url: pageUrl,
-                  evidence: link.length > 100
-                      ? '${link.substring(0, 100)}...'
-                      : link,
-                  recommendation:
-                      'Validate redirect URLs server-side.',
+                  evidence:
+                      link.length > 100 ? '${link.substring(0, 100)}...' : link,
+                  recommendation: 'Validate redirect URLs server-side.',
                 ));
               }
             }
@@ -838,8 +848,7 @@ class SecurityScanner {
         .where((e) => e.key.toLowerCase() == 'content-security-policy')
         .map((e) => e.value)
         .firstOrNull;
-    final hasFrameAncestors =
-        csp != null && csp.contains('frame-ancestors');
+    final hasFrameAncestors = csp != null && csp.contains('frame-ancestors');
 
     if (!hasXFrameOptions && !hasFrameAncestors) {
       _findings.add(SecurityFinding(
@@ -945,7 +954,8 @@ class SecurityScanner {
       final sevFindings = _findings.where((f) => f.severity == sev).toList();
       if (sevFindings.isEmpty) continue;
 
-      buffer.writeln('<h2 class="section-title">$sev (${sevFindings.length})</h2>');
+      buffer.writeln(
+          '<h2 class="section-title">$sev (${sevFindings.length})</h2>');
 
       for (final f in sevFindings) {
         buffer.writeln('<div class="finding">');

@@ -75,8 +75,11 @@ extension _ExploreHandlers on FlutterMcpServer {
         switch (role) {
           case 'link':
             links++;
-            if ((insideNav || depth <= 2) && name.length > 1 && name.length < 40 &&
-                !RegExp(r'[\$€£¥]\d|CO₂|^\d+\s*(hours?|minutes?|days?)\s*ago').hasMatch(name)) {
+            if ((insideNav || depth <= 2) &&
+                name.length > 1 &&
+                name.length < 40 &&
+                !RegExp(r'[\$€£¥]\d|CO₂|^\d+\s*(hours?|minutes?|days?)\s*ago')
+                    .hasMatch(name)) {
               nav.add(name);
             }
             break;
@@ -90,13 +93,17 @@ extension _ExploreHandlers on FlutterMcpServer {
           case 'combobox':
             inputs++;
             final nameLower = name.toLowerCase();
-            hasSearch = hasSearch || role == 'searchbox' || nameLower.contains('search');
+            hasSearch = hasSearch ||
+                role == 'searchbox' ||
+                nameLower.contains('search');
             hasLogin = hasLogin || nameLower.contains('password');
             currentFormFields.add({
               'name': name.isNotEmpty ? name : '${role}_$inputs',
-              'type': role == 'searchbox' ? 'search' : 
-                  (nameLower.contains('password') ? 'password' :
-                  (nameLower.contains('email') ? 'email' : 'text')),
+              'type': role == 'searchbox'
+                  ? 'search'
+                  : (nameLower.contains('password')
+                      ? 'password'
+                      : (nameLower.contains('email') ? 'email' : 'text')),
             });
             break;
           case 'heading':
@@ -144,21 +151,23 @@ extension _ExploreHandlers on FlutterMcpServer {
             )
           ''');
           final v = topLinks['result']?['value'] as String?;
-          if (v != null) nav.insertAll(0, (jsonDecode(v) as List).cast<String>());
+          if (v != null)
+            nav.insertAll(0, (jsonDecode(v) as List).cast<String>());
         } catch (_) {}
       }
 
       // Check login via DOM (AX tree might miss type=password)
       if (!hasLogin) {
-        final pw = await _cdpDriver!.evaluate('!!document.querySelector("input[type=password]")');
+        final pw = await _cdpDriver!
+            .evaluate('!!document.querySelector("input[type=password]")');
         hasLogin = pw['result']?['value'] == true;
       }
 
       // Collect console errors
       List<String> errors = [];
       try {
-        final errResult = await _cdpDriver!.evaluate(
-            'JSON.stringify(window.__fs_explore_errors__ || [])');
+        final errResult = await _cdpDriver!
+            .evaluate('JSON.stringify(window.__fs_explore_errors__ || [])');
         final v = errResult['result']?['value'] as String?;
         if (v != null) {
           errors = (jsonDecode(v) as List)
@@ -213,9 +222,12 @@ extension _ExploreHandlers on FlutterMcpServer {
       return {'error': 'No CDP connection. Connect to a web app first.'};
     }
 
-    final actions = (args['actions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final actions =
+        (args['actions'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     if (actions.isEmpty) {
-      return {'error': 'No actions provided. Use: [{"type":"tap","target":"..."}]'};
+      return {
+        'error': 'No actions provided. Use: [{"type":"tap","target":"..."}]'
+      };
     }
 
     final results = <Map<String, dynamic>>[];
@@ -245,7 +257,8 @@ extension _ExploreHandlers on FlutterMcpServer {
             await _cdpDriver!.tap(ref: target);
             await Future.delayed(const Duration(milliseconds: 800));
             final postUrl = await _cdpDriver!.evaluate('window.location.href');
-            final navigated = preUrl['result']?['value'] != postUrl['result']?['value'];
+            final navigated =
+                preUrl['result']?['value'] != postUrl['result']?['value'];
             results.add({
               'action': 'tap:$target',
               'success': true,
@@ -255,7 +268,8 @@ extension _ExploreHandlers on FlutterMcpServer {
 
           case 'fill':
             if (value == null) {
-              results.add({'action': 'fill:$target', 'error': 'No value provided'});
+              results.add(
+                  {'action': 'fill:$target', 'error': 'No value provided'});
               break;
             }
             try {
@@ -273,12 +287,14 @@ extension _ExploreHandlers on FlutterMcpServer {
                 })()
               ''');
             }
-            results.add({'action': 'fill:$target', 'success': true, 'value': value});
+            results.add(
+                {'action': 'fill:$target', 'success': true, 'value': value});
             break;
 
           case 'scroll':
             final px = target == 'up' ? -500 : 500;
-            await _cdpDriver!.evaluate('window.scrollBy({top: $px, behavior: "smooth"})');
+            await _cdpDriver!
+                .evaluate('window.scrollBy({top: $px, behavior: "smooth"})');
             await Future.delayed(const Duration(milliseconds: 300));
             results.add({'action': 'scroll:$target', 'success': true});
             break;
@@ -336,8 +352,8 @@ extension _ExploreHandlers on FlutterMcpServer {
     // Collect errors after all actions
     List<String> errors = [];
     try {
-      final errResult = await _cdpDriver!.evaluate(
-          'JSON.stringify(window.__fs_explore_errors__ || [])');
+      final errResult = await _cdpDriver!
+          .evaluate('JSON.stringify(window.__fs_explore_errors__ || [])');
       final v = errResult['result']?['value'] as String?;
       if (v != null) {
         final errList = jsonDecode(v) as List;
@@ -373,7 +389,10 @@ extension _ExploreHandlers on FlutterMcpServer {
     }
 
     final testCases = customPayloads != null
-        ? {for (var i = 0; i < customPayloads.length; i++) 'custom_$i': customPayloads[i]}
+        ? {
+            for (var i = 0; i < customPayloads.length; i++)
+              'custom_$i': customPayloads[i]
+          }
         : <String, String>{
             'empty': '',
             'xss_script': '<script>alert("xss")</script>',
@@ -420,9 +439,11 @@ extension _ExploreHandlers on FlutterMcpServer {
         await Future.delayed(const Duration(milliseconds: 200));
 
         // Check for JS errors
-        final errResult = await _cdpDriver!.evaluate(
-            'JSON.stringify(window.__fs_boundary_errors__)');
-        final errs = jsonDecode(errResult['result']?['value'] as String? ?? '[]') as List;
+        final errResult = await _cdpDriver!
+            .evaluate('JSON.stringify(window.__fs_boundary_errors__)');
+        final errs =
+            jsonDecode(errResult['result']?['value'] as String? ?? '[]')
+                as List;
         await _cdpDriver!.evaluate('window.__fs_boundary_errors__ = []');
 
         // Check for XSS reflection
@@ -435,8 +456,11 @@ extension _ExploreHandlers on FlutterMcpServer {
           xssReflected = check['result']?['value'] == true;
         }
 
-        final result = <String, dynamic>{'passed': errs.isEmpty && !xssReflected};
-        if (errs.isNotEmpty) result['errors'] = errs.map((e) => e['message']).toList();
+        final result = <String, dynamic>{
+          'passed': errs.isEmpty && !xssReflected
+        };
+        if (errs.isNotEmpty)
+          result['errors'] = errs.map((e) => e['message']).toList();
         if (xssReflected) result['xss_reflected'] = true;
         results[entry.key] = result;
       } catch (e) {
@@ -469,7 +493,8 @@ extension _ExploreHandlers on FlutterMcpServer {
 
     final buffer = StringBuffer();
     buffer.writeln('<!DOCTYPE html><html lang="en"><head>');
-    buffer.writeln('<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">');
+    buffer.writeln(
+        '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">');
     buffer.writeln('<title>$title</title>');
     buffer.writeln('<style>');
     buffer.writeln('''
@@ -489,7 +514,8 @@ extension _ExploreHandlers on FlutterMcpServer {
     ''');
     buffer.writeln('</style></head><body>');
     buffer.writeln('<h1>🤖 $title</h1>');
-    buffer.writeln('<p style="color:#94a3b8">Generated ${DateTime.now().toIso8601String()}</p>');
+    buffer.writeln(
+        '<p style="color:#94a3b8">Generated ${DateTime.now().toIso8601String()}</p>');
 
     // Stats
     var totalBugs = 0;
@@ -499,31 +525,35 @@ extension _ExploreHandlers on FlutterMcpServer {
       totalA11y += ((step['a11y_issues'] as List?) ?? []).length;
     }
     buffer.writeln('<div class="stats">');
-    buffer.writeln('<div class="stat"><b>${steps.length}</b><span>Steps</span></div>');
-    buffer.writeln('<div class="stat"><b class="fail">$totalBugs</b><span>Bugs</span></div>');
-    buffer.writeln('<div class="stat"><b style="color:#fbbf24">$totalA11y</b><span>A11y Issues</span></div>');
+    buffer.writeln(
+        '<div class="stat"><b>${steps.length}</b><span>Steps</span></div>');
+    buffer.writeln(
+        '<div class="stat"><b class="fail">$totalBugs</b><span>Bugs</span></div>');
+    buffer.writeln(
+        '<div class="stat"><b style="color:#fbbf24">$totalA11y</b><span>A11y Issues</span></div>');
     buffer.writeln('</div>');
 
     for (int i = 0; i < steps.length; i++) {
       final step = steps[i];
       buffer.writeln('<div class="step">');
-      buffer.writeln('<div class="step-url">Step ${i + 1}: ${step['url'] ?? ''}</div>');
-      
+      buffer.writeln(
+          '<div class="step-url">Step ${i + 1}: ${step['url'] ?? ''}</div>');
+
       final actions = (step['actions'] as List?) ?? [];
       for (final a in actions) {
         buffer.writeln('<div class="action">→ ${a}</div>');
       }
-      
+
       final bugs = (step['bugs'] as List?) ?? [];
       for (final b in bugs) {
         buffer.writeln('<div class="bug">🐛 $b</div>');
       }
-      
+
       final a11y = (step['a11y_issues'] as List?) ?? [];
       for (final issue in a11y) {
         buffer.writeln('<div class="a11y">♿ $issue</div>');
       }
-      
+
       buffer.writeln('</div>');
     }
 
@@ -547,13 +577,13 @@ extension _ExploreHandlers on FlutterMcpServer {
         'depth': 8,
       });
       final nodes = (result['nodes'] as List?) ?? [];
-      
+
       final parsed = <Map<String, dynamic>>[];
       final depthMap = <String, int>{};
-      
+
       for (final node in nodes) {
         if (parsed.length >= maxNodes) break;
-        
+
         final nodeId = node['nodeId'] as String? ?? '';
         final parentId = node['parentId'] as String? ?? '';
         final role = node['role']?['value'] as String? ?? '';
@@ -561,13 +591,24 @@ extension _ExploreHandlers on FlutterMcpServer {
 
         if (ignored) continue;
         // Skip non-semantic roles
-        if (const {'none', 'generic', 'InlineTextBox', 'StaticText', 
-            'paragraph', 'group', 'Section', 'list', 'listitem', 
-            'LineBreak', 'LayoutTable', 'LayoutTableRow', 'LayoutTableCell'}
-            .contains(role)) continue;
+        if (const {
+          'none',
+          'generic',
+          'InlineTextBox',
+          'StaticText',
+          'paragraph',
+          'group',
+          'Section',
+          'list',
+          'listitem',
+          'LineBreak',
+          'LayoutTable',
+          'LayoutTableRow',
+          'LayoutTableCell'
+        }.contains(role)) continue;
 
-        final depth = depthMap.containsKey(parentId) 
-            ? depthMap[parentId]! + 1 : 0;
+        final depth =
+            depthMap.containsKey(parentId) ? depthMap[parentId]! + 1 : 0;
         depthMap[nodeId] = depth;
 
         String name = '';
@@ -580,7 +621,7 @@ extension _ExploreHandlers on FlutterMcpServer {
           'depth': depth,
         });
       }
-      
+
       return parsed;
     } catch (e) {
       // Fallback

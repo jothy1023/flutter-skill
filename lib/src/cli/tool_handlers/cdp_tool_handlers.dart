@@ -124,15 +124,22 @@ extension _CdpToolHandlers on FlutterMcpServer {
         return {"success": true, "image": image};
 
       case 'screenshot_element':
-        final key = args['selector'] as String? ?? args['key'] as String? ?? args['text'] as String?;
+        final key = args['selector'] as String? ??
+            args['key'] as String? ??
+            args['text'] as String?;
         if (key == null || key.isEmpty) {
           return {
-            "success": false, 
-            "error": "Element key, selector, or text is required. Use 'selector', 'key', or 'text' parameter."
+            "success": false,
+            "error":
+                "Element key, selector, or text is required. Use 'selector', 'key', or 'text' parameter."
           };
         }
         final image = await cdp.takeElementScreenshot(key);
-        if (image == null) return {"success": false, "error": "Screenshot failed - element not found or not visible"};
+        if (image == null)
+          return {
+            "success": false,
+            "error": "Screenshot failed - element not found or not visible"
+          };
         return {"success": true, "image": image};
 
       case 'scroll_to':
@@ -285,8 +292,9 @@ extension _CdpToolHandlers on FlutterMcpServer {
         final key = args['selector'] as String? ?? args['key'] as String? ?? '';
         if (key.isEmpty) {
           return {
-            'success': false, 
-            'error': 'selector or key is required. Provide a CSS selector, element ID, or element name.'
+            'success': false,
+            'error':
+                'selector or key is required. Provide a CSS selector, element ID, or element name.'
           };
         }
         return await cdp.getCheckboxState(key);
@@ -295,8 +303,9 @@ extension _CdpToolHandlers on FlutterMcpServer {
         final key = args['selector'] as String? ?? args['key'] as String? ?? '';
         if (key.isEmpty) {
           return {
-            'success': false, 
-            'error': 'selector or key is required. Provide a CSS selector, element ID, or element name.'
+            'success': false,
+            'error':
+                'selector or key is required. Provide a CSS selector, element ID, or element name.'
           };
         }
         return await cdp.getSliderValue(key);
@@ -537,10 +546,12 @@ extension _CdpToolHandlers on FlutterMcpServer {
           final tabList = await cdp.getTabs();
           final tabItems = tabList['tabs'] as List<dynamic>? ?? [];
           if (idx >= 0 && idx < tabItems.length) {
-            closeTargetId = (tabItems[idx] as Map<String, dynamic>)['id'] as String? ?? '';
+            closeTargetId =
+                (tabItems[idx] as Map<String, dynamic>)['id'] as String? ?? '';
           }
         }
-        if (closeTargetId.isEmpty) return {"success": false, "error": "No target_id or valid index"};
+        if (closeTargetId.isEmpty)
+          return {"success": false, "error": "No target_id or valid index"};
         return await cdp.closeTab(closeTargetId);
 
       case 'switch_tab':
@@ -550,10 +561,12 @@ extension _CdpToolHandlers on FlutterMcpServer {
           final tabList = await cdp.getTabs();
           final tabItems = tabList['tabs'] as List<dynamic>? ?? [];
           if (idx >= 0 && idx < tabItems.length) {
-            switchTargetId = (tabItems[idx] as Map<String, dynamic>)['id'] as String? ?? '';
+            switchTargetId =
+                (tabItems[idx] as Map<String, dynamic>)['id'] as String? ?? '';
           }
         }
-        if (switchTargetId.isEmpty) return {"success": false, "error": "No target_id or valid index"};
+        if (switchTargetId.isEmpty)
+          return {"success": false, "error": "No target_id or valid index"};
         return await cdp.switchTab(switchTargetId);
 
       case 'intercept_requests':
@@ -628,13 +641,17 @@ extension _CdpToolHandlers on FlutterMcpServer {
         );
 
       case 'highlight_element':
-        final selector = args['selector'] as String? ?? args['key'] as String? ?? args['ref'] as String? ?? '';
+        final selector = args['selector'] as String? ??
+            args['key'] as String? ??
+            args['ref'] as String? ??
+            '';
         final color = args['color'] as String? ?? 'red';
         final duration = (args['duration_ms'] as num?)?.toInt() ?? 3000;
         if (selector.isEmpty) {
           return {
-            'success': false, 
-            'error': 'selector, key, or ref is required. Provide a CSS selector, element ID, or ref name.'
+            'success': false,
+            'error':
+                'selector, key, or ref is required. Provide a CSS selector, element ID, or ref name.'
           };
         }
         return await cdp.highlightElement(selector,

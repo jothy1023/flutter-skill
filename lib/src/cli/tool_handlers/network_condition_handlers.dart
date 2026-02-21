@@ -107,8 +107,7 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
         'returnByValue': true,
       });
 
-      final formsJson =
-          formsResult['result']?['value'] as String? ?? '[]';
+      final formsJson = formsResult['result']?['value'] as String? ?? '[]';
       final forms = jsonDecode(formsJson) as List<dynamic>;
 
       if (forms.isEmpty) {
@@ -203,8 +202,8 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
             'returnByValue': true,
           });
 
-          final errorData = jsonDecode(
-              errorCheck['result']?['value'] as String? ?? '{}');
+          final errorData =
+              jsonDecode(errorCheck['result']?['value'] as String? ?? '{}');
           formResult['offline_errors_shown'] = errorData['errors'] ?? [];
           formResult['has_offline_indicator'] =
               errorData['hasOfflineIndicator'] ?? false;
@@ -247,8 +246,8 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
             'returnByValue': true,
           });
 
-          final recoveryData = jsonDecode(
-              recoveryCheck['result']?['value'] as String? ?? '{}');
+          final recoveryData =
+              jsonDecode(recoveryCheck['result']?['value'] as String? ?? '{}');
           formResult['recovery_indicators'] =
               recoveryData['recovery_indicators'] ?? [];
           formResult['values_persisted'] =
@@ -331,8 +330,7 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
       return {'success': false, 'error': 'CDP connection required'};
     }
 
-    final scenarios = (args['scenarios'] as List<dynamic>?)
-            ?.cast<String>() ??
+    final scenarios = (args['scenarios'] as List<dynamic>?)?.cast<String>() ??
         ['offline_online', 'slow_3g'];
 
     final results = <Map<String, dynamic>>[];
@@ -349,8 +347,7 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
           final entry = params['entry'] as Map<String, dynamic>?;
           if (entry != null &&
               (entry['level'] == 'error' || entry['level'] == 'warning')) {
-            consoleErrors
-                .add('${entry['level']}: ${entry['text'] ?? ''}');
+            consoleErrors.add('${entry['level']}: ${entry['text'] ?? ''}');
           }
         }
 
@@ -365,12 +362,10 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
           case 'fast_3g':
           case 'regular_4g':
           case 'wifi':
-            scenarioResult
-                .addAll(await _runThrottleTest(cdp, scenario));
+            scenarioResult.addAll(await _runThrottleTest(cdp, scenario));
             break;
           case 'intermittent':
-            scenarioResult
-                .addAll(await _runIntermittentTest(cdp));
+            scenarioResult.addAll(await _runIntermittentTest(cdp));
             break;
           default:
             scenarioResult['error'] = 'Unknown scenario: $scenario';
@@ -585,8 +580,8 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
         // Skip data: and chrome: URLs
         if (url.startsWith('data:') || url.startsWith('chrome:')) {
           try {
-            await cdp.sendCommand(
-                'Fetch.continueRequest', {'requestId': requestId});
+            await cdp
+                .sendCommand('Fetch.continueRequest', {'requestId': requestId});
           } catch (_) {}
           return;
         }
@@ -602,8 +597,8 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
         await Future.delayed(Duration(milliseconds: delayMs));
 
         try {
-          await cdp.sendCommand(
-              'Fetch.continueRequest', {'requestId': requestId});
+          await cdp
+              .sendCommand('Fetch.continueRequest', {'requestId': requestId});
         } catch (_) {
           // Request may have been cancelled
         }
@@ -633,8 +628,8 @@ extension _NetworkConditionHandlers on FlutterMcpServer {
         'returnByValue': true,
       });
 
-      final timeoutData = jsonDecode(
-          timeoutCheck['result']?['value'] as String? ?? '{}');
+      final timeoutData =
+          jsonDecode(timeoutCheck['result']?['value'] as String? ?? '{}');
       timeoutDetected = timeoutData['has_timeout_ui'] == true;
 
       // Disable Fetch

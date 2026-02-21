@@ -2653,7 +2653,8 @@ Detailed diagnostic report with:
             },
             "check_overflow": {
               "type": "boolean",
-              "description": "Check for text overflow/truncation (default: true)"
+              "description":
+                  "Check for text overflow/truncation (default: true)"
             },
             "check_untranslated": {
               "type": "boolean",
@@ -2931,17 +2932,24 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── API + UI Mixed Testing ──
       {
         "name": "api_request",
-        "description": "Send HTTP request and validate response (status, body, headers). Use alongside UI actions for full-stack testing.",
+        "description":
+            "Send HTTP request and validate response (status, body, headers). Use alongside UI actions for full-stack testing.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "url": {"type": "string"},
-            "method": {"type": "string", "enum": ["GET","POST","PUT","DELETE","PATCH"]},
+            "method": {
+              "type": "string",
+              "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+            },
             "headers": {"type": "object"},
             "body": {"type": "string"},
             "expect_status": {"type": "integer"},
             "expect_body_contains": {"type": "string"},
-            "expect_json_path": {"type": "string", "description": "JSONPath expression to validate"},
+            "expect_json_path": {
+              "type": "string",
+              "description": "JSONPath expression to validate"
+            },
             "expect_json_value": {"description": "Expected value at JSONPath"},
           },
           "required": ["url"],
@@ -2949,7 +2957,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "api_assert",
-        "description": "Assert API state matches expected values. Verify backend state after UI actions.",
+        "description":
+            "Assert API state matches expected values. Verify backend state after UI actions.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2958,7 +2967,10 @@ can visually compare them. Also returns text snapshots for structural comparison
             "headers": {"type": "object"},
             "json_path": {"type": "string"},
             "expected_value": {},
-            "comparison": {"type": "string", "enum": ["equals","contains","gt","lt","exists","not_exists"]},
+            "comparison": {
+              "type": "string",
+              "enum": ["equals", "contains", "gt", "lt", "exists", "not_exists"]
+            },
           },
           "required": ["url", "json_path"],
         },
@@ -2966,27 +2978,41 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Flaky Test Detection ──
       {
         "name": "retry_on_fail",
-        "description": "Re-run a failed test action up to N times. Marks as flaky if passes on retry.",
+        "description":
+            "Re-run a failed test action up to N times. Marks as flaky if passes on retry.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "action": {"type": "string", "description": "Tool name to retry"},
-            "arguments": {"type": "object", "description": "Arguments for the tool"},
-            "max_retries": {"type": "integer", "description": "Max retry attempts (default: 3)"},
-            "delay_ms": {"type": "integer", "description": "Delay between retries in ms (default: 1000)"},
+            "arguments": {
+              "type": "object",
+              "description": "Arguments for the tool"
+            },
+            "max_retries": {
+              "type": "integer",
+              "description": "Max retry attempts (default: 3)"
+            },
+            "delay_ms": {
+              "type": "integer",
+              "description": "Delay between retries in ms (default: 1000)"
+            },
           },
           "required": ["action", "arguments"],
         },
       },
       {
         "name": "stability_check",
-        "description": "Run a tool N times and report success rate. Detects flaky behavior.",
+        "description":
+            "Run a tool N times and report success rate. Detects flaky behavior.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "action": {"type": "string"},
             "arguments": {"type": "object"},
-            "runs": {"type": "integer", "description": "Number of runs (default: 5)"},
+            "runs": {
+              "type": "integer",
+              "description": "Number of runs (default: 5)"
+            },
           },
           "required": ["action", "arguments"],
         },
@@ -3034,8 +3060,7 @@ can visually compare them. Also returns text snapshots for structural comparison
             },
             "threshold": {
               "type": "number",
-              "description":
-                  "Acceptable diff percentage (default: 5.0 = 5%)"
+              "description": "Acceptable diff percentage (default: 5.0 = 5%)"
             },
             "ignore_regions": {
               "type": "array",
@@ -3090,17 +3115,15 @@ can visually compare them. Also returns text snapshots for structural comparison
               "type": "string",
               "description": "Output HTML report path"
             },
-            "title": {
-              "type": "string",
-              "description": "Report title"
-            },
+            "title": {"type": "string", "description": "Report title"},
           },
         },
       },
       // ── Test Coverage Mapping ──
       {
         "name": "coverage_start",
-        "description": "Start tracking test coverage — records which pages, elements, and actions were tested",
+        "description":
+            "Start tracking test coverage — records which pages, elements, and actions were tested",
         "inputSchema": {"type": "object", "properties": {}},
       },
       {
@@ -3110,40 +3133,64 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "coverage_report",
-        "description": "Generate test coverage report — which pages/elements were tested vs untested",
+        "description":
+            "Generate test coverage report — which pages/elements were tested vs untested",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "format": {"type": "string", "enum": ["json", "html"], "description": "Report format (default: json)"},
-            "save_path": {"type": "string", "description": "Path to save the report"},
+            "format": {
+              "type": "string",
+              "enum": ["json", "html"],
+              "description": "Report format (default: json)"
+            },
+            "save_path": {
+              "type": "string",
+              "description": "Path to save the report"
+            },
           },
         },
       },
       {
         "name": "coverage_gaps",
-        "description": "Identify untested pages, untested interactive elements, and missing test scenarios",
+        "description":
+            "Identify untested pages, untested interactive elements, and missing test scenarios",
         "inputSchema": {"type": "object", "properties": {}},
       },
       // ── Smart Wait ──
       {
         "name": "wait_for_stable",
-        "description": "Wait until page is visually stable — no DOM changes, no pending requests, no animations",
+        "description":
+            "Wait until page is visually stable — no DOM changes, no pending requests, no animations",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "timeout_ms": {"type": "integer", "description": "Timeout in milliseconds (default: 10000)"},
-            "stability_ms": {"type": "integer", "description": "Page must be stable for this duration (default: 500)"},
+            "timeout_ms": {
+              "type": "integer",
+              "description": "Timeout in milliseconds (default: 10000)"
+            },
+            "stability_ms": {
+              "type": "integer",
+              "description":
+                  "Page must be stable for this duration (default: 500)"
+            },
           },
         },
       },
       {
         "name": "wait_for_url",
-        "description": "Wait until URL matches a pattern (useful after navigation/redirect)",
+        "description":
+            "Wait until URL matches a pattern (useful after navigation/redirect)",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url_pattern": {"type": "string", "description": "Regex pattern to match URL"},
-            "timeout_ms": {"type": "integer", "description": "Timeout in milliseconds (default: 10000)"},
+            "url_pattern": {
+              "type": "string",
+              "description": "Regex pattern to match URL"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "description": "Timeout in milliseconds (default: 10000)"
+            },
           },
           "required": ["url_pattern"],
         },
@@ -3155,21 +3202,35 @@ can visually compare them. Also returns text snapshots for structural comparison
           "type": "object",
           "properties": {
             "text": {"type": "string", "description": "Text to wait for"},
-            "timeout_ms": {"type": "integer", "description": "Timeout in milliseconds (default: 10000)"},
+            "timeout_ms": {
+              "type": "integer",
+              "description": "Timeout in milliseconds (default: 10000)"
+            },
           },
           "required": ["text"],
         },
       },
       {
         "name": "wait_for_element_count",
-        "description": "Wait until element count matches expected (e.g., wait for list to load)",
+        "description":
+            "Wait until element count matches expected (e.g., wait for list to load)",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "selector": {"type": "string", "description": "Element selector/key to count"},
+            "selector": {
+              "type": "string",
+              "description": "Element selector/key to count"
+            },
             "count": {"type": "integer", "description": "Expected count"},
-            "comparison": {"type": "string", "enum": ["eq", "gt", "lt", "gte", "lte"], "description": "Comparison operator (default: eq)"},
-            "timeout_ms": {"type": "integer", "description": "Timeout in milliseconds (default: 10000)"},
+            "comparison": {
+              "type": "string",
+              "enum": ["eq", "gt", "lt", "gte", "lte"],
+              "description": "Comparison operator (default: eq)"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "description": "Timeout in milliseconds (default: 10000)"
+            },
           },
           "required": ["selector"],
         },
@@ -3177,14 +3238,16 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Data-Driven Testing ──
       {
         "name": "test_with_data",
-        "description": "Run same test actions with multiple data sets (data-driven testing). Useful for form testing with different inputs.",
+        "description":
+            "Run same test actions with multiple data sets (data-driven testing). Useful for form testing with different inputs.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "data_sets": {
               "type": "array",
               "items": {"type": "object"},
-              "description": "Array of data objects, each used as variables in the actions",
+              "description":
+                  "Array of data objects, each used as variables in the actions",
             },
             "actions": {
               "type": "array",
@@ -3195,22 +3258,47 @@ can visually compare them. Also returns text snapshots for structural comparison
                   "arguments": {"type": "object"},
                 },
               },
-              "description": "Actions to execute per data set. Use {{field_name}} in arguments to reference data.",
+              "description":
+                  "Actions to execute per data set. Use {{field_name}} in arguments to reference data.",
             },
-            "reset_between": {"type": "boolean", "description": "Reset app between data sets (default: true)"},
+            "reset_between": {
+              "type": "boolean",
+              "description": "Reset app between data sets (default: true)"
+            },
           },
           "required": ["data_sets", "actions"],
         },
       },
       {
         "name": "generate_test_data",
-        "description": "Generate test data for common scenarios (emails, names, addresses, edge cases)",
+        "description":
+            "Generate test data for common scenarios (emails, names, addresses, edge cases)",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "type": {"type": "string", "enum": ["email", "name", "phone", "address", "number", "date", "url", "password", "text", "edge_cases"]},
-            "count": {"type": "integer", "description": "Number of items to generate (default: 5)"},
-            "locale": {"type": "string", "description": "Locale for generated data (default: en-US)"},
+            "type": {
+              "type": "string",
+              "enum": [
+                "email",
+                "name",
+                "phone",
+                "address",
+                "number",
+                "date",
+                "url",
+                "password",
+                "text",
+                "edge_cases"
+              ]
+            },
+            "count": {
+              "type": "integer",
+              "description": "Number of items to generate (default: 5)"
+            },
+            "locale": {
+              "type": "string",
+              "description": "Locale for generated data (default: en-US)"
+            },
           },
           "required": ["type"],
         },
@@ -3219,41 +3307,62 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Smart Self-Healing Tests ──
       {
         "name": "smart_tap",
-        "description": "Tap with self-healing: if element not found by key, tries text match, semantic ref, visual similarity, and nearby elements",
+        "description":
+            "Tap with self-healing: if element not found by key, tries text match, semantic ref, visual similarity, and nearby elements",
         "inputSchema": {
           "type": "object",
           "properties": {
             "key": {"type": "string"},
             "text": {"type": "string"},
-            "ref": {"type": "string", "description": "Semantic ref like button:Login"},
-            "heal_strategy": {"type": "string", "enum": ["strict", "moderate", "aggressive"], "default": "moderate"},
+            "ref": {
+              "type": "string",
+              "description": "Semantic ref like button:Login"
+            },
+            "heal_strategy": {
+              "type": "string",
+              "enum": ["strict", "moderate", "aggressive"],
+              "default": "moderate"
+            },
           },
         },
       },
       {
         "name": "smart_enter_text",
-        "description": "Enter text with self-healing: finds input by key, placeholder, label, or nearby text",
+        "description":
+            "Enter text with self-healing: finds input by key, placeholder, label, or nearby text",
         "inputSchema": {
           "type": "object",
           "properties": {
             "key": {"type": "string"},
             "text": {"type": "string"},
             "value": {"type": "string"},
-            "heal_strategy": {"type": "string", "enum": ["strict", "moderate", "aggressive"], "default": "moderate"},
+            "heal_strategy": {
+              "type": "string",
+              "enum": ["strict", "moderate", "aggressive"],
+              "default": "moderate"
+            },
           },
         },
       },
       {
         "name": "smart_assert",
-        "description": "Assert with self-healing: if exact match fails, tries fuzzy match, partial text, normalized whitespace",
+        "description":
+            "Assert with self-healing: if exact match fails, tries fuzzy match, partial text, normalized whitespace",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "type": {"type": "string", "enum": ["visible", "text", "count"]},
+            "type": {
+              "type": "string",
+              "enum": ["visible", "text", "count"]
+            },
             "key": {"type": "string"},
             "text": {"type": "string"},
             "expected": {},
-            "tolerance": {"type": "number", "default": 0.8, "description": "Similarity threshold 0-1"},
+            "tolerance": {
+              "type": "number",
+              "default": 0.8,
+              "description": "Similarity threshold 0-1"
+            },
           },
           "required": ["type"],
         },
@@ -3262,11 +3371,15 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Network Mock Tools ──
       {
         "name": "mock_api",
-        "description": "Mock an API endpoint — intercept requests matching URL pattern and return custom response",
+        "description":
+            "Mock an API endpoint — intercept requests matching URL pattern and return custom response",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url_pattern": {"type": "string", "description": "URL pattern to match (glob or regex)"},
+            "url_pattern": {
+              "type": "string",
+              "description": "URL pattern to match (glob or regex)"
+            },
             "method": {"type": "string"},
             "status": {"type": "integer", "default": 200},
             "body": {"type": "string"},
@@ -3287,13 +3400,17 @@ can visually compare them. Also returns text snapshots for structural comparison
         "inputSchema": {
           "type": "object",
           "properties": {
-            "filter_url": {"type": "string", "description": "Only record URLs matching this pattern"},
+            "filter_url": {
+              "type": "string",
+              "description": "Only record URLs matching this pattern"
+            },
           },
         },
       },
       {
         "name": "replay_network",
-        "description": "Replay recorded network requests as mocks (for offline testing)",
+        "description":
+            "Replay recorded network requests as mocks (for offline testing)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3305,7 +3422,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Multi-Device Sync Testing ──
       {
         "name": "multi_connect",
-        "description": "Connect to multiple devices/browsers simultaneously for cross-device testing",
+        "description":
+            "Connect to multiple devices/browsers simultaneously for cross-device testing",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3315,7 +3433,10 @@ can visually compare them. Also returns text snapshots for structural comparison
                 "type": "object",
                 "properties": {
                   "name": {"type": "string"},
-                  "type": {"type": "string", "enum": ["cdp", "bridge", "android", "ios"]},
+                  "type": {
+                    "type": "string",
+                    "enum": ["cdp", "bridge", "android", "ios"]
+                  },
                   "url": {"type": "string"},
                   "port": {"type": "integer"}
                 }
@@ -3327,24 +3448,33 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "multi_action",
-        "description": "Execute same action on all connected devices simultaneously",
+        "description":
+            "Execute same action on all connected devices simultaneously",
         "inputSchema": {
           "type": "object",
           "properties": {
             "action": {"type": "string", "description": "Tool name to execute"},
             "arguments": {"type": "object"},
-            "devices": {"type": "array", "items": {"type": "string"}, "description": "Device names (omit for all)"}
+            "devices": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Device names (omit for all)"
+            }
           },
           "required": ["action", "arguments"]
         }
       },
       {
         "name": "multi_compare",
-        "description": "Compare screenshots/snapshots across all connected devices",
+        "description":
+            "Compare screenshots/snapshots across all connected devices",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "type": {"type": "string", "enum": ["screenshot", "snapshot"]},
+            "type": {
+              "type": "string",
+              "enum": ["screenshot", "snapshot"]
+            },
             "save_dir": {"type": "string"}
           }
         }
@@ -3358,18 +3488,23 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Deep Accessibility Audit ──
       {
         "name": "a11y_full_audit",
-        "description": "Comprehensive WCAG 2.1 audit: color contrast, keyboard nav, ARIA roles, focus order, heading hierarchy, form labels, alt text, link text, touch target size",
+        "description":
+            "Comprehensive WCAG 2.1 audit: color contrast, keyboard nav, ARIA roles, focus order, heading hierarchy, form labels, alt text, link text, touch target size",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "level": {"type": "string", "enum": ["A", "AA", "AAA"]},
+            "level": {
+              "type": "string",
+              "enum": ["A", "AA", "AAA"]
+            },
             "include_warnings": {"type": "boolean"}
           }
         }
       },
       {
         "name": "a11y_tab_order",
-        "description": "Test keyboard tab navigation order — reports the sequence of focused elements",
+        "description":
+            "Test keyboard tab navigation order — reports the sequence of focused elements",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3379,17 +3514,22 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "a11y_color_contrast",
-        "description": "Check color contrast ratios for all text elements against WCAG standards",
+        "description":
+            "Check color contrast ratios for all text elements against WCAG standards",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "level": {"type": "string", "enum": ["AA", "AAA"]}
+            "level": {
+              "type": "string",
+              "enum": ["AA", "AAA"]
+            }
           }
         }
       },
       {
         "name": "a11y_screen_reader",
-        "description": "Simulate screen reader navigation — reports what a screen reader would announce for each element",
+        "description":
+            "Simulate screen reader navigation — reports what a screen reader would announce for each element",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3401,7 +3541,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ── Session Persistence ──
       {
         "name": "save_session",
-        "description": "Save current test session state (cookies, localStorage, URL, element cache) to file for later resumption",
+        "description":
+            "Save current test session state (cookies, localStorage, URL, element cache) to file for later resumption",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3411,7 +3552,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "restore_session",
-        "description": "Restore a previously saved test session — navigates to URL, restores cookies and storage",
+        "description":
+            "Restore a previously saved test session — navigates to URL, restores cookies and storage",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3421,7 +3563,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "session_diff",
-        "description": "Compare two saved sessions — detect changes in cookies, storage, URL, DOM structure",
+        "description":
+            "Compare two saved sessions — detect changes in cookies, storage, URL, DOM structure",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3434,11 +3577,16 @@ can visually compare them. Also returns text snapshots for structural comparison
       // --- Security & Test Plan tools ---
       {
         "name": "generate_test_plan",
-        "description": "Auto-generate comprehensive test plan from current app state — positive, negative, security, and accessibility test cases",
+        "description":
+            "Auto-generate comprehensive test plan from current app state — positive, negative, security, and accessibility test cases",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "format": {"type": "string", "enum": ["yaml", "json"], "default": "yaml"},
+            "format": {
+              "type": "string",
+              "enum": ["yaml", "json"],
+              "default": "yaml"
+            },
             "include_security": {"type": "boolean", "default": true},
             "include_a11y": {"type": "boolean", "default": true}
           }
@@ -3446,53 +3594,89 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "security_scan",
-        "description": "Run comprehensive security scan — XSS, CSRF, sensitive data exposure, HTTP headers, mixed content",
+        "description":
+            "Run comprehensive security scan — XSS, CSRF, sensitive data exposure, HTTP headers, mixed content",
         "inputSchema": {
           "type": "object",
           "properties": {
             "checks": {
               "type": "array",
-              "items": {"type": "string", "enum": ["xss", "csrf", "headers", "sensitive_data", "mixed_content", "open_redirect", "clickjacking"]},
-              "default": ["xss", "csrf", "headers", "sensitive_data", "mixed_content"]
+              "items": {
+                "type": "string",
+                "enum": [
+                  "xss",
+                  "csrf",
+                  "headers",
+                  "sensitive_data",
+                  "mixed_content",
+                  "open_redirect",
+                  "clickjacking"
+                ]
+              },
+              "default": [
+                "xss",
+                "csrf",
+                "headers",
+                "sensitive_data",
+                "mixed_content"
+              ]
             }
           }
         }
       },
       {
         "name": "security_xss_scan",
-        "description": "Test all input fields for XSS vulnerabilities with common payloads",
+        "description":
+            "Test all input fields for XSS vulnerabilities with common payloads",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "payloads": {"type": "array", "items": {"type": "string"}, "description": "Custom XSS payloads (uses built-in set if omitted)"}
+            "payloads": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description":
+                  "Custom XSS payloads (uses built-in set if omitted)"
+            }
           }
         }
       },
       {
         "name": "security_check_headers",
-        "description": "Check HTTP security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.)",
+        "description":
+            "Check HTTP security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, etc.)",
         "inputSchema": {"type": "object", "properties": {}}
       },
       {
         "name": "security_sensitive_data",
-        "description": "Scan for sensitive data exposure in localStorage, sessionStorage, cookies, console logs, page source",
+        "description":
+            "Scan for sensitive data exposure in localStorage, sessionStorage, cookies, console logs, page source",
         "inputSchema": {"type": "object", "properties": {}}
       },
       // ======================== AI Explore ========================
       {
         "name": "page_summary",
-        "description": "Get a compact semantic page summary via Chrome Accessibility Tree. Returns nav items, forms, buttons, headings, landmarks, and page features (~200 tokens). Use this instead of screenshots for AI-driven testing — 95% less tokens.",
+        "description":
+            "Get a compact semantic page summary via Chrome Accessibility Tree. Returns nav items, forms, buttons, headings, landmarks, and page features (~200 tokens). Use this instead of screenshots for AI-driven testing — 95% less tokens.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "include_ax_tree": {"type": "boolean", "default": false, "description": "Include raw accessibility tree nodes"},
-            "max_elements": {"type": "integer", "default": 50, "description": "Max AX tree nodes to return"}
+            "include_ax_tree": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include raw accessibility tree nodes"
+            },
+            "max_elements": {
+              "type": "integer",
+              "default": 50,
+              "description": "Max AX tree nodes to return"
+            }
           }
         }
       },
       {
         "name": "explore_actions",
-        "description": "Execute a batch of UI actions (tap, fill, scroll, back, navigate, press, select). Send multiple actions at once to reduce round-trips. Returns results for each action plus console errors.",
+        "description":
+            "Execute a batch of UI actions (tap, fill, scroll, back, navigate, press, select). Send multiple actions at once to reduce round-trips. Returns results for each action plus console errors.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3502,9 +3686,27 @@ can visually compare them. Also returns text snapshots for structural comparison
               "items": {
                 "type": "object",
                 "properties": {
-                  "type": {"type": "string", "enum": ["tap", "fill", "scroll", "back", "navigate", "press", "select"]},
-                  "target": {"type": "string", "description": "Element ref (e.g. 'button:Login', 'input:Username', 'link:Home') or URL for navigate"},
-                  "value": {"type": "string", "description": "Value for fill/select actions"}
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "tap",
+                      "fill",
+                      "scroll",
+                      "back",
+                      "navigate",
+                      "press",
+                      "select"
+                    ]
+                  },
+                  "target": {
+                    "type": "string",
+                    "description":
+                        "Element ref (e.g. 'button:Login', 'input:Username', 'link:Home') or URL for navigate"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Value for fill/select actions"
+                  }
                 },
                 "required": ["type", "target"]
               }
@@ -3515,25 +3717,36 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "boundary_test",
-        "description": "Run boundary/security tests on an input field — XSS, SQL injection, long strings, emoji, null bytes, special chars. Returns pass/fail per payload with XSS reflection detection.",
+        "description":
+            "Run boundary/security tests on an input field — XSS, SQL injection, long strings, emoji, null bytes, special chars. Returns pass/fail per payload with XSS reflection detection.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "target": {"type": "string", "description": "Input field ref (e.g. 'input:Username')"},
-            "payloads": {"type": "array", "items": {"type": "string"}, "description": "Custom test payloads (uses built-in set if omitted)"}
+            "target": {
+              "type": "string",
+              "description": "Input field ref (e.g. 'input:Username')"
+            },
+            "payloads": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description":
+                  "Custom test payloads (uses built-in set if omitted)"
+            }
           },
           "required": ["target"]
         }
       },
       {
         "name": "explore_report",
-        "description": "Generate an HTML explore report from step data collected during AI-driven testing.",
+        "description":
+            "Generate an HTML explore report from step data collected during AI-driven testing.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "steps": {
               "type": "array",
-              "description": "Array of step objects with url, actions, bugs, a11y_issues",
+              "description":
+                  "Array of step objects with url, actions, bugs, a11y_issues",
               "items": {"type": "object"}
             },
             "title": {"type": "string", "default": "Explore Report"},
@@ -3545,7 +3758,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ======================== Diff Testing ========================
       {
         "name": "diff_baseline_create",
-        "description": "Create a baseline snapshot of current app state (all pages) for future comparison",
+        "description":
+            "Create a baseline snapshot of current app state (all pages) for future comparison",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3556,7 +3770,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "diff_compare",
-        "description": "Compare current app state against a saved baseline — detect UI changes, missing elements, new pages",
+        "description":
+            "Compare current app state against a saved baseline — detect UI changes, missing elements, new pages",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3580,29 +3795,49 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ======================== Bug Report ========================
       {
         "name": "create_bug_report",
-        "description": "Generate a structured bug report from current state — screenshot, repro steps, environment info, severity classification",
+        "description":
+            "Generate a structured bug report from current state — screenshot, repro steps, environment info, severity classification",
         "inputSchema": {
           "type": "object",
           "properties": {
             "title": {"type": "string"},
-            "steps": {"type": "array", "items": {"type": "string"}},
-            "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
-            "format": {"type": "string", "enum": ["markdown", "github_issue", "jira"]},
+            "steps": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["critical", "high", "medium", "low"]
+            },
+            "format": {
+              "type": "string",
+              "enum": ["markdown", "github_issue", "jira"]
+            },
             "save_path": {"type": "string"}
           }
         }
       },
       {
         "name": "create_github_issue",
-        "description": "Create a GitHub issue with bug report (requires gh CLI authenticated)",
+        "description":
+            "Create a GitHub issue with bug report (requires gh CLI authenticated)",
         "inputSchema": {
           "type": "object",
           "properties": {
             "repo": {"type": "string"},
             "title": {"type": "string"},
-            "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
-            "steps": {"type": "array", "items": {"type": "string"}},
-            "labels": {"type": "array", "items": {"type": "string"}}
+            "severity": {
+              "type": "string",
+              "enum": ["critical", "high", "medium", "low"]
+            },
+            "steps": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "labels": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
           },
           "required": ["repo", "title"]
         }
@@ -3610,11 +3845,15 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ======================== Test Fixtures ========================
       {
         "name": "fixture_load",
-        "description": "Load test fixture — seed app with test data via API call or localStorage injection",
+        "description":
+            "Load test fixture — seed app with test data via API call or localStorage injection",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "type": {"type": "string", "enum": ["api", "localStorage", "cookies", "file"]},
+            "type": {
+              "type": "string",
+              "enum": ["api", "localStorage", "cookies", "file"]
+            },
             "url": {"type": "string"},
             "data": {"type": "object"},
             "file_path": {"type": "string"}
@@ -3623,7 +3862,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "fixture_reset",
-        "description": "Reset app to clean state — clear all storage, cookies, caches, and optionally call reset API",
+        "description":
+            "Reset app to clean state — clear all storage, cookies, caches, and optionally call reset API",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3636,7 +3876,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "fixture_switch_user",
-        "description": "Switch user role/account for multi-role testing (admin, user, guest, etc.)",
+        "description":
+            "Switch user role/account for multi-role testing (admin, user, guest, etc.)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3651,11 +3892,15 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "fixture_switch_env",
-        "description": "Switch test environment (dev/staging/prod) — changes base URL and reloads",
+        "description":
+            "Switch test environment (dev/staging/prod) — changes base URL and reloads",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "env": {"type": "string", "enum": ["dev", "staging", "prod", "custom"]},
+            "env": {
+              "type": "string",
+              "enum": ["dev", "staging", "prod", "custom"]
+            },
             "base_url": {"type": "string"},
             "env_vars": {"type": "object"}
           },
@@ -3665,7 +3910,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       // --- Network Condition Testing tools ---
       {
         "name": "test_offline_forms",
-        "description": "Automatically test all forms on current page under offline conditions — checks error handling, data persistence, retry behavior",
+        "description":
+            "Automatically test all forms on current page under offline conditions — checks error handling, data persistence, retry behavior",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3675,13 +3921,24 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "test_network_transitions",
-        "description": "Test app behavior during network transitions: online→offline→online, fast→slow→fast",
+        "description":
+            "Test app behavior during network transitions: online→offline→online, fast→slow→fast",
         "inputSchema": {
           "type": "object",
           "properties": {
             "scenarios": {
               "type": "array",
-              "items": {"type": "string", "enum": ["offline_online", "slow_3g", "fast_3g", "regular_4g", "wifi", "intermittent"]},
+              "items": {
+                "type": "string",
+                "enum": [
+                  "offline_online",
+                  "slow_3g",
+                  "fast_3g",
+                  "regular_4g",
+                  "wifi",
+                  "intermittent"
+                ]
+              },
               "default": ["offline_online", "slow_3g"]
             }
           }
@@ -3689,7 +3946,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "test_request_timeout",
-        "description": "Test how app handles request timeouts — artificially delay all network requests",
+        "description":
+            "Test how app handles request timeouts — artificially delay all network requests",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3701,34 +3959,60 @@ can visually compare them. Also returns text snapshots for structural comparison
       // --- Console/Log Analysis tools ---
       {
         "name": "analyze_console",
-        "description": "Intelligent analysis of console logs — detect memory leaks, deprecated APIs, repeated errors, unhandled rejections",
+        "description":
+            "Intelligent analysis of console logs — detect memory leaks, deprecated APIs, repeated errors, unhandled rejections",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "duration_ms": {"type": "integer", "default": 10000, "description": "How long to collect logs before analyzing"},
+            "duration_ms": {
+              "type": "integer",
+              "default": 10000,
+              "description": "How long to collect logs before analyzing"
+            },
             "checks": {
               "type": "array",
-              "items": {"type": "string", "enum": ["memory_leak", "deprecated_api", "repeated_errors", "unhandled_rejections", "render_warnings", "slow_operations"]},
-              "default": ["memory_leak", "deprecated_api", "repeated_errors", "unhandled_rejections"]
+              "items": {
+                "type": "string",
+                "enum": [
+                  "memory_leak",
+                  "deprecated_api",
+                  "repeated_errors",
+                  "unhandled_rejections",
+                  "render_warnings",
+                  "slow_operations"
+                ]
+              },
+              "default": [
+                "memory_leak",
+                "deprecated_api",
+                "repeated_errors",
+                "unhandled_rejections"
+              ]
             }
           }
         }
       },
       {
         "name": "detect_memory_leak",
-        "description": "Monitor memory usage over time to detect leaks — takes snapshots at intervals and checks for growth pattern",
+        "description":
+            "Monitor memory usage over time to detect leaks — takes snapshots at intervals and checks for growth pattern",
         "inputSchema": {
           "type": "object",
           "properties": {
             "duration_ms": {"type": "integer", "default": 30000},
             "interval_ms": {"type": "integer", "default": 5000},
-            "action_between": {"type": "string", "description": "Tool to execute between snapshots (e.g. navigate, scroll)"}
+            "action_between": {
+              "type": "string",
+              "description":
+                  "Tool to execute between snapshots (e.g. navigate, scroll)"
+            }
           }
         }
       },
       {
         "name": "detect_render_issues",
-        "description": "Detect rendering issues — unnecessary re-renders, layout thrashing, forced reflows",
+        "description":
+            "Detect rendering issues — unnecessary re-renders, layout thrashing, forced reflows",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3739,13 +4023,24 @@ can visually compare them. Also returns text snapshots for structural comparison
       // --- Cross-Browser Matrix tools ---
       {
         "name": "cross_browser_test",
-        "description": "Run same test across multiple browser viewports/user agents to detect cross-browser issues",
+        "description":
+            "Run same test across multiple browser viewports/user agents to detect cross-browser issues",
         "inputSchema": {
           "type": "object",
           "properties": {
             "browsers": {
               "type": "array",
-              "items": {"type": "string", "enum": ["chrome_desktop", "chrome_mobile", "safari_iphone", "safari_ipad", "firefox_desktop", "edge_desktop"]},
+              "items": {
+                "type": "string",
+                "enum": [
+                  "chrome_desktop",
+                  "chrome_mobile",
+                  "safari_iphone",
+                  "safari_ipad",
+                  "firefox_desktop",
+                  "edge_desktop"
+                ]
+              },
               "default": ["chrome_desktop", "chrome_mobile", "safari_iphone"]
             },
             "url": {"type": "string"},
@@ -3760,7 +4055,8 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "responsive_test",
-        "description": "Test responsive design across multiple viewport sizes — desktop, tablet, mobile, custom",
+        "description":
+            "Test responsive design across multiple viewport sizes — desktop, tablet, mobile, custom",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3782,7 +4078,10 @@ can visually compare them. Also returns text snapshots for structural comparison
             },
             "url": {"type": "string"},
             "save_screenshots": {"type": "boolean", "default": true},
-            "save_dir": {"type": "string", "default": "./responsive-screenshots"}
+            "save_dir": {
+              "type": "string",
+              "default": "./responsive-screenshots"
+            }
           },
           "required": ["url"]
         }

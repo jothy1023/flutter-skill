@@ -67,7 +67,8 @@ extension _CoverageHandlers on FlutterMcpServer {
     _coverageActions.clear();
     return {
       'success': true,
-      'message': 'Coverage tracking started. All page visits, element interactions, and actions will be recorded.',
+      'message':
+          'Coverage tracking started. All page visits, element interactions, and actions will be recorded.',
     };
   }
 
@@ -82,10 +83,7 @@ extension _CoverageHandlers on FlutterMcpServer {
         'actions_performed': _coverageActions.length,
         'pages': _coveragePages.toList(),
         'elements': _coverageElements.toList(),
-        'action_types': _coverageActions
-            .map((a) => a['tool'])
-            .toSet()
-            .toList(),
+        'action_types': _coverageActions.map((a) => a['tool']).toSet().toList(),
       },
     };
   }
@@ -102,8 +100,8 @@ extension _CoverageHandlers on FlutterMcpServer {
       if (client != null) {
         final structured = await client.getInteractiveElementsStructured();
         if (structured['elements'] is List) {
-          allElements = (structured['elements'] as List)
-              .cast<Map<String, dynamic>>();
+          allElements =
+              (structured['elements'] as List).cast<Map<String, dynamic>>();
         }
       }
     } catch (_) {
@@ -176,8 +174,8 @@ extension _CoverageHandlers on FlutterMcpServer {
       if (client != null) {
         final structured = await client.getInteractiveElementsStructured();
         if (structured['elements'] is List) {
-          allElements = (structured['elements'] as List)
-              .cast<Map<String, dynamic>>();
+          allElements =
+              (structured['elements'] as List).cast<Map<String, dynamic>>();
         }
       }
     } catch (_) {
@@ -202,8 +200,16 @@ extension _CoverageHandlers on FlutterMcpServer {
     }
 
     // Determine which action types have NOT been used
-    final allActionTypes = {'tap', 'enter_text', 'swipe', 'long_press', 'scroll', 'drag'};
-    final usedActionTypes = _coverageActions.map((a) => a['tool'] as String).toSet();
+    final allActionTypes = {
+      'tap',
+      'enter_text',
+      'swipe',
+      'long_press',
+      'scroll',
+      'drag'
+    };
+    final usedActionTypes =
+        _coverageActions.map((a) => a['tool'] as String).toSet();
     final missingActionTypes = allActionTypes.difference(usedActionTypes);
 
     // Generate suggested test cases
@@ -243,31 +249,40 @@ extension _CoverageHandlers on FlutterMcpServer {
     buf.writeln('<!DOCTYPE html><html><head><meta charset="utf-8">');
     buf.writeln('<title>Test Coverage Report</title>');
     buf.writeln('<style>');
-    buf.writeln('body { font-family: -apple-system, sans-serif; margin: 2em; }');
+    buf.writeln(
+        'body { font-family: -apple-system, sans-serif; margin: 2em; }');
     buf.writeln('table { border-collapse: collapse; width: 100%; }');
-    buf.writeln('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+    buf.writeln(
+        'th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
     buf.writeln('th { background: #f5f5f5; }');
     buf.writeln('.tested { color: green; } .untested { color: red; }');
     buf.writeln('.summary { display: flex; gap: 2em; margin: 1em 0; }');
-    buf.writeln('.stat { background: #f0f0f0; padding: 1em; border-radius: 8px; }');
+    buf.writeln(
+        '.stat { background: #f0f0f0; padding: 1em; border-radius: 8px; }');
     buf.writeln('.stat h3 { margin: 0; }');
     buf.writeln('</style></head><body>');
     buf.writeln('<h1>Test Coverage Report</h1>');
     buf.writeln('<div class="summary">');
-    buf.writeln('<div class="stat"><h3>Coverage</h3><p>${report['coverage_percent']}%</p></div>');
-    buf.writeln('<div class="stat"><h3>Pages Visited</h3><p>${report['pages_visited']}</p></div>');
-    buf.writeln('<div class="stat"><h3>Elements Tested</h3><p>${report['tested_elements']}</p></div>');
-    buf.writeln('<div class="stat"><h3>Actions</h3><p>${report['actions_performed']}</p></div>');
+    buf.writeln(
+        '<div class="stat"><h3>Coverage</h3><p>${report['coverage_percent']}%</p></div>');
+    buf.writeln(
+        '<div class="stat"><h3>Pages Visited</h3><p>${report['pages_visited']}</p></div>');
+    buf.writeln(
+        '<div class="stat"><h3>Elements Tested</h3><p>${report['tested_elements']}</p></div>');
+    buf.writeln(
+        '<div class="stat"><h3>Actions</h3><p>${report['actions_performed']}</p></div>');
     buf.writeln('</div>');
 
     // Elements table
     final elements = report['all_elements'] as List? ?? [];
     if (elements.isNotEmpty) {
-      buf.writeln('<h2>Elements</h2><table><tr><th>Identifier</th><th>Type</th><th>Status</th></tr>');
+      buf.writeln(
+          '<h2>Elements</h2><table><tr><th>Identifier</th><th>Type</th><th>Status</th></tr>');
       for (final el in elements) {
         final tested = el['tested'] == true;
         final cls = tested ? 'tested' : 'untested';
-        buf.writeln('<tr><td>${el['identifier']}</td><td>${el['type']}</td><td class="$cls">${tested ? '✓ Tested' : '✗ Untested'}</td></tr>');
+        buf.writeln(
+            '<tr><td>${el['identifier']}</td><td>${el['type']}</td><td class="$cls">${tested ? '✓ Tested' : '✗ Untested'}</td></tr>');
       }
       buf.writeln('</table>');
     }
@@ -275,7 +290,8 @@ extension _CoverageHandlers on FlutterMcpServer {
     // Actions breakdown
     final breakdown = report['action_breakdown'] as Map? ?? {};
     if (breakdown.isNotEmpty) {
-      buf.writeln('<h2>Action Breakdown</h2><table><tr><th>Action</th><th>Count</th></tr>');
+      buf.writeln(
+          '<h2>Action Breakdown</h2><table><tr><th>Action</th><th>Count</th></tr>');
       for (final entry in breakdown.entries) {
         buf.writeln('<tr><td>${entry.key}</td><td>${entry.value}</td></tr>');
       }

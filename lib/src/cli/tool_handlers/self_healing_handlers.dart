@@ -38,7 +38,11 @@ extension _SelfHealingHandlers on FlutterMcpServer {
         };
       } catch (_) {
         if (strategy == 'strict') {
-          return {'success': false, 'error': 'Element not found by key: $key', 'healed': false};
+          return {
+            'success': false,
+            'error': 'Element not found by key: $key',
+            'healed': false
+          };
         }
       }
     }
@@ -55,7 +59,11 @@ extension _SelfHealingHandlers on FlutterMcpServer {
         };
       } catch (_) {
         if (strategy == 'strict') {
-          return {'success': false, 'error': 'Element not found by text: $text', 'healed': false};
+          return {
+            'success': false,
+            'error': 'Element not found by text: $text',
+            'healed': false
+          };
         }
       }
     }
@@ -89,9 +97,12 @@ extension _SelfHealingHandlers on FlutterMcpServer {
 
           for (final candidate in [elText, elLabel, elRef]) {
             if (candidate.isEmpty) continue;
-            final sim = _levenshteinSimilarity(searchTerm.toLowerCase(), candidate.toLowerCase());
-            if (sim >= 0.8 && (bestMatch == null || sim > bestMatch.similarity)) {
-              bestMatch = _FuzzyMatch(element: elMap, similarity: sim, matchedOn: candidate);
+            final sim = _levenshteinSimilarity(
+                searchTerm.toLowerCase(), candidate.toLowerCase());
+            if (sim >= 0.8 &&
+                (bestMatch == null || sim > bestMatch.similarity)) {
+              bestMatch = _FuzzyMatch(
+                  element: elMap, similarity: sim, matchedOn: candidate);
             }
           }
         }
@@ -126,7 +137,8 @@ extension _SelfHealingHandlers on FlutterMcpServer {
     };
   }
 
-  Future<Map<String, dynamic>> _smartEnterText(Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _smartEnterText(
+      Map<String, dynamic> args) async {
     final cdp = _cdpDriver;
     if (cdp == null) {
       return {'success': false, 'error': 'No CDP connection'};
@@ -141,10 +153,19 @@ extension _SelfHealingHandlers on FlutterMcpServer {
     if (key != null) {
       try {
         final result = await cdp.enterText(key, value);
-        return {'success': true, 'healed': false, 'strategy_used': 'exact_key', 'result': result};
+        return {
+          'success': true,
+          'healed': false,
+          'strategy_used': 'exact_key',
+          'result': result
+        };
       } catch (_) {
         if (strategy == 'strict') {
-          return {'success': false, 'error': 'Input not found by key: $key', 'healed': false};
+          return {
+            'success': false,
+            'error': 'Input not found by key: $key',
+            'healed': false
+          };
         }
       }
     }
@@ -153,7 +174,12 @@ extension _SelfHealingHandlers on FlutterMcpServer {
     if (text != null) {
       try {
         final result = await cdp.enterText(null, value, ref: 'input:$text');
-        return {'success': true, 'healed': key != null, 'strategy_used': 'text_match', 'result': result};
+        return {
+          'success': true,
+          'healed': key != null,
+          'strategy_used': 'text_match',
+          'result': result
+        };
       } catch (_) {}
 
       // Try finding input by placeholder or label
@@ -174,7 +200,13 @@ extension _SelfHealingHandlers on FlutterMcpServer {
               elPlaceholder.toLowerCase().contains(text.toLowerCase())) {
             final elRef = elMap['ref']?.toString();
             final result = await cdp.enterText(null, value, ref: elRef);
-            return {'success': true, 'healed': true, 'strategy_used': 'label_match', 'matched_label': elLabel.isNotEmpty ? elLabel : elText, 'result': result};
+            return {
+              'success': true,
+              'healed': true,
+              'strategy_used': 'label_match',
+              'matched_label': elLabel.isNotEmpty ? elLabel : elText,
+              'result': result
+            };
           }
         }
       } catch (_) {}
@@ -197,9 +229,12 @@ extension _SelfHealingHandlers on FlutterMcpServer {
             for (final field in ['text', 'label', 'placeholder', 'ref']) {
               final candidate = elMap[field]?.toString() ?? '';
               if (candidate.isEmpty) continue;
-              final sim = _levenshteinSimilarity(searchTerm.toLowerCase(), candidate.toLowerCase());
-              if (sim >= 0.8 && (bestMatch == null || sim > bestMatch.similarity)) {
-                bestMatch = _FuzzyMatch(element: elMap, similarity: sim, matchedOn: candidate);
+              final sim = _levenshteinSimilarity(
+                  searchTerm.toLowerCase(), candidate.toLowerCase());
+              if (sim >= 0.8 &&
+                  (bestMatch == null || sim > bestMatch.similarity)) {
+                bestMatch = _FuzzyMatch(
+                    element: elMap, similarity: sim, matchedOn: candidate);
               }
             }
           }
@@ -252,9 +287,15 @@ extension _SelfHealingHandlers on FlutterMcpServer {
             final elMap = el as Map<String, dynamic>;
             final elText = elMap['text']?.toString() ?? '';
             final elRef = elMap['ref']?.toString() ?? '';
-            if (elText == searchTerm || elRef == searchTerm ||
+            if (elText == searchTerm ||
+                elRef == searchTerm ||
                 (key != null && elMap['key'] == key)) {
-              return {'success': true, 'visible': true, 'healed': false, 'strategy_used': 'exact'};
+              return {
+                'success': true,
+                'visible': true,
+                'healed': false,
+                'strategy_used': 'exact'
+              };
             }
           }
 
@@ -265,9 +306,11 @@ extension _SelfHealingHandlers on FlutterMcpServer {
             for (final f in ['text', 'label', 'ref']) {
               final c = elMap[f]?.toString() ?? '';
               if (c.isEmpty) continue;
-              final sim = _levenshteinSimilarity(searchTerm.toLowerCase(), c.toLowerCase());
+              final sim = _levenshteinSimilarity(
+                  searchTerm.toLowerCase(), c.toLowerCase());
               if (sim >= tolerance && (best == null || sim > best.similarity)) {
-                best = _FuzzyMatch(element: elMap, similarity: sim, matchedOn: c);
+                best =
+                    _FuzzyMatch(element: elMap, similarity: sim, matchedOn: c);
               }
             }
           }
@@ -297,30 +340,52 @@ extension _SelfHealingHandlers on FlutterMcpServer {
 
           for (final el in elList) {
             final elMap = el as Map<String, dynamic>;
-            if (key != null && elMap['key'] != key && elMap['ref'] != key) continue;
+            if (key != null && elMap['key'] != key && elMap['ref'] != key)
+              continue;
             if (text != null && elMap['text'] != text) continue;
 
-            final actual = elMap['text']?.toString() ?? elMap['value']?.toString() ?? '';
+            final actual =
+                elMap['text']?.toString() ?? elMap['value']?.toString() ?? '';
 
             // Exact match
             if (actual == expectedStr) {
-              return {'success': true, 'match': true, 'healed': false, 'actual': actual};
+              return {
+                'success': true,
+                'match': true,
+                'healed': false,
+                'actual': actual
+              };
             }
 
             // Normalized whitespace match
             final normActual = actual.replaceAll(RegExp(r'\s+'), ' ').trim();
-            final normExpected = expectedStr.replaceAll(RegExp(r'\s+'), ' ').trim();
+            final normExpected =
+                expectedStr.replaceAll(RegExp(r'\s+'), ' ').trim();
             if (normActual == normExpected) {
-              return {'success': true, 'match': true, 'healed': true, 'strategy_used': 'normalized_whitespace', 'actual': actual};
+              return {
+                'success': true,
+                'match': true,
+                'healed': true,
+                'strategy_used': 'normalized_whitespace',
+                'actual': actual
+              };
             }
 
             // Partial text match
-            if (normActual.contains(normExpected) || normExpected.contains(normActual)) {
-              return {'success': true, 'match': true, 'healed': true, 'strategy_used': 'partial_match', 'actual': actual};
+            if (normActual.contains(normExpected) ||
+                normExpected.contains(normActual)) {
+              return {
+                'success': true,
+                'match': true,
+                'healed': true,
+                'strategy_used': 'partial_match',
+                'actual': actual
+              };
             }
 
             // Fuzzy match
-            final sim = _levenshteinSimilarity(normActual.toLowerCase(), normExpected.toLowerCase());
+            final sim = _levenshteinSimilarity(
+                normActual.toLowerCase(), normExpected.toLowerCase());
             if (sim >= tolerance) {
               return {
                 'success': true,
@@ -332,7 +397,12 @@ extension _SelfHealingHandlers on FlutterMcpServer {
               };
             }
 
-            return {'success': true, 'match': false, 'actual': actual, 'expected': expectedStr};
+            return {
+              'success': true,
+              'match': false,
+              'actual': actual,
+              'expected': expectedStr
+            };
           }
 
           return {'success': false, 'error': 'Element not found'};
@@ -341,12 +411,17 @@ extension _SelfHealingHandlers on FlutterMcpServer {
         }
 
       case 'count':
-        final expectedCount = (expected is int) ? expected : int.tryParse(expected?.toString() ?? '');
+        final expectedCount = (expected is int)
+            ? expected
+            : int.tryParse(expected?.toString() ?? '');
         try {
           final elements = await cdp.getInteractiveElementsStructured();
           final elList = (elements['elements'] as List<dynamic>?) ?? [];
           final matchingCount = text != null
-              ? elList.where((e) => (e as Map)['text']?.toString().contains(text) == true).length
+              ? elList
+                  .where((e) =>
+                      (e as Map)['text']?.toString().contains(text) == true)
+                  .length
               : elList.length;
           return {
             'success': true,
@@ -369,7 +444,10 @@ class _FuzzyMatch {
   final double similarity;
   final String matchedOn;
 
-  _FuzzyMatch({required this.element, required this.similarity, required this.matchedOn});
+  _FuzzyMatch(
+      {required this.element,
+      required this.similarity,
+      required this.matchedOn});
 }
 
 /// Levenshtein distance — pure Dart dynamic programming implementation.
@@ -389,8 +467,8 @@ int _levenshteinDistance(String a, String b) {
     for (var j = 1; j <= n; j++) {
       final cost = a[i - 1] == b[j - 1] ? 0 : 1;
       curr[j] = [
-        prev[j] + 1,      // deletion
-        curr[j - 1] + 1,  // insertion
+        prev[j] + 1, // deletion
+        curr[j - 1] + 1, // insertion
         prev[j - 1] + cost, // substitution
       ].reduce((a, b) => a < b ? a : b);
     }

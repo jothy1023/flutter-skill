@@ -2929,12 +2929,12 @@ can visually compare them. Also returns text snapshots for structural comparison
             "type": {
               "type": "string",
               "enum": ["api", "localStorage", "cookies", "file"],
-              "description":
-                  "Injection method (default: localStorage)"
+              "description": "Injection method (default: localStorage)"
             },
             "url": {
               "type": "string",
-              "description": "API endpoint for seeding (POST) — used with type=api"
+              "description":
+                  "API endpoint for seeding (POST) — used with type=api"
             },
             "data": {
               "type": "object",
@@ -2991,10 +2991,7 @@ can visually compare them. Also returns text snapshots for structural comparison
               "description":
                   "Login credentials: {username, password} or {token}"
             },
-            "login_url": {
-              "type": "string",
-              "description": "URL of login page"
-            },
+            "login_url": {"type": "string", "description": "URL of login page"},
             "username_field": {
               "type": "string",
               "description":
@@ -3006,8 +3003,7 @@ can visually compare them. Also returns text snapshots for structural comparison
             },
             "submit_button": {
               "type": "string",
-              "description":
-                  "Text of submit button (default: Sign In)"
+              "description": "Text of submit button (default: Sign In)"
             }
           }
         }
@@ -3041,18 +3037,28 @@ can visually compare them. Also returns text snapshots for structural comparison
       // ======================== AI Explore ========================
       {
         "name": "page_summary",
-        "description": "Get compact semantic page summary via Chrome Accessibility Tree — nav items, forms, buttons, headings, landmarks, features. ~200 tokens vs ~4000 for screenshots. Use for AI-driven autonomous testing.",
+        "description":
+            "Get compact semantic page summary via Chrome Accessibility Tree — nav items, forms, buttons, headings, landmarks, features. ~200 tokens vs ~4000 for screenshots. Use for AI-driven autonomous testing.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "include_ax_tree": {"type": "boolean", "default": false, "description": "Include raw accessibility tree nodes"},
-            "max_elements": {"type": "integer", "default": 50, "description": "Max AX tree nodes to return"}
+            "include_ax_tree": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include raw accessibility tree nodes"
+            },
+            "max_elements": {
+              "type": "integer",
+              "default": 50,
+              "description": "Max AX tree nodes to return"
+            }
           }
         }
       },
       {
         "name": "explore_actions",
-        "description": "Execute a batch of UI actions (tap, fill, scroll, back, navigate, press, select). Send multiple actions at once to reduce LLM round-trips. Returns results + console errors.",
+        "description":
+            "Execute a batch of UI actions (tap, fill, scroll, back, navigate, press, select). Send multiple actions at once to reduce LLM round-trips. Returns results + console errors.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -3062,9 +3068,27 @@ can visually compare them. Also returns text snapshots for structural comparison
               "items": {
                 "type": "object",
                 "properties": {
-                  "type": {"type": "string", "enum": ["tap", "fill", "scroll", "back", "navigate", "press", "select"]},
-                  "target": {"type": "string", "description": "Element ref (e.g. 'button:Login', 'input:Username', 'link:Home')"},
-                  "value": {"type": "string", "description": "Value for fill/select actions"}
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "tap",
+                      "fill",
+                      "scroll",
+                      "back",
+                      "navigate",
+                      "press",
+                      "select"
+                    ]
+                  },
+                  "target": {
+                    "type": "string",
+                    "description":
+                        "Element ref (e.g. 'button:Login', 'input:Username', 'link:Home')"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Value for fill/select actions"
+                  }
                 },
                 "required": ["type", "target"]
               }
@@ -3075,23 +3099,38 @@ can visually compare them. Also returns text snapshots for structural comparison
       },
       {
         "name": "boundary_test",
-        "description": "Run boundary/security tests on an input field — XSS (6 payloads), SQL injection (2), long strings (256/5000 chars), emoji, null bytes, special chars. Detects XSS reflection in DOM.",
+        "description":
+            "Run boundary/security tests on an input field — XSS (6 payloads), SQL injection (2), long strings (256/5000 chars), emoji, null bytes, special chars. Detects XSS reflection in DOM.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "target": {"type": "string", "description": "Input field ref (e.g. 'input:Username')"},
-            "payloads": {"type": "array", "items": {"type": "string"}, "description": "Custom payloads (uses built-in 13-payload set if omitted)"}
+            "target": {
+              "type": "string",
+              "description": "Input field ref (e.g. 'input:Username')"
+            },
+            "payloads": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description":
+                  "Custom payloads (uses built-in 13-payload set if omitted)"
+            }
           },
           "required": ["target"]
         }
       },
       {
         "name": "explore_report",
-        "description": "Generate styled HTML explore report from collected step data.",
+        "description":
+            "Generate styled HTML explore report from collected step data.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "steps": {"type": "array", "description": "Array of step objects: {url, actions, bugs, a11y_issues}", "items": {"type": "object"}},
+            "steps": {
+              "type": "array",
+              "description":
+                  "Array of step objects: {url, actions, bugs, a11y_issues}",
+              "items": {"type": "object"}
+            },
             "title": {"type": "string", "default": "Explore Report"},
             "output": {"type": "string", "default": "./explore-report.html"}
           },

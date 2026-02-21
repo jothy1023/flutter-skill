@@ -64,7 +64,8 @@ extension _BugReportHandlers on FlutterMcpServer {
         final vpResult = await cdp.eval(
             'JSON.stringify({width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio})');
         final vpJson = vpResult['result']?['value'] as String?;
-        if (vpJson != null) viewport = Map<String, dynamic>.from(jsonDecode(vpJson));
+        if (vpJson != null)
+          viewport = Map<String, dynamic>.from(jsonDecode(vpJson));
       } catch (_) {}
 
       // Browser version
@@ -210,8 +211,7 @@ extension _BugReportHandlers on FlutterMcpServer {
 
     // Create issue via gh CLI
     try {
-      final labelArgs =
-          labels.map((l) => '--label=$l').toList();
+      final labelArgs = labels.map((l) => '--label=$l').toList();
 
       final result = await Process.run('gh', [
         'issue',
@@ -357,7 +357,8 @@ extension _BugReportHandlers on FlutterMcpServer {
 
     if (consoleErrors != null && consoleErrors.isNotEmpty) {
       buf.writeln('### Console Errors');
-      buf.writeln('<details><summary>Show errors (${consoleErrors.length})</summary>');
+      buf.writeln(
+          '<details><summary>Show errors (${consoleErrors.length})</summary>');
       buf.writeln();
       buf.writeln('```');
       for (final error in consoleErrors.take(20)) {

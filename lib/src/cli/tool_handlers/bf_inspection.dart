@@ -196,8 +196,7 @@ extension _BfInspection on FlutterMcpServer {
         if (client is BridgeDriver) {
           // Bridge platform: use SDK's inspect_interactive to build a11y report
           final structured = await client.getInteractiveElementsStructured();
-          final elements =
-              (structured['elements'] as List<dynamic>?) ?? [];
+          final elements = (structured['elements'] as List<dynamic>?) ?? [];
           final issues = <Map<String, dynamic>>[];
 
           for (final el in elements) {
@@ -220,7 +219,9 @@ extension _BfInspection on FlutterMcpServer {
             }
 
             // Check inputs without label/hint
-            if ((type == 'input' || type == 'textarea' || ref.startsWith('input:')) &&
+            if ((type == 'input' ||
+                    type == 'textarea' ||
+                    ref.startsWith('input:')) &&
                 label.isEmpty) {
               issues.add({
                 'type': 'warning',

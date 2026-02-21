@@ -86,8 +86,7 @@ if (typeof PerformanceObserver !== 'undefined') {
 
       // Collect runtime exceptions
       cdp.onEvent('Runtime.exceptionThrown', (params) {
-        final details =
-            params['exceptionDetails'] as Map<String, dynamic>?;
+        final details = params['exceptionDetails'] as Map<String, dynamic>?;
         if (details != null) {
           exceptions.add({
             'text': details['text'] ?? '',
@@ -146,9 +145,8 @@ if (typeof PerformanceObserver !== 'undefined') {
             findings.add({
               'type': 'deprecated_api',
               'severity': 'warning',
-              'message': text.length > 300
-                  ? '${text.substring(0, 300)}...'
-                  : text,
+              'message':
+                  text.length > 300 ? '${text.substring(0, 300)}...' : text,
               'source': entry['source'],
             });
           }
@@ -170,8 +168,7 @@ if (typeof PerformanceObserver !== 'undefined') {
             findings.add({
               'type': 'repeated_errors',
               'severity': 'critical',
-              'message':
-                  'Error repeated ${e.value} times: ${e.key}',
+              'message': 'Error repeated ${e.value} times: ${e.key}',
               'count': e.value,
             });
           }
@@ -201,9 +198,8 @@ if (typeof PerformanceObserver !== 'undefined') {
             findings.add({
               'type': 'render_warning',
               'severity': 'warning',
-              'message': text.length > 300
-                  ? '${text.substring(0, 300)}...'
-                  : text,
+              'message':
+                  text.length > 300 ? '${text.substring(0, 300)}...' : text,
             });
           }
         }
@@ -212,19 +208,17 @@ if (typeof PerformanceObserver !== 'undefined') {
       // Slow operations
       if (checks.contains('slow_operations')) {
         final longTaskResult = await cdp.call('Runtime.evaluate', {
-          'expression':
-              'JSON.stringify(window.__flutterSkillLongTasks || [])',
+          'expression': 'JSON.stringify(window.__flutterSkillLongTasks || [])',
           'returnByValue': true,
         });
-        final longTasks = jsonDecode(
-                longTaskResult['result']?['value'] as String? ?? '[]')
-            as List<dynamic>;
+        final longTasks =
+            jsonDecode(longTaskResult['result']?['value'] as String? ?? '[]')
+                as List<dynamic>;
         for (final task in longTasks) {
           findings.add({
             'type': 'slow_operation',
-            'severity': (task['duration'] as num? ?? 0) > 200
-                ? 'critical'
-                : 'warning',
+            'severity':
+                (task['duration'] as num? ?? 0) > 200 ? 'critical' : 'warning',
             'message':
                 'Long task: ${(task['duration'] as num?)?.toStringAsFixed(1)}ms',
             'details': task,
@@ -252,10 +246,8 @@ if (window.__flutterSkillLongTaskObs) {
         'findings_count': findings.length,
         'findings': findings,
         'summary': {
-          'critical':
-              findings.where((f) => f['severity'] == 'critical').length,
-          'warning':
-              findings.where((f) => f['severity'] == 'warning').length,
+          'critical': findings.where((f) => f['severity'] == 'critical').length,
+          'warning': findings.where((f) => f['severity'] == 'warning').length,
           'info': findings.where((f) => f['severity'] == 'info').length,
         },
       };
@@ -342,9 +334,8 @@ JSON.stringify(performance.memory ? {
 
         // Leak if consistent growth > 1KB/s
         final totalGrowth = heapValues.last - heapValues.first;
-        final growthPct = heapValues.first > 0
-            ? (totalGrowth / heapValues.first * 100)
-            : 0.0;
+        final growthPct =
+            heapValues.first > 0 ? (totalGrowth / heapValues.first * 100) : 0.0;
         leakDetected = growthPct > 10 && growthRatePerSecond > 1024;
       }
 
@@ -356,13 +347,10 @@ JSON.stringify(performance.memory ? {
         'interval_ms': intervalMs,
         'leak_detected': leakDetected,
         'growth_rate_bytes_per_second': growthRatePerSecond,
-        'initial_heap_bytes':
-            heapValues.isNotEmpty ? heapValues.first : null,
-        'final_heap_bytes':
-            heapValues.isNotEmpty ? heapValues.last : null,
-        'total_growth_bytes': heapValues.length >= 2
-            ? heapValues.last - heapValues.first
-            : 0,
+        'initial_heap_bytes': heapValues.isNotEmpty ? heapValues.first : null,
+        'final_heap_bytes': heapValues.isNotEmpty ? heapValues.last : null,
+        'total_growth_bytes':
+            heapValues.length >= 2 ? heapValues.last - heapValues.first : 0,
       };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -427,23 +415,19 @@ try {
 
       // Collect results
       final dataResult = await cdp.call('Runtime.evaluate', {
-        'expression':
-            'JSON.stringify(window.__flutterSkillRenderData || {})',
+        'expression': 'JSON.stringify(window.__flutterSkillRenderData || {})',
         'returnByValue': true,
       });
 
-      final data = jsonDecode(
-              dataResult['result']?['value'] as String? ?? '{}')
+      final data = jsonDecode(dataResult['result']?['value'] as String? ?? '{}')
           as Map<String, dynamic>;
 
       final longTasks = (data['longTasks'] as List<dynamic>?) ?? [];
-      final layoutShifts =
-          (data['layoutShifts'] as List<dynamic>?) ?? [];
+      final layoutShifts = (data['layoutShifts'] as List<dynamic>?) ?? [];
       final measures = (data['measures'] as List<dynamic>?) ?? [];
 
       // Get Performance metrics
-      final metricsResult =
-          await cdp.call('Performance.getMetrics', {});
+      final metricsResult = await cdp.call('Performance.getMetrics', {});
       final metrics = (metricsResult['metrics'] as List<dynamic>?)
               ?.map((m) => {
                     'name': m['name'],

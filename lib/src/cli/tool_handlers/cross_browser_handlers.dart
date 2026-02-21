@@ -97,10 +97,7 @@ extension _CrossBrowserHandlers on FlutterMcpServer {
 
       final browserResult = <String, dynamic>{
         'browser': browser,
-        'viewport': {
-          'width': preset['width'],
-          'height': preset['height']
-        },
+        'viewport': {'width': preset['width'], 'height': preset['height']},
         'mobile': preset['mobile'],
       };
 
@@ -125,8 +122,7 @@ extension _CrossBrowserHandlers on FlutterMcpServer {
         cdp.onEvent('Log.entryAdded', (params) {
           final entry = params['entry'] as Map<String, dynamic>?;
           if (entry != null && entry['level'] == 'error') {
-            consoleErrors
-                .add(entry['text'] as String? ?? '');
+            consoleErrors.add(entry['text'] as String? ?? '');
           }
         });
 
@@ -138,14 +134,14 @@ extension _CrossBrowserHandlers on FlutterMcpServer {
         final actionResults = <Map<String, dynamic>>[];
         for (final action in actions) {
           if (action is Map<String, dynamic>) {
-            final actionName = (action['action'] ?? action['tool'] ??
+            final actionName = (action['action'] ??
+                action['tool'] ??
                 action['name']) as String?;
             if (actionName != null) {
               try {
                 final actionArgs =
                     action['args'] as Map<String, dynamic>? ?? {};
-                final result =
-                    await _executeTool(actionName, actionArgs);
+                final result = await _executeTool(actionName, actionArgs);
                 actionResults.add({
                   'action': actionName,
                   'success': true,
@@ -167,8 +163,7 @@ extension _CrossBrowserHandlers on FlutterMcpServer {
             await cdp.sendCommand('Page.captureScreenshot', {
           'format': 'png',
         });
-        final screenshotData =
-            screenshotResult['data'] as String? ?? '';
+        final screenshotData = screenshotResult['data'] as String? ?? '';
 
         // Check page state
         final stateResult = await cdp.call('Runtime.evaluate', {
@@ -186,9 +181,9 @@ JSON.stringify({
           'returnByValue': true,
         });
 
-        final pageState = jsonDecode(
-                stateResult['result']?['value'] as String? ?? '{}')
-            as Map<String, dynamic>;
+        final pageState =
+            jsonDecode(stateResult['result']?['value'] as String? ?? '{}')
+                as Map<String, dynamic>;
 
         cdp.removeEventListeners('Log.entryAdded');
 
@@ -199,10 +194,9 @@ JSON.stringify({
         browserResult['has_horizontal_overflow'] =
             pageState['hasHorizontalOverflow'] ?? false;
         browserResult['action_results'] = actionResults;
-        browserResult['screenshot_base64'] =
-            screenshotData.length > 100
-                ? '${screenshotData.substring(0, 100)}... (${screenshotData.length} chars)'
-                : screenshotData;
+        browserResult['screenshot_base64'] = screenshotData.length > 100
+            ? '${screenshotData.substring(0, 100)}... (${screenshotData.length} chars)'
+            : screenshotData;
       } catch (e) {
         browserResult['success'] = false;
         browserResult['error'] = e.toString();
@@ -236,8 +230,7 @@ JSON.stringify({
 
   Map<String, dynamic> _compareBrowserResults(
       List<Map<String, dynamic>> results) {
-    final successful =
-        results.where((r) => r['success'] == true).toList();
+    final successful = results.where((r) => r['success'] == true).toList();
     if (successful.length < 2) {
       return {'message': 'Not enough successful results to compare'};
     }
@@ -264,8 +257,7 @@ JSON.stringify({
     final maxErrors = errorCounts.values.fold(0, max);
     final minErrors = errorCounts.values.fold(maxErrors, min);
     if (maxErrors > 0 && maxErrors != minErrors) {
-      issues.add(
-          'Console errors vary across browsers: ${errorCounts}');
+      issues.add('Console errors vary across browsers: ${errorCounts}');
     }
 
     return {
@@ -299,8 +291,7 @@ JSON.stringify({
         ];
 
     final saveScreenshots = args['save_screenshots'] as bool? ?? true;
-    final saveDir =
-        args['save_dir'] as String? ?? './responsive-screenshots';
+    final saveDir = args['save_dir'] as String? ?? './responsive-screenshots';
 
     final results = <Map<String, dynamic>>[];
 
@@ -396,9 +387,9 @@ JSON.stringify({
           'returnByValue': true,
         });
 
-        final layoutData = jsonDecode(
-                layoutResult['result']?['value'] as String? ?? '{}')
-            as Map<String, dynamic>;
+        final layoutData =
+            jsonDecode(layoutResult['result']?['value'] as String? ?? '{}')
+                as Map<String, dynamic>;
 
         vpResult['issues'] = layoutData['issues'] ?? [];
         vpResult['page_height'] = layoutData['page_height'];
@@ -414,17 +405,14 @@ JSON.stringify({
             'captureBeyondViewport': true,
           });
 
-          final screenshotData =
-              screenshotResult['data'] as String? ?? '';
+          final screenshotData = screenshotResult['data'] as String? ?? '';
           if (screenshotData.isNotEmpty) {
             final dir = Directory(saveDir);
             if (!await dir.exists()) {
               await dir.create(recursive: true);
             }
-            final filePath =
-                '$saveDir/${vpName}_${width}x$height.png';
-            await File(filePath)
-                .writeAsBytes(base64Decode(screenshotData));
+            final filePath = '$saveDir/${vpName}_${width}x$height.png';
+            await File(filePath).writeAsBytes(base64Decode(screenshotData));
             vpResult['screenshot_path'] = filePath;
           }
         }

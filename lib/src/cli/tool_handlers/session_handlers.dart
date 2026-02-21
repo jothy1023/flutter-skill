@@ -20,8 +20,7 @@ extension _SessionPersistenceHandlers on FlutterMcpServer {
   CdpDriver _requireCdpForSession() {
     final cdp = _cdpDriver;
     if (cdp == null) {
-      throw Exception(
-          'Session persistence requires an active CDP connection');
+      throw Exception('Session persistence requires an active CDP connection');
     }
     return cdp;
   }
@@ -85,8 +84,8 @@ extension _SessionPersistenceHandlers on FlutterMcpServer {
       // Get full cookies via Network.getAllCookies if available
       Map<String, dynamic> networkCookies = {};
       try {
-        networkCookies = await cdp.evaluate(
-            '1'); // Trigger to use getCookies method
+        networkCookies =
+            await cdp.evaluate('1'); // Trigger to use getCookies method
         final cdpCookies = await cdp.getCookies();
         networkCookies = cdpCookies;
       } catch (_) {
@@ -106,8 +105,8 @@ extension _SessionPersistenceHandlers on FlutterMcpServer {
 
       final file = File(path);
       await file.parent.create(recursive: true);
-      await file.writeAsString(
-          const JsonEncoder.withIndent('  ').convert(session));
+      await file
+          .writeAsString(const JsonEncoder.withIndent('  ').convert(session));
 
       return {
         'success': true,
@@ -263,10 +262,8 @@ extension _SessionPersistenceHandlers on FlutterMcpServer {
       }
 
       // Compare localStorage
-      final lsA =
-          (sessionA['local_storage'] as Map<String, dynamic>?) ?? {};
-      final lsB =
-          (sessionB['local_storage'] as Map<String, dynamic>?) ?? {};
+      final lsA = (sessionA['local_storage'] as Map<String, dynamic>?) ?? {};
+      final lsB = (sessionB['local_storage'] as Map<String, dynamic>?) ?? {};
       final allLsKeys = {...lsA.keys, ...lsB.keys};
       for (final key in allLsKeys) {
         if (lsA[key] != lsB[key]) {
@@ -279,10 +276,8 @@ extension _SessionPersistenceHandlers on FlutterMcpServer {
       }
 
       // Compare sessionStorage
-      final ssA =
-          (sessionA['session_storage'] as Map<String, dynamic>?) ?? {};
-      final ssB =
-          (sessionB['session_storage'] as Map<String, dynamic>?) ?? {};
+      final ssA = (sessionA['session_storage'] as Map<String, dynamic>?) ?? {};
+      final ssB = (sessionB['session_storage'] as Map<String, dynamic>?) ?? {};
       final allSsKeys = {...ssA.keys, ...ssB.keys};
       for (final key in allSsKeys) {
         if (ssA[key] != ssB[key]) {

@@ -31,14 +31,14 @@ class AiClient {
     String model;
     if (key.startsWith('sk-ant-')) {
       // Anthropic — use their native API
-      baseUrl = Platform.environment['AI_BASE_URL'] ??
-          'https://api.anthropic.com';
+      baseUrl =
+          Platform.environment['AI_BASE_URL'] ?? 'https://api.anthropic.com';
       model = Platform.environment['AI_MODEL'] ?? 'claude-3-5-haiku-20241022';
       return _AnthropicClient(apiKey: key, baseUrl: baseUrl, model: model);
     } else {
       // OpenAI-compatible (OpenAI, Ollama, OpenRouter, etc.)
-      baseUrl = Platform.environment['AI_BASE_URL'] ??
-          'https://api.openai.com/v1';
+      baseUrl =
+          Platform.environment['AI_BASE_URL'] ?? 'https://api.openai.com/v1';
       model = Platform.environment['AI_MODEL'] ?? 'gpt-4o-mini';
     }
 
@@ -114,7 +114,8 @@ class _AnthropicClient extends AiClient {
       final responseBody = await response.transform(utf8.decoder).join();
 
       if (response.statusCode != 200) {
-        throw Exception('Anthropic API error ${response.statusCode}: $responseBody');
+        throw Exception(
+            'Anthropic API error ${response.statusCode}: $responseBody');
       }
 
       final data = jsonDecode(responseBody) as Map<String, dynamic>;

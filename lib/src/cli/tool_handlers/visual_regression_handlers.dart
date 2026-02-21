@@ -57,8 +57,9 @@ extension _VisualRegressionHandlers on FlutterMcpServer {
     final baselineDir = args['baseline_dir'] as String? ?? '.visual-baselines';
     final pageName = args['name'] as String? ?? 'default';
     final threshold = (args['threshold'] as num?)?.toDouble() ?? 5.0;
-    final ignoreRects =
-        (args['ignore_regions'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+    final ignoreRects = (args['ignore_regions'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>() ??
+        [];
 
     final baselinePath = '$baselineDir/$pageName.png';
     final baselineFile = File(baselinePath);
@@ -111,7 +112,8 @@ extension _VisualRegressionHandlers on FlutterMcpServer {
   Future<Map<String, dynamic>> _visualRegressionReport(
       Map<String, dynamic> args) async {
     final baselineDir = args['baseline_dir'] as String? ?? '.visual-baselines';
-    final reportPath = args['report_path'] as String? ?? '$baselineDir/report.html';
+    final reportPath =
+        args['report_path'] as String? ?? '$baselineDir/report.html';
     final title = args['title'] as String? ?? 'Visual Regression Report';
 
     final dir = Directory(baselineDir);
@@ -149,7 +151,8 @@ extension _VisualRegressionHandlers on FlutterMcpServer {
     ''');
     buffer.writeln('</style></head><body>');
     buffer.writeln('<h1>📊 ${_htmlEsc(title)}</h1>');
-    buffer.writeln('<p style="color:#94a3b8">Generated ${DateTime.now().toIso8601String()}</p>');
+    buffer.writeln(
+        '<p style="color:#94a3b8">Generated ${DateTime.now().toIso8601String()}</p>');
 
     for (final baseline in baselines) {
       final pageName = baseline.replaceAll('.png', '');
@@ -159,9 +162,11 @@ extension _VisualRegressionHandlers on FlutterMcpServer {
       buffer.writeln('<div class="card">');
       buffer.writeln('<div class="name">$pageName</div>');
       buffer.writeln('<div class="images">');
-      buffer.writeln('<div><div class="label">Baseline</div><img src="$baseline" alt="baseline"></div>');
+      buffer.writeln(
+          '<div><div class="label">Baseline</div><img src="$baseline" alt="baseline"></div>');
       if (hasDiff) {
-        buffer.writeln('<div><div class="label">Diff</div><img src="$diffName" alt="diff"></div>');
+        buffer.writeln(
+            '<div><div class="label">Diff</div><img src="$diffName" alt="diff"></div>');
       }
       buffer.writeln('</div></div>');
     }
@@ -198,10 +203,12 @@ _PixelDiffResult _pixelDiff(
   // Simple approach: compare raw bytes (works for same-resolution screenshots)
   // For production, you'd decode PNG properly. This is efficient for CI/CD.
 
-  final minLen =
-      baselineBytes.length < currentBytes.length ? baselineBytes.length : currentBytes.length;
-  final maxLen =
-      baselineBytes.length > currentBytes.length ? baselineBytes.length : currentBytes.length;
+  final minLen = baselineBytes.length < currentBytes.length
+      ? baselineBytes.length
+      : currentBytes.length;
+  final maxLen = baselineBytes.length > currentBytes.length
+      ? baselineBytes.length
+      : currentBytes.length;
 
   // Try to extract width/height from PNG header (bytes 16-23)
   int width = 0;

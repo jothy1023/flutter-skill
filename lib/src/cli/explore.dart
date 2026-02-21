@@ -219,7 +219,7 @@ class _ExploreAgent {
     print('✅ Connected');
 
     await _setupConsoleMonitoring();
-    
+
     // Enable CDP domains
     try {
       await _cdp.call('Performance.enable');
@@ -243,7 +243,8 @@ class _ExploreAgent {
         print('   🧭 Nav: ${summary.navItems.take(8).join(', ')}');
       }
       if (summary.forms.isNotEmpty) {
-        print('   📝 Forms: ${summary.forms.length} (${summary.forms.map((f) => f.keys.join(',')).join('; ')})');
+        print(
+            '   📝 Forms: ${summary.forms.length} (${summary.forms.map((f) => f.keys.join(',')).join('; ')})');
       }
       if (summary.ctaButtons.isNotEmpty) {
         print('   🎯 CTAs: ${summary.ctaButtons.join(', ')}');
@@ -272,8 +273,8 @@ class _ExploreAgent {
         _visitedUrls.add(_normalizeUrl(currentUrl));
         final a11y = await _cdp.accessibilityAudit();
         final issues = (a11y['issues'] as List?) ?? [];
-        a11yIssues.addAll(issues
-            .map((i) => '${i['type']}: [${i['rule']}] ${i['message']}'));
+        a11yIssues.addAll(
+            issues.map((i) => '${i['type']}: [${i['rule']}] ${i['message']}'));
         if (a11yIssues.isNotEmpty) {
           print('   ♿ ${a11yIssues.length} accessibility issues');
         }
@@ -328,7 +329,7 @@ class _ExploreAgent {
     print('═══════════════════════════════════════════════');
   }
 
-    // ─── Page Summary ─────────────────────────────────────────────────
+  // ─── Page Summary ─────────────────────────────────────────────────
 
   Future<_PageSummary> _summarizePage() async {
     // Wait for page to be stable (SPA rendering, lazy loading)
@@ -339,7 +340,7 @@ class _ExploreAgent {
 
     // Use CDP Accessibility tree for semantic page understanding
     final axTree = await _getAccessibilityTree();
-    
+
     // Extract structured info from AX tree
     final navItems = <String>[];
     final forms = <Map<String, String>>[];
@@ -386,9 +387,11 @@ class _ExploreAgent {
           elementCount++;
           // Only treat as nav item if inside navigation landmark or depth <= 2
           // Filter out product/content links (contain prices, are too long, etc.)
-          if ((insideNavigation || depth <= 2) && 
-              name.length > 1 && name.length < 40 &&
-              !RegExp(r'[\$€£¥]\d|CO₂|^\d+\s*(hours?|minutes?|days?)\s*ago').hasMatch(name)) {
+          if ((insideNavigation || depth <= 2) &&
+              name.length > 1 &&
+              name.length < 40 &&
+              !RegExp(r'[\$€£¥]\d|CO₂|^\d+\s*(hours?|minutes?|days?)\s*ago')
+                  .hasMatch(name)) {
             navItems.add(name);
           }
           break;
@@ -410,15 +413,22 @@ class _ExploreAgent {
         case 'combobox':
           elementCount++;
           final nameLower = name.toLowerCase();
-          hasSearch = hasSearch || role == 'searchbox' || 
-              nameLower.contains('search') || nameLower.contains('query');
+          hasSearch = hasSearch ||
+              role == 'searchbox' ||
+              nameLower.contains('search') ||
+              nameLower.contains('query');
           hasLogin = hasLogin || nameLower.contains('password');
-          final ref = name.isNotEmpty ? 'input:$name' : 'input:${role}_$elementCount';
-          final inputType = role == 'searchbox' ? 'search' : 
-              (nameLower.contains('password') ? 'password' :
-              (nameLower.contains('email') ? 'email' :
-              (nameLower.contains('url') ? 'url' :
-              (role == 'spinbutton' ? 'number' : 'text'))));
+          final ref =
+              name.isNotEmpty ? 'input:$name' : 'input:${role}_$elementCount';
+          final inputType = role == 'searchbox'
+              ? 'search'
+              : (nameLower.contains('password')
+                  ? 'password'
+                  : (nameLower.contains('email')
+                      ? 'email'
+                      : (nameLower.contains('url')
+                          ? 'url'
+                          : (role == 'spinbutton' ? 'number' : 'text'))));
           currentForm ??= {};
           currentForm[ref] = inputType;
           break;
@@ -454,8 +464,8 @@ class _ExploreAgent {
 
     // Also check for login via password fields using a focused CDP query
     if (!hasLogin) {
-      final pwCheck = await _cdp.evaluate(
-          'document.querySelector("input[type=password]") !== null');
+      final pwCheck = await _cdp
+          .evaluate('document.querySelector("input[type=password]") !== null');
       hasLogin = pwCheck['result']?['value'] == true;
     }
 
@@ -511,11 +521,11 @@ class _ExploreAgent {
         'depth': 8,
       });
       final nodes = (result['nodes'] as List?) ?? [];
-      
+
       final parsed = <Map<String, dynamic>>[];
       // Build a depth map from parent relationships
       final depthMap = <String, int>{};
-      
+
       for (final node in nodes) {
         final nodeId = node['nodeId'] as String? ?? '';
         final parentId = node['parentId'] as String? ?? '';
@@ -523,20 +533,26 @@ class _ExploreAgent {
         final ignored = node['ignored'] as bool? ?? false;
 
         if (ignored) continue;
-        if (role == 'none' || role == 'generic' || role == 'InlineTextBox' || 
-            role == 'StaticText' || role == 'paragraph' || role == 'group' ||
-            role == 'Section' || role == 'list' || role == 'listitem' ||
+        if (role == 'none' ||
+            role == 'generic' ||
+            role == 'InlineTextBox' ||
+            role == 'StaticText' ||
+            role == 'paragraph' ||
+            role == 'group' ||
+            role == 'Section' ||
+            role == 'list' ||
+            role == 'listitem' ||
             role == 'LineBreak') continue;
 
-        final depth = depthMap.containsKey(parentId) 
-            ? depthMap[parentId]! + 1 : 0;
+        final depth =
+            depthMap.containsKey(parentId) ? depthMap[parentId]! + 1 : 0;
         depthMap[nodeId] = depth;
 
         // Extract name from properties
         String name = '';
         String value = '';
         bool focusable = false;
-        
+
         final nameObj = node['name'];
         if (nameObj is Map) {
           name = (nameObj['value'] as String? ?? '').trim();
@@ -545,7 +561,7 @@ class _ExploreAgent {
         if (valueObj is Map) {
           value = (valueObj['value'] as String? ?? '').trim();
         }
-        
+
         final properties = (node['properties'] as List?) ?? [];
         for (final prop in properties) {
           if (prop['name'] == 'focusable') {
@@ -561,7 +577,7 @@ class _ExploreAgent {
           'depth': depth,
         });
       }
-      
+
       return parsed;
     } catch (e) {
       // Fallback: use JS-based element discovery
@@ -594,7 +610,7 @@ class _ExploreAgent {
     try {
       // First wait a baseline amount
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       // Check document readyState
       for (int i = 0; i < 10; i++) {
         final state = await _cdp.evaluate('document.readyState');
@@ -602,7 +618,7 @@ class _ExploreAgent {
         if (readyState == 'complete') break;
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      
+
       // Wait for network idle (no pending requests for 500ms)
       // Check via Performance timing
       final metrics = await _cdp.call('Performance.getMetrics');
@@ -613,7 +629,7 @@ class _ExploreAgent {
           break;
         }
       }
-      
+
       // Extra wait for SPA frameworks (React, Vue, Angular hydration)
       await Future.delayed(const Duration(milliseconds: 500));
     } catch (_) {
@@ -623,7 +639,7 @@ class _ExploreAgent {
   }
 
   /// Get navigation history to track SPA navigations
-    // ─── AI Actions ───────────────────────────────────────────────────
+  // ─── AI Actions ───────────────────────────────────────────────────
 
   Future<List<_ExploreAction>> _getAiActions(
       _PageSummary summary, int step) async {
@@ -632,7 +648,8 @@ class _ExploreAgent {
             'Step ${s.step + 1}: ${s.url} → ${s.actions.map((a) => a.toString()).join(', ')} → ${s.results.join(', ')}')
         .join('\n');
 
-    final prompt = '''You are a QA tester exploring a web app. Decide the next actions to test.
+    final prompt =
+        '''You are a QA tester exploring a web app. Decide the next actions to test.
 
 Page summary:
 ${summary.toString()}
@@ -1003,8 +1020,7 @@ Return ONLY the JSON array, no other text.''';
   }
 
   Future<String> _getCurrentUrl() async {
-    final result =
-        await _cdp.evaluate('window.location.href');
+    final result = await _cdp.evaluate('window.location.href');
     return result['result']?['value'] as String? ?? startUrl;
   }
 
@@ -1086,15 +1102,13 @@ Return ONLY the JSON array, no other text.''';
       buffer.writeln('<div class="step">');
       buffer.writeln('<div class="step-header">');
       buffer.writeln('<span class="step-num">Step ${step.step + 1}</span>');
-      buffer.writeln(
-          '<span class="step-url">${_htmlEscape(step.url)}</span>');
+      buffer.writeln('<span class="step-url">${_htmlEscape(step.url)}</span>');
       buffer.writeln('</div>');
 
       buffer.writeln('<div class="action-list">');
       for (int i = 0; i < step.actions.length; i++) {
         final action = step.actions[i];
-        final result =
-            i < step.results.length ? step.results[i] : '';
+        final result = i < step.results.length ? step.results[i] : '';
         buffer.writeln(
             '<div class="action">→ ${_htmlEscape(action.toString())} <span class="result">→ ${_htmlEscape(result)}</span></div>');
       }
@@ -1108,8 +1122,8 @@ Return ONLY the JSON array, no other text.''';
 
       if (step.a11yIssues.isNotEmpty) {
         for (final issue in step.a11yIssues) {
-          buffer.writeln(
-              '<div class="a11y-issue">♿ ${_htmlEscape(issue)}</div>');
+          buffer
+              .writeln('<div class="a11y-issue">♿ ${_htmlEscape(issue)}</div>');
         }
       }
 

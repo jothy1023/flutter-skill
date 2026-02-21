@@ -34,7 +34,8 @@ void main(List<String> args) async {
     print('  explore <url> AI Test Agent — auto-explore and test any web app');
     print('  monkey <url>  Monkey testing — random fuzz testing for web apps');
     print('  plan <url>    AI Test Plan Generator — auto-generate test cases');
-    print('  security <url> Security Scanner — XSS, CSRF, headers, sensitive data');
+    print(
+        '  security <url> Security Scanner — XSS, CSRF, headers, sensitive data');
     print('  diff <url>    Diff testing — compare app state against baseline');
     print('  test <url>   Zero-config web testing — launch Chrome + CDP');
     print('  doctor       Check installation and environment health');
@@ -117,33 +118,36 @@ void main(List<String> args) async {
         print('');
         print('Examples:');
         print('  flutter-skill test https://example.com');
-        print('  flutter-skill test --url=https://example.com --platforms=web,electron,android');
+        print(
+            '  flutter-skill test --url=https://example.com --platforms=web,electron,android');
         print('');
         print('Options:');
         print('  --url=<url>             URL to test');
-        print('  --platforms=<list>      Platforms: web,electron,android,ios (default: web)');
+        print(
+            '  --platforms=<list>      Platforms: web,electron,android,ios (default: web)');
         print('  --cdp-port=<port>       CDP port (default: 9222)');
         print('  --no-headless           Show browser window');
         print('  --report=<path>         Save JSON report to file');
         exit(1);
       }
       // Check if --platforms flag is used → parallel test runner
-      final hasMultiPlatform = commandArgs.any((a) => a.startsWith('--platforms='));
+      final hasMultiPlatform =
+          commandArgs.any((a) => a.startsWith('--platforms='));
       if (hasMultiPlatform) {
         await runTestRunner(commandArgs);
       } else {
         // Single-platform: convenience wrapper → server --url=<url>
         final testUrl = commandArgs.firstWhere((a) => !a.startsWith('--'),
             orElse: () => commandArgs
-                .firstWhere((a) => a.startsWith('--url='),
-                    orElse: () => '')
+                .firstWhere((a) => a.startsWith('--url='), orElse: () => '')
                 .replaceFirst('--url=', ''));
         if (testUrl.isEmpty) {
           print('Error: URL is required');
           exit(1);
         }
         final serverArgs = ['--url=$testUrl'];
-        serverArgs.addAll(commandArgs.where((a) => a != testUrl && !a.startsWith('--url=')));
+        serverArgs.addAll(
+            commandArgs.where((a) => a != testUrl && !a.startsWith('--url=')));
         await runServer(serverArgs);
       }
       break;

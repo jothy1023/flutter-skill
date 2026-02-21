@@ -132,8 +132,7 @@ extension _MultiDeviceHandlers on FlutterMcpServer {
     });
 
     final results = await Future.wait(futures);
-    final allSuccess = results.every(
-        (r) => r['success'] == true);
+    final allSuccess = results.every((r) => r['success'] == true);
 
     return {
       'success': allSuccess,
@@ -177,7 +176,9 @@ extension _MultiDeviceHandlers on FlutterMcpServer {
           if (driver is CdpDriver) {
             snapshot = await driver.accessibilityAudit();
           } else {
-            snapshot = {'tree': (await driver.takeScreenshot()) ?? 'no snapshot'};
+            snapshot = {
+              'tree': (await driver.takeScreenshot()) ?? 'no snapshot'
+            };
           }
           if (saveDir != null) {
             final file = File('$saveDir/${deviceName}_snapshot.json');
@@ -210,8 +211,7 @@ extension _MultiDeviceHandlers on FlutterMcpServer {
         final firstJson = jsonEncode(first['snapshot']);
         final otherJson = jsonEncode(other['snapshot']);
         if (firstJson != otherJson) {
-          differences.add(
-              '${first['device']} differs from ${other['device']}');
+          differences.add('${first['device']} differs from ${other['device']}');
         }
       }
     }

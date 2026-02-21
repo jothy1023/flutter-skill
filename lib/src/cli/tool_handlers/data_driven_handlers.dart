@@ -22,10 +22,16 @@ extension _DataDrivenHandlers on FlutterMcpServer {
     final resetBetween = args['reset_between'] as bool? ?? true;
 
     if (dataSets == null || dataSets.isEmpty) {
-      return {'success': false, 'error': 'data_sets is required and must not be empty'};
+      return {
+        'success': false,
+        'error': 'data_sets is required and must not be empty'
+      };
     }
     if (actions == null || actions.isEmpty) {
-      return {'success': false, 'error': 'actions is required and must not be empty'};
+      return {
+        'success': false,
+        'error': 'actions is required and must not be empty'
+      };
     }
 
     final results = <Map<String, dynamic>>[];
@@ -180,11 +186,27 @@ extension _DataDrivenHandlers on FlutterMcpServer {
   }
 
   List<String> _generateEmails(int count, String locale) {
-    final domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'test.com', 'example.org'];
-    final prefixes = ['user', 'test', 'admin', 'info', 'hello', 'john.doe', 'jane_smith', 'dev'];
+    final domains = [
+      'gmail.com',
+      'yahoo.com',
+      'outlook.com',
+      'test.com',
+      'example.org'
+    ];
+    final prefixes = [
+      'user',
+      'test',
+      'admin',
+      'info',
+      'hello',
+      'john.doe',
+      'jane_smith',
+      'dev'
+    ];
     final result = <String>[];
     for (int i = 0; i < count; i++) {
-      result.add('${prefixes[i % prefixes.length]}${i + 1}@${domains[i % domains.length]}');
+      result.add(
+          '${prefixes[i % prefixes.length]}${i + 1}@${domains[i % domains.length]}');
     }
     return result;
   }
@@ -194,21 +216,46 @@ extension _DataDrivenHandlers on FlutterMcpServer {
         ? ['张三', '李四', '王五', '赵六', '陈七', '刘八', '杨九', '黄十']
         : locale.startsWith('ja')
             ? ['田中太郎', '山田花子', '佐藤一郎', '鈴木次郎', '高橋三郎']
-            : ['John Smith', 'Jane Doe', 'Alice Johnson', 'Bob Williams', 'Charlie Brown',
-               'Diana Prince', 'Edward Norton', 'Fiona Apple'];
+            : [
+                'John Smith',
+                'Jane Doe',
+                'Alice Johnson',
+                'Bob Williams',
+                'Charlie Brown',
+                'Diana Prince',
+                'Edward Norton',
+                'Fiona Apple'
+              ];
     return List.generate(count, (i) => names[i % names.length]);
   }
 
   List<String> _generatePhones(int count, String locale) {
-    final prefix = locale.startsWith('zh') ? '+86 1' : locale.startsWith('ja') ? '+81 ' : '+1 ';
-    return List.generate(count, (i) => '$prefix${(5551000 + i * 111).toString().padLeft(7, '0')}');
+    final prefix = locale.startsWith('zh')
+        ? '+86 1'
+        : locale.startsWith('ja')
+            ? '+81 '
+            : '+1 ';
+    return List.generate(count,
+        (i) => '$prefix${(5551000 + i * 111).toString().padLeft(7, '0')}');
   }
 
   List<String> _generateAddresses(int count, String locale) {
-    final streets = ['123 Main St', '456 Oak Ave', '789 Pine Rd', '321 Elm Blvd', '654 Maple Dr'];
-    final cities = ['New York, NY 10001', 'Los Angeles, CA 90001', 'Chicago, IL 60601',
-                    'Houston, TX 77001', 'Phoenix, AZ 85001'];
-    return List.generate(count, (i) => '${streets[i % streets.length]}, ${cities[i % cities.length]}');
+    final streets = [
+      '123 Main St',
+      '456 Oak Ave',
+      '789 Pine Rd',
+      '321 Elm Blvd',
+      '654 Maple Dr'
+    ];
+    final cities = [
+      'New York, NY 10001',
+      'Los Angeles, CA 90001',
+      'Chicago, IL 60601',
+      'Houston, TX 77001',
+      'Phoenix, AZ 85001'
+    ];
+    return List.generate(count,
+        (i) => '${streets[i % streets.length]}, ${cities[i % cities.length]}');
   }
 
   List<num> _generateNumbers(int count) {

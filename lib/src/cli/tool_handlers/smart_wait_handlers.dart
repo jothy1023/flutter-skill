@@ -143,8 +143,9 @@ extension _SmartWaitHandlers on FlutterMcpServer {
 
     if (urlPattern == null) {
       return {
-        'success': false, 
-        'error': 'url_pattern parameter is required. Provide a regex pattern to match the URL.'
+        'success': false,
+        'error':
+            'url_pattern parameter is required. Provide a regex pattern to match the URL.'
       };
     }
 
@@ -269,21 +270,22 @@ extension _SmartWaitHandlers on FlutterMcpServer {
           final result = await client.evaluate(
               'document.querySelectorAll(${jsonEncode(selector)}).length');
           final value = result['result']?['value'];
-          actualCount = (value is int) ? value : int.tryParse(value.toString()) ?? 0;
+          actualCount =
+              (value is int) ? value : int.tryParse(value.toString()) ?? 0;
         } else {
           // Bridge: count matching elements
           final elements = await client.getInteractiveElements();
           actualCount = elements.where((e) {
-              if (e is Map) {
-                final key = e['key']?.toString() ?? '';
-                final type = e['type']?.toString() ?? '';
-                final widget = e['widget']?.toString() ?? '';
-                return key.contains(selector) ||
-                    type.contains(selector) ||
-                    widget.contains(selector);
-              }
-              return false;
-            }).length;
+            if (e is Map) {
+              final key = e['key']?.toString() ?? '';
+              final type = e['type']?.toString() ?? '';
+              final widget = e['widget']?.toString() ?? '';
+              return key.contains(selector) ||
+                  type.contains(selector) ||
+                  widget.contains(selector);
+            }
+            return false;
+          }).length;
         }
 
         final expected = count ?? 0;

@@ -278,8 +278,8 @@ class _PlanGenerator {
       }
 
       // Check for auth indicators
-      final pageSource = await _cdp.evaluate(
-          'document.documentElement.outerHTML.substring(0, 5000)');
+      final pageSource = await _cdp
+          .evaluate('document.documentElement.outerHTML.substring(0, 5000)');
       final html =
           (pageSource['result']?['value'] as String? ?? '').toLowerCase();
       info.hasLoginForm = html.contains('password') &&
@@ -450,10 +450,7 @@ class _PlanGenerator {
             'steps': [
               {
                 'tool': 'smart_enter_text',
-                'args': {
-                  'key': key,
-                  'value': _negativeInputs['special_chars']!
-                }
+                'args': {'key': key, 'value': _negativeInputs['special_chars']!}
               },
               {
                 'tool': 'smart_assert',
@@ -663,7 +660,8 @@ class _PlanGenerator {
       }
     }
 
-    final totalTests = totalPositive + totalNegative + totalSecurity + totalA11y;
+    final totalTests =
+        totalPositive + totalNegative + totalSecurity + totalA11y;
     final estimatedMinutes = (totalTests * 4 / 60).ceil();
 
     return {
@@ -786,16 +784,14 @@ void _writeYaml(StringBuffer buffer, dynamic value, int indent) {
                 buffer.writeln('$prefix- ${e.key}:');
                 _writeYaml(buffer, e.value, indent + 2);
               } else {
-                buffer.writeln(
-                    '$prefix- ${e.key}: ${_yamlValue(e.value)}');
+                buffer.writeln('$prefix- ${e.key}: ${_yamlValue(e.value)}');
               }
             } else {
               if (e.value is Map || e.value is List) {
                 buffer.writeln('$prefix  ${e.key}:');
                 _writeYaml(buffer, e.value, indent + 2);
               } else {
-                buffer.writeln(
-                    '$prefix  ${e.key}: ${_yamlValue(e.value)}');
+                buffer.writeln('$prefix  ${e.key}: ${_yamlValue(e.value)}');
               }
             }
           }

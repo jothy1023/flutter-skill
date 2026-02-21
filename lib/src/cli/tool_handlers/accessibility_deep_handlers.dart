@@ -140,9 +140,7 @@ extension _AccessibilityDeepHandlers on FlutterMcpServer {
       var isLarge = fontSize >= 18 || (fontSize >= 14 && style.fontWeight >= 700);
       var minRatio = isLarge ? 3.0 : 4.5;
       ''' +
-        (level == 'AAA'
-            ? "minRatio = isLarge ? 4.5 : 7.0;"
-            : "") +
+        (level == 'AAA' ? "minRatio = isLarge ? 4.5 : 7.0;" : "") +
         '''
       if (ratio < minRatio) {
         contrastIssues++;
@@ -192,7 +190,11 @@ extension _AccessibilityDeepHandlers on FlutterMcpServer {
     if (value != null) {
       return jsonDecode(value) as Map<String, dynamic>;
     }
-    return {'success': false, 'error': 'Failed to execute audit', 'raw': result};
+    return {
+      'success': false,
+      'error': 'Failed to execute audit',
+      'raw': result
+    };
   }
 
   Future<Map<String, dynamic>> _handleA11yTabOrder(
@@ -268,7 +270,11 @@ extension _AccessibilityDeepHandlers on FlutterMcpServer {
     if (value != null) {
       return jsonDecode(value) as Map<String, dynamic>;
     }
-    return {'success': false, 'error': 'Failed to get tab order', 'raw': result};
+    return {
+      'success': false,
+      'error': 'Failed to get tab order',
+      'raw': result
+    };
   }
 
   Future<Map<String, dynamic>> _handleA11yColorContrast(
@@ -377,7 +383,11 @@ extension _AccessibilityDeepHandlers on FlutterMcpServer {
     if (value != null) {
       return jsonDecode(value) as Map<String, dynamic>;
     }
-    return {'success': false, 'error': 'Failed to check contrast', 'raw': result};
+    return {
+      'success': false,
+      'error': 'Failed to check contrast',
+      'raw': result
+    };
   }
 
   Future<Map<String, dynamic>> _handleA11yScreenReader(

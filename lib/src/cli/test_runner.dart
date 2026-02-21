@@ -30,12 +30,15 @@ Future<void> runTestRunner(List<String> args) async {
   }
 
   if (url == null) {
-    stderr.writeln('Usage: flutter-skill test --url <url> [--platforms web,electron,android]');
+    stderr.writeln(
+        'Usage: flutter-skill test --url <url> [--platforms web,electron,android]');
     stderr.writeln('');
     stderr.writeln('Options:');
     stderr.writeln('  --url=<url>             URL to test');
-    stderr.writeln('  --platforms=<list>       Comma-separated: web,electron,android,ios');
-    stderr.writeln('  --cdp-port=<port>       CDP port for Chrome (default: 9222)');
+    stderr.writeln(
+        '  --platforms=<list>       Comma-separated: web,electron,android,ios');
+    stderr.writeln(
+        '  --cdp-port=<port>       CDP port for Chrome (default: 9222)');
     stderr.writeln('  --no-headless           Show browser window');
     stderr.writeln('  --report=<path>         Save report to file');
     exit(1);
@@ -65,12 +68,14 @@ Future<void> runTestRunner(List<String> args) async {
   if (reportPath != null) {
     final file = File(reportPath);
     await file.parent.create(recursive: true);
-    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(report));
+    await file
+        .writeAsString(const JsonEncoder.withIndent('  ').convert(report));
     stderr.writeln('\nReport saved to: $reportPath');
   }
 
   // Exit with non-zero if any platform failed
-  final allPassed = (report['summary'] as Map<String, dynamic>)['all_passed'] as bool;
+  final allPassed =
+      (report['summary'] as Map<String, dynamic>)['all_passed'] as bool;
   exit(allPassed ? 0 : 1);
 }
 
@@ -117,7 +122,8 @@ class _ParallelTestRunner {
     };
   }
 
-  Future<MapEntry<String, Map<String, dynamic>>> _testPlatform(String platform) async {
+  Future<MapEntry<String, Map<String, dynamic>>> _testPlatform(
+      String platform) async {
     stderr.writeln('[$platform] Starting test...');
     final stopwatch = Stopwatch()..start();
 
@@ -171,7 +177,10 @@ class _ParallelTestRunner {
       // Find Chrome binary
       final chromePath = _findChromePath();
       if (chromePath == null) {
-        return {'success': false, 'error': 'Chrome not found. Install Google Chrome.'};
+        return {
+          'success': false,
+          'error': 'Chrome not found. Install Google Chrome.'
+        };
       }
 
       // Launch headless Chrome
@@ -202,10 +211,12 @@ class _ParallelTestRunner {
 
   /// Test on Electron
   Future<Map<String, dynamic>> _testElectron() async {
-    final electronDir = '${Platform.environment['HOME'] ?? '.'}/.flutter-skill/electron-shell';
+    final electronDir =
+        '${Platform.environment['HOME'] ?? '.'}/.flutter-skill/electron-shell';
     final electronBin = '$electronDir/node_modules/.bin/electron';
 
-    if (!File(electronBin).existsSync() && !File('$electronBin.cmd').existsSync()) {
+    if (!File(electronBin).existsSync() &&
+        !File('$electronBin.cmd').existsSync()) {
       // Check if electron-shell exists
       if (!Directory(electronDir).existsSync()) {
         stderr.writeln('[electron] Electron shell not found at $electronDir');
@@ -251,21 +262,35 @@ class _ParallelTestRunner {
         .toList();
 
     if (devices.isEmpty) {
-      return {'success': false, 'error': 'No Android devices connected. Run `adb devices` to check.'};
+      return {
+        'success': false,
+        'error': 'No Android devices connected. Run `adb devices` to check.'
+      };
     }
 
     final deviceId = devices.first;
     stderr.writeln('[android] Found device: $deviceId');
 
     // Open URL in device browser
-    await Process.run('adb', ['-s', deviceId, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', url]);
+    await Process.run('adb', [
+      '-s',
+      deviceId,
+      'shell',
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      url
+    ]);
 
     // Wait for page to load
     await Future.delayed(const Duration(seconds: 3));
 
     // Take screenshot
     // Take screenshot via adb
-    await Process.run('adb', ['-s', deviceId, 'exec-out', 'screencap', '-p'], stdoutEncoding: null);
+    await Process.run('adb', ['-s', deviceId, 'exec-out', 'screencap', '-p'],
+        stdoutEncoding: null);
 
     return {
       'success': true,
@@ -280,9 +305,13 @@ class _ParallelTestRunner {
   /// Test on iOS simulator
   Future<Map<String, dynamic>> _testIos() async {
     // Check for booted iOS simulators
-    final result = await Process.run('xcrun', ['simctl', 'list', 'devices', 'booted', '-j']);
+    final result = await Process.run(
+        'xcrun', ['simctl', 'list', 'devices', 'booted', '-j']);
     if (result.exitCode != 0) {
-      return {'success': false, 'error': 'xcrun simctl not available. Xcode required.'};
+      return {
+        'success': false,
+        'error': 'xcrun simctl not available. Xcode required.'
+      };
     }
 
     final data = jsonDecode(result.stdout as String) as Map<String, dynamic>;
@@ -304,7 +333,10 @@ class _ParallelTestRunner {
     }
 
     if (deviceUdid == null) {
-      return {'success': false, 'error': 'No booted iOS simulator found. Launch one in Xcode.'};
+      return {
+        'success': false,
+        'error': 'No booted iOS simulator found. Launch one in Xcode.'
+      };
     }
 
     stderr.writeln('[ios] Found simulator: $deviceName ($deviceUdid)');
@@ -329,7 +361,8 @@ class _ParallelTestRunner {
     final client = HttpClient();
     try {
       // Get list of targets
-      final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json'));
+      final request =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/json'));
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       final targets = jsonDecode(body) as List<dynamic>;
@@ -397,7 +430,12 @@ class _ParallelTestRunner {
         if (File(p).existsSync()) return p;
       }
     } else if (Platform.isLinux) {
-      const names = ['google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium'];
+      const names = [
+        'google-chrome',
+        'google-chrome-stable',
+        'chromium-browser',
+        'chromium'
+      ];
       for (final name in names) {
         final result = Process.runSync('which', [name]);
         if (result.exitCode == 0) return (result.stdout as String).trim();
@@ -428,7 +466,8 @@ class _ParallelTestRunner {
     }));
 
     // Install electron
-    stderr.writeln('[electron] Installing electron (this may take a minute)...');
+    stderr
+        .writeln('[electron] Installing electron (this may take a minute)...');
     final result = await Process.run('npm', ['install'], workingDirectory: dir);
     if (result.exitCode != 0) {
       throw Exception('Failed to install electron: ${result.stderr}');

@@ -91,13 +91,18 @@ extension _PerformanceHandlers on FlutterMcpServer {
       'success': true,
       'message': 'Performance collection started',
       'start_time': _perfStartTime!.toIso8601String(),
-      'mode': _cdpDriver != null ? 'cdp' : (_client is BridgeDriver ? 'bridge' : 'limited'),
+      'mode': _cdpDriver != null
+          ? 'cdp'
+          : (_client is BridgeDriver ? 'bridge' : 'limited'),
     };
   }
 
   Future<Map<String, dynamic>> _handlePerfStop() async {
     if (!_perfCollecting) {
-      return {'success': false, 'error': 'No performance collection in progress'};
+      return {
+        'success': false,
+        'error': 'No performance collection in progress'
+      };
     }
 
     _perfCollecting = false;
@@ -142,7 +147,8 @@ extension _PerformanceHandlers on FlutterMcpServer {
           'returnByValue': true,
         });
 
-        final entriesJson = (entriesResult['result'] as Map<String, dynamic>?)?['value'] as String?;
+        final entriesJson = (entriesResult['result']
+            as Map<String, dynamic>?)?['value'] as String?;
         if (entriesJson != null) {
           final data = jsonDecode(entriesJson) as Map<String, dynamic>;
           summary['fps'] = data['fps'];
@@ -218,8 +224,7 @@ extension _PerformanceHandlers on FlutterMcpServer {
       stopResult = await _handlePerfStop();
     }
 
-    final summary =
-        stopResult?['summary'] as Map<String, dynamic>? ?? {};
+    final summary = stopResult?['summary'] as Map<String, dynamic>? ?? {};
 
     // Build warnings
     final warnings = <Map<String, dynamic>>[];
@@ -351,32 +356,42 @@ extension _PerformanceHandlers on FlutterMcpServer {
     buf.writeln('<!DOCTYPE html>');
     buf.writeln('<html><head><title>Performance Report</title>');
     buf.writeln('<style>');
-    buf.writeln('body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }');
-    buf.writeln('.metric { display: inline-block; padding: 16px; margin: 8px; border-radius: 8px; background: #f5f5f5; min-width: 120px; text-align: center; }');
+    buf.writeln(
+        'body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }');
+    buf.writeln(
+        '.metric { display: inline-block; padding: 16px; margin: 8px; border-radius: 8px; background: #f5f5f5; min-width: 120px; text-align: center; }');
     buf.writeln('.metric .value { font-size: 2em; font-weight: bold; }');
     buf.writeln('.metric .label { font-size: 0.9em; color: #666; }');
-    buf.writeln('.warning { padding: 12px; margin: 8px 0; border-left: 4px solid #ff9800; background: #fff3e0; border-radius: 4px; }');
-    buf.writeln('.warning.high { border-left-color: #f44336; background: #ffebee; }');
-    buf.writeln('.score { font-size: 1.5em; padding: 16px; border-radius: 8px; background: #e8f5e9; text-align: center; margin: 16px 0; }');
+    buf.writeln(
+        '.warning { padding: 12px; margin: 8px 0; border-left: 4px solid #ff9800; background: #fff3e0; border-radius: 4px; }');
+    buf.writeln(
+        '.warning.high { border-left-color: #f44336; background: #ffebee; }');
+    buf.writeln(
+        '.score { font-size: 1.5em; padding: 16px; border-radius: 8px; background: #e8f5e9; text-align: center; margin: 16px 0; }');
     buf.writeln('</style></head><body>');
     buf.writeln('<h1>🚀 Performance Report</h1>');
     buf.writeln('<div class="score">Score: $score</div>');
     buf.writeln('<h2>Metrics</h2><div>');
 
     if (summary['fps'] != null) {
-      buf.writeln('<div class="metric"><div class="value">${summary['fps']}</div><div class="label">FPS</div></div>');
+      buf.writeln(
+          '<div class="metric"><div class="value">${summary['fps']}</div><div class="label">FPS</div></div>');
     }
     if (summary['fcp_ms'] != null) {
-      buf.writeln('<div class="metric"><div class="value">${summary['fcp_ms']}ms</div><div class="label">FCP</div></div>');
+      buf.writeln(
+          '<div class="metric"><div class="value">${summary['fcp_ms']}ms</div><div class="label">FCP</div></div>');
     }
     if (summary['lcp_ms'] != null) {
-      buf.writeln('<div class="metric"><div class="value">${summary['lcp_ms']}ms</div><div class="label">LCP</div></div>');
+      buf.writeln(
+          '<div class="metric"><div class="value">${summary['lcp_ms']}ms</div><div class="label">LCP</div></div>');
     }
     if (summary['cls'] != null) {
-      buf.writeln('<div class="metric"><div class="value">${summary['cls']}</div><div class="label">CLS</div></div>');
+      buf.writeln(
+          '<div class="metric"><div class="value">${summary['cls']}</div><div class="label">CLS</div></div>');
     }
     if (summary['network_requests'] != null) {
-      buf.writeln('<div class="metric"><div class="value">${summary['network_requests']}</div><div class="label">Network Requests</div></div>');
+      buf.writeln(
+          '<div class="metric"><div class="value">${summary['network_requests']}</div><div class="label">Network Requests</div></div>');
     }
 
     buf.writeln('</div>');
@@ -386,13 +401,15 @@ extension _PerformanceHandlers on FlutterMcpServer {
       for (final w in warnings) {
         final severity = w['severity'] ?? 'medium';
         buf.writeln('<div class="warning $severity">');
-        buf.writeln('<strong>${w['metric']}</strong>: ${w['value']} (threshold: ${w['threshold']})');
+        buf.writeln(
+            '<strong>${w['metric']}</strong>: ${w['value']} (threshold: ${w['threshold']})');
         buf.writeln('<br>${w['recommendation']}');
         buf.writeln('</div>');
       }
     }
 
-    buf.writeln('<p style="color:#999;font-size:0.8em;">Generated: ${report['generated_at']}</p>');
+    buf.writeln(
+        '<p style="color:#999;font-size:0.8em;">Generated: ${report['generated_at']}</p>');
     buf.writeln('</body></html>');
     return buf.toString();
   }

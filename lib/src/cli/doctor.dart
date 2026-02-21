@@ -117,8 +117,10 @@ Future<void> runDoctor(List<String> args) async {
   // ADB
   final adbDevices = await _run('adb', ['devices', '-l']);
   if (adbDevices != null) {
-    final lines = adbDevices.split('\n').skip(1).where(
-        (l) => l.trim().isNotEmpty && l.contains('device'));
+    final lines = adbDevices
+        .split('\n')
+        .skip(1)
+        .where((l) => l.trim().isNotEmpty && l.contains('device'));
     if (lines.isNotEmpty) {
       for (final line in lines) {
         final parts = line.trim().split(RegExp(r'\s+'));
@@ -146,7 +148,8 @@ Future<void> runDoctor(List<String> args) async {
     // iOS Simulator
     try {
       final result = await Process.run(
-        'xcrun', ['simctl', 'list', 'devices', 'booted', '-j'],
+        'xcrun',
+        ['simctl', 'list', 'devices', 'booted', '-j'],
       );
       if (result.exitCode == 0) {
         final json = jsonDecode(result.stdout as String);
@@ -206,7 +209,8 @@ Future<void> runDoctor(List<String> args) async {
 
   // Internet check
   try {
-    final result = await Process.run('ping', ['-c', '1', '-W', '2', 'google.com']);
+    final result =
+        await Process.run('ping', ['-c', '1', '-W', '2', 'google.com']);
     if (result.exitCode == 0) {
       ok('Internet connection');
     } else {
@@ -256,13 +260,15 @@ Future<void> runDoctor(List<String> args) async {
   print('');
   print('  AI Agent Config:');
 
-  final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  final homeDir =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
   if (homeDir != null) {
     final claudeSettings = File('$homeDir/.claude/settings.json');
     if (claudeSettings.existsSync()) {
       try {
         final content = claudeSettings.readAsStringSync();
-        if (content.contains('flutter-skill') || content.contains('flutter_skill')) {
+        if (content.contains('flutter-skill') ||
+            content.contains('flutter_skill')) {
           ok('Claude Code MCP: configured');
         } else {
           warn('Claude Code MCP: not configured', 'Run: flutter-skill init');
@@ -278,7 +284,8 @@ Future<void> runDoctor(List<String> args) async {
     if (cursorConfig.existsSync()) {
       try {
         final content = cursorConfig.readAsStringSync();
-        if (content.contains('flutter-skill') || content.contains('flutter_skill')) {
+        if (content.contains('flutter-skill') ||
+            content.contains('flutter_skill')) {
           ok('Cursor MCP: configured');
         } else {
           warn('Cursor MCP: not configured');

@@ -514,7 +514,8 @@ function toggleImg(el) { el.classList.toggle('expanded'); }
             buf.writeln("    await element(by.id('$key')).tap();");
           } else if (text != null) {
             buf.writeln("    // Tap element with text '$text'");
-            buf.writeln("    await element(by.text('${_escapeJs(text)}')).tap();");
+            buf.writeln(
+                "    await element(by.text('${_escapeJs(text)}')).tap();");
           }
           break;
         case 'enter_text':
@@ -522,36 +523,43 @@ function toggleImg(el) { el.classList.toggle('expanded'); }
               params['value'] as String? ?? params['text'] as String? ?? '';
           if (key != null) {
             buf.writeln("    // Type text into '$key'");
-            buf.writeln("    await element(by.id('$key')).typeText('${_escapeJs(value)}');");
+            buf.writeln(
+                "    await element(by.id('$key')).typeText('${_escapeJs(value)}');");
           }
           break;
         case 'swipe':
           final direction = params['direction'] as String? ?? 'up';
           if (key != null) {
             buf.writeln("    // Swipe $direction on '$key'");
-            buf.writeln("    await element(by.id('$key')).swipe('$direction');");
+            buf.writeln(
+                "    await element(by.id('$key')).swipe('$direction');");
           } else {
             buf.writeln("    // Swipe $direction on screen");
-            buf.writeln("    await element(by.id('scrollView')).swipe('$direction');");
+            buf.writeln(
+                "    await element(by.id('scrollView')).swipe('$direction');");
           }
           break;
         case 'screenshot':
           buf.writeln("    // Take screenshot");
-          buf.writeln("    await device.takeScreenshot('step_${_recordedSteps.indexOf(step)}');");
+          buf.writeln(
+              "    await device.takeScreenshot('step_${_recordedSteps.indexOf(step)}');");
           break;
         case 'scroll':
           final dy = (params['dy'] ?? 200) as num;
           final direction = dy > 0 ? 'down' : 'up';
           buf.writeln("    // Scroll $direction");
-          buf.writeln("    await element(by.id('scrollView')).scroll(${dy.abs()}, '$direction');");
+          buf.writeln(
+              "    await element(by.id('scrollView')).scroll(${dy.abs()}, '$direction');");
           break;
         case 'assert_visible':
           if (key != null) {
             buf.writeln("    // Assert '$key' is visible");
-            buf.writeln("    await expect(element(by.id('$key'))).toBeVisible();");
+            buf.writeln(
+                "    await expect(element(by.id('$key'))).toBeVisible();");
           } else if (text != null) {
             buf.writeln("    // Assert text '$text' is visible");
-            buf.writeln("    await expect(element(by.text('${_escapeJs(text)}'))).toBeVisible();");
+            buf.writeln(
+                "    await expect(element(by.text('${_escapeJs(text)}'))).toBeVisible();");
           }
           break;
         default:

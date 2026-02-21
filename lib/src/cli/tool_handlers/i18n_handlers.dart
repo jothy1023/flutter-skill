@@ -59,7 +59,11 @@ extension _I18nHandlers on FlutterMcpServer {
         'message': 'Locale set to $locale via CDP Emulation. Page reloaded.'
       };
     } catch (e) {
-      return {'success': false, 'error': e.toString(), 'method': 'cdp_emulation'};
+      return {
+        'success': false,
+        'error': e.toString(),
+        'method': 'cdp_emulation'
+      };
     }
   }
 
@@ -78,7 +82,11 @@ extension _I18nHandlers on FlutterMcpServer {
         'message': 'Locale set to $locale via bridge method.'
       };
     } catch (e) {
-      return {'success': false, 'error': e.toString(), 'method': 'bridge_method'};
+      return {
+        'success': false,
+        'error': e.toString(),
+        'method': 'bridge_method'
+      };
     }
   }
 
@@ -87,8 +95,9 @@ extension _I18nHandlers on FlutterMcpServer {
     // This works with apps that support locale switching via URL scheme
     return {
       'success': false,
-      'error': 'Deep link locale switching requires app-specific configuration. '
-          'Consider using cdp_emulation or bridge_method instead.',
+      'error':
+          'Deep link locale switching requires app-specific configuration. '
+              'Consider using cdp_emulation or bridge_method instead.',
       'method': 'deep_link',
       'locale': locale,
     };
@@ -114,7 +123,8 @@ extension _I18nHandlers on FlutterMcpServer {
           'expression': 'document.body.innerText',
           'returnByValue': true,
         });
-        pageText = (textResult['result'] as Map<String, dynamic>?)?['value'] as String?;
+        pageText = (textResult['result'] as Map<String, dynamic>?)?['value']
+            as String?;
 
         if (checkOverflow) {
           // Check for elements with overflow hidden and content truncation
@@ -143,7 +153,8 @@ extension _I18nHandlers on FlutterMcpServer {
             ''',
             'returnByValue': true,
           });
-          final overflowJson = (overflowResult['result'] as Map<String, dynamic>?)?['value'] as String?;
+          final overflowJson = (overflowResult['result']
+              as Map<String, dynamic>?)?['value'] as String?;
           if (overflowJson != null) {
             final overflowIssues =
                 jsonDecode(overflowJson) as List<dynamic>? ?? [];
@@ -183,14 +194,17 @@ extension _I18nHandlers on FlutterMcpServer {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
         // Count ASCII letter ratio — high ratio in non-English locale suggests untranslated
-        final asciiLetters =
-            trimmed.runes.where((r) => (r >= 65 && r <= 90) || (r >= 97 && r <= 122)).length;
+        final asciiLetters = trimmed.runes
+            .where((r) => (r >= 65 && r <= 90) || (r >= 97 && r <= 122))
+            .length;
         final totalChars = trimmed.runes.length;
         if (totalChars > 3 && asciiLetters / totalChars > 0.8) {
           // Likely untranslated English text
           issues.add({
             'type': 'possibly_untranslated',
-            'text': trimmed.length > 100 ? '${trimmed.substring(0, 100)}...' : trimmed,
+            'text': trimmed.length > 100
+                ? '${trimmed.substring(0, 100)}...'
+                : trimmed,
             'ascii_ratio': (asciiLetters / totalChars * 100).round(),
           });
         }
