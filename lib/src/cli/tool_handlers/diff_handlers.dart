@@ -112,8 +112,9 @@ extension _DiffHandlers on FlutterMcpServer {
     }
 
     // Discover current pages
+    final maxPages = args['max_pages'] as int? ?? 10;
     final pages =
-        await _diffDiscoverPages(cdp, startUrl, 2);
+        await _diffDiscoverPages(cdp, startUrl, 2, maxPages: maxPages);
     final results = <Map<String, dynamic>>[];
     int changedCount = 0;
 

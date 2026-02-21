@@ -1,3 +1,27 @@
+## 0.8.8
+
+**CDP reliability + multi-platform fixes**
+
+### Bug Fixes
+- **swipe/drag/gesture**: Single 10s overall timeout instead of per-event (prevents cascading CDP failures)
+- **connect_cdp**: URL now optional — port-only connections for Electron, Android, external browsers
+- **Region screenshots**: JPEG@80 with 10s timeout + fallback to full screenshot
+- **switch_tab/close_tab**: Support `index` param (AI agents pass index, not target_id)
+- **diff_baseline_create**: Added `max_pages` param (default 10) to prevent unbounded crawling
+- **CDP JSON serialization**: All JS returns use `JSON.stringify()` → `jsonDecode()` for reliable object handling
+
+### Refactoring
+- Extracted `_jsResolveElement()` and `_parseJsonEval()` helpers — eliminated hardcoded selector patterns
+- Net -75 lines in CDP driver
+
+### Test Results
+| Platform | Pass | Fail | Skip |
+|----------|------|------|------|
+| Web CDP | 140 | 2 | 23 |
+| Electron | 139 | 0 | 26 |
+| Flutter Web | 139 | 0 | 26 |
+| Android | 134 | 5 | 26 |
+
 ## 0.8.3
 
 **Fix WebSocket stability + ping/pong keepalive**
