@@ -104,8 +104,8 @@ extension _BfBatch on FlutterMcpServer {
           });
         }
         final fc = _asFlutterClient(client!, 'edge_swipe');
-        final edge = args['edge'] as String;
-        final direction = args['direction'] as String;
+        final edge = args['edge'] as String? ?? 'left';
+        final direction = args['direction'] as String? ?? 'right';
         final distance = (args['distance'] as num?)?.toDouble() ?? 200;
         final result = await fc.edgeSwipe(
             edge: edge, direction: direction, distance: distance);

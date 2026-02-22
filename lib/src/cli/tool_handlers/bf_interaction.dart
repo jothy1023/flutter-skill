@@ -118,23 +118,44 @@ extension _BfInteraction on FlutterMcpServer {
         return success ? "Swiped ${args['direction']}" : "Swipe failed";
       case 'drag':
         if (client is BridgeDriver) {
+          // Support both key-based and coordinate-based drag
+          if (args['start_x'] != null) {
+            final result = await client.callMethod('drag', {
+              'start_x': (args['start_x'] as num).toDouble(),
+              'start_y': (args['start_y'] as num).toDouble(),
+              'end_x': (args['end_x'] as num).toDouble(),
+              'end_y': (args['end_y'] as num).toDouble(),
+            });
+            return result;
+          }
           final result = await client.callMethod(
               'drag', {'from_key': args['from_key'], 'to_key': args['to_key']});
           return result['success'] == true ? "Dragged" : "Drag failed";
         }
         final fc = _asFlutterClient(client!, 'drag');
-        final success =
-            await fc.drag(fromKey: args['from_key'], toKey: args['to_key']);
+        // Support coordinate-based drag via swipeCoordinates for FlutterClient
+        if (args['start_x'] != null) {
+          final result = await fc.swipeCoordinates(
+            (args['start_x'] as num).toDouble(),
+            (args['start_y'] as num).toDouble(),
+            (args['end_x'] as num).toDouble(),
+            (args['end_y'] as num).toDouble(),
+          );
+          return result;
+        }
+        final success = await fc.drag(
+            fromKey: args['from_key'] as String? ?? '',
+            toKey: args['to_key'] as String? ?? '');
         return success ? "Dragged" : "Drag failed";
 
       // State & Validation
       case 'get_text_value':
         if (client is BridgeDriver) {
-          final text = await client.getText(key: args['key']);
+          final text = await client.getText(key: args['key'] as String?);
           return {"success": true, "text": text};
         }
         final fc = _asFlutterClient(client!, 'get_text_value');
-        return await fc.getTextValue(args['key']);
+        return await fc.getTextValue(args['key'] as String?);
       case 'get_checkbox_state':
         if (client is BridgeDriver) {
           return await client

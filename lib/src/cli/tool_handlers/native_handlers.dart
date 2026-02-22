@@ -263,7 +263,7 @@ extension _NativeHandlers on FlutterMcpServer {
           },
         };
       }
-      final gesture = args['gesture'] as String;
+      final gesture = (args['gesture'] ?? args['type'] ?? args['name']) as String;
       final result = await driver.gesture(gesture).timeout(
             const Duration(seconds: 15),
             onTimeout: () => NativeResult(
@@ -303,7 +303,9 @@ extension _NativeHandlers on FlutterMcpServer {
           },
         };
       }
-      final keys = args['keys'] as String;
+      // Accept both String ("shift+a") and List (["shift", "a"])
+      final rawKeys = args['keys'];
+      final keys = rawKeys is List ? rawKeys.join('+') : rawKeys as String;
       final result = await driver.keyCombo(keys).timeout(
             const Duration(seconds: 10),
             onTimeout: () => NativeResult(

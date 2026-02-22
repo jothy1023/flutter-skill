@@ -179,8 +179,18 @@ extension _BfInspection on FlutterMcpServer {
         final maxDepth = args['max_depth'] ?? 10;
         return await fc.getWidgetTree(maxDepth: maxDepth);
       case 'get_widget_properties':
+        if (client is BridgeDriver) {
+          return await client.callMethod('get_widget_properties', {
+            'key': args['key'] as String?,
+            'element': args['element'] as String?,
+          });
+        }
         final fc = _asFlutterClient(client!, 'get_widget_properties');
-        return await fc.getWidgetProperties(args['key']);
+        final wpKey = (args['key'] ?? args['element'] ?? '') as String;
+        if (wpKey.isEmpty) {
+          return {"success": false, "error": "key or element parameter required"};
+        }
+        return await fc.getWidgetProperties(wpKey);
       case 'get_text_content':
         if (client is BridgeDriver) {
           final text = await client.getText();

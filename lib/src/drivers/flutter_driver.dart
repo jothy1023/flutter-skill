@@ -261,9 +261,9 @@ URI: $wsUri''');
 
   // ==================== STATE & VALIDATION ====================
 
-  Future<String?> getTextValue(String key) async {
+  Future<String?> getTextValue(String? key) async {
     final result = await _call('ext.flutter.flutter_skill.getTextValue', {
-      'key': key,
+      if (key != null) 'key': key,
     });
     return result['value'];
   }
