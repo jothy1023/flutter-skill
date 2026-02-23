@@ -115,10 +115,12 @@ class CdpDriver implements AppDriver {
     // When connecting to an existing instance (launchChrome=false),
     // skip navigation if URL is about:blank or matches the CDP port
     // (the target already has content loaded).
-    final skipNav = !_launchChrome &&
-        (_url.isEmpty ||
-            _url == 'about:blank' ||
-            _url.contains('localhost:$_port'));
+    // Skip navigation if: no URL, about:blank, or URL points to the CDP
+    // debug port itself (user likely just wants to connect to existing tabs).
+    final skipNav = _url.isEmpty ||
+        _url == 'about:blank' ||
+        _url.contains('localhost:$_port') ||
+        _url.contains('127.0.0.1:$_port');
     if (!skipNav) {
       await _call('Page.navigate', {'url': _url});
       // Wait for DOMContentLoaded or timeout (much faster than fixed 2s delay)
