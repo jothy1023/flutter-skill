@@ -163,6 +163,12 @@ async fn handle_call(pool: &Arc<ConnectionPool>, body: &str) -> Value {
             let text = args["text"].as_str().unwrap_or("");
             ops::scroll_to(&conn, text).await
         }
+        "cdp" => {
+            // Raw CDP call: {"name":"cdp","arguments":{"method":"DOM.getDocument","params":{}}}
+            let method = args["method"].as_str().unwrap_or("");
+            let params = args.get("params").cloned().unwrap_or(json!({}));
+            conn.call(method, params).await
+        }
         _ => Err(format!("Unknown tool: {name}")),
     };
 
