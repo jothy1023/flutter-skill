@@ -135,6 +135,7 @@ class CdpDriver implements AppDriver {
   /// Reconnect to a new WebSocket URL (e.g., after target navigates away)
   Future<void> reconnectTo(String wsUrl) async {
     _connected = false;
+    _reconnecting = true; // Prevent _autoReconnect from overriding this
     _failAllPending('Reconnecting');
     try {
       await _ws?.close();
@@ -157,6 +158,7 @@ class CdpDriver implements AppDriver {
       _call('DOM.enable'),
       _call('Runtime.enable'),
     ]);
+    _reconnecting = false;
   }
 
   @override

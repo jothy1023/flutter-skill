@@ -423,24 +423,169 @@ extension CdpBrowserMethods on CdpDriver {
   // ── File upload ──
 
   /// Upload file to input[type=file].
+  /// Pierces Shadow DOM automatically to find deeply nested file inputs.
   Future<Map<String, dynamic>> uploadFile(
       String selector, List<String> filePaths) async {
-    // Find the file input node
-    final doc = await _call('DOM.getDocument');
-    final rootNodeId = doc['root']?['nodeId'] as int? ?? 0;
-    final result = await _call('DOM.querySelector', {
-      'nodeId': rootNodeId,
-      'selector': selector,
-    });
-    final nodeId = result['nodeId'] as int?;
-    if (nodeId == null || nodeId == 0)
-      return {"success": false, "message": "File input not found"};
+    final escapedSelector = selector.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 
-    await _call('DOM.setFileInputFiles', {
-      'nodeId': nodeId,
-      'files': filePaths,
+    // Helper: find element via light DOM or Shadow DOM
+    Future<int?> _resolveNodeId() async {
+      final doc = await _call('DOM.getDocument');
+      final rootNodeId = doc['root']?['nodeId'] as int? ?? 0;
+      final result = await _call('DOM.querySelector', {
+        'nodeId': rootNodeId,
+        'selector': selector,
+      });
+      final nodeId = result['nodeId'] as int?;
+      if (nodeId != null && nodeId != 0) return nodeId;
+      return null;
+    }
+
+    Future<int?> _resolveBackendNodeId() async {
+      final jsObj = await _call('Runtime.evaluate', {
+        'expression': '''(() => {
+          function dq(s,r){let e=r.querySelector(s);if(e)return e;for(const n of r.querySelectorAll("*"))if(n.shadowRoot){e=dq(s,n.shadowRoot);if(e)return e;}return null;}
+          return dq('$escapedSelector',document);
+        })()''',
+        'returnByValue': false,
+      });
+      final objectId = jsObj['result']?['objectId'] as String?;
+      if (objectId == null) return null;
+      final desc = await _call('DOM.describeNode', {'objectId': objectId});
+      await _call('Runtime.releaseObject', {'objectId': objectId}).catchError((_) => <String, dynamic>{});
+      return desc['node']?['backendNodeId'] as int?;
+    }
+
+    Future<void> _setFiles() async {
+      final nodeId = await _resolveNodeId();
+      if (nodeId != null) {
+        await _call('DOM.setFileInputFiles', {'nodeId': nodeId, 'files': filePaths});
+        return;
+      }
+      final backendNodeId = await _resolveBackendNodeId();
+      if (backendNodeId != null) {
+        await _call('DOM.setFileInputFiles', {'backendNodeId': backendNodeId, 'files': filePaths});
+      }
+    }
+
+    // ── Strategy 1: File chooser interception (works with React/Vue/Angular) ──
+    // Intercept the native file dialog, click the input with a trusted gesture,
+    // then feed files. This triggers framework event handlers properly.
+    bool fileChooserFired = false;
+    int? chooserBackendNodeId;
+    try {
+      await _call('Page.setInterceptFileChooserDialog', {'enabled': true});
+
+      onEvent('Page.fileChooserOpened', (params) {
+        fileChooserFired = true;
+        chooserBackendNodeId = params['backendNodeId'] as int?;
+      });
+
+      // Click the file input using DOM.focus + Enter key (trusted gesture)
+      // Or find the parent clickable element
+      final clickResult = await _call('Runtime.evaluate', {
+        'expression': '''(() => {
+          function dq(s,r){let e=r.querySelector(s);if(e)return e;for(const n of r.querySelectorAll("*"))if(n.shadowRoot){e=dq(s,n.shadowRoot);if(e)return e;}return null;}
+          const el = dq('$escapedSelector',document);
+          if (!el) return JSON.stringify({found:false});
+          // Find the visible parent that users would click
+          let target = el.parentElement;
+          while (target && (target.offsetWidth === 0 || target.offsetHeight === 0)) {
+            target = target.parentElement;
+          }
+          if (!target) target = el;
+          const r = target.getBoundingClientRect();
+          return JSON.stringify({found:true, x:r.x+r.width/2, y:r.y+r.height/2});
+        })()''',
+        'returnByValue': true,
+      });
+
+      final clickJson = clickResult['result']?['value'] as String? ?? '{}';
+      final clickData = jsonDecode(clickJson) as Map<String, dynamic>;
+
+      if (clickData['found'] == true) {
+        final cx = (clickData['x'] as num).toDouble();
+        final cy = (clickData['y'] as num).toDouble();
+        // Hover first (some UIs require hover to reveal the clickable area)
+        await _dispatchMouseEvent('mouseMoved', cx, cy);
+        await Future.delayed(const Duration(milliseconds: 200));
+        // Trusted CDP mouse click on the visible parent
+        await _dispatchMouseEvent('mousePressed', cx, cy, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mouseReleased', cx, cy, button: 'left', clickCount: 1);
+
+        // Wait for file chooser
+        for (int i = 0; i < 20 && !fileChooserFired; i++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      }
+
+      if (fileChooserFired) {
+        // Use the backendNodeId from the event to set files on the exact input
+        // that triggered the file chooser. This triggers native change events.
+        if (chooserBackendNodeId != null) {
+          await _call('DOM.setFileInputFiles', {
+            'backendNodeId': chooserBackendNodeId,
+            'files': filePaths,
+          });
+        } else {
+          await _setFiles();
+        }
+        await Future.delayed(const Duration(milliseconds: 300));
+        try { await _call('Page.setInterceptFileChooserDialog', {'enabled': false}); } catch (_) {}
+        removeEventListeners('Page.fileChooserOpened');
+        return {"success": true, "files": filePaths, "method": "fileChooser"};
+      }
+
+      // File chooser didn't fire — disable interception and fall through
+      try { await _call('Page.setInterceptFileChooserDialog', {'enabled': false}); } catch (_) {}
+      removeEventListeners('Page.fileChooserOpened');
+    } catch (e) {
+      // File chooser interception not supported — continue to fallback
+      try { await _call('Page.setInterceptFileChooserDialog', {'enabled': false}); } catch (_) {}
+      removeEventListeners('Page.fileChooserOpened');
+    }
+
+    // ── Strategy 2: Direct setFileInputFiles + dispatch events (legacy) ──
+    await _setFiles();
+    await _dispatchFileEvents(selector);
+    return {"success": true, "files": filePaths, "method": "direct"};
+  }
+
+  /// Dispatch change + input events on a file input so frameworks (React, Vue, Angular) detect it.
+  /// `DOM.setFileInputFiles` sets files but does NOT fire DOM events automatically.
+  /// For React: also calls the React onChange handler directly via __reactProps$.
+  Future<void> _dispatchFileEvents(String selector) async {
+    final escapedSelector = selector.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    await _call('Runtime.evaluate', {
+      'expression': '''
+        (() => {
+          function deepQuery(sel, root) {
+            let el = root.querySelector(sel);
+            if (el) return el;
+            for (const n of root.querySelectorAll('*')) {
+              if (n.shadowRoot) {
+                el = deepQuery(sel, n.shadowRoot);
+                if (el) return el;
+              }
+            }
+            return null;
+          }
+          const el = deepQuery('$escapedSelector', document);
+          if (!el) return;
+
+          // 1. Standard DOM events
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // 2. React synthetic event — React ignores native events on file inputs
+          const propsKey = Object.keys(el).find(k => k.startsWith('__reactProps'));
+          if (propsKey && el[propsKey] && typeof el[propsKey].onChange === 'function') {
+            el[propsKey].onChange({ target: el, currentTarget: el });
+          }
+        })()
+      ''',
+      'returnByValue': true,
     });
-    return {"success": true, "files": filePaths};
   }
 
   // ── Dialog handling ──

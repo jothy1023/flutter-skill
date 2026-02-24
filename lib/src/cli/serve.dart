@@ -130,7 +130,7 @@ Future<void> runServe(List<String> args) async {
         if (e.toString().contains('-32000') ||
             e.toString().contains('Inspected target navigated or closed')) {
           print('⚠️ CDP target lost, attempting to reconnect...');
-          await _reconnectCdpTarget(cdp, cdpPort);
+          await _reconnectCdpTarget(cdp, cdpPort, preferOrigin: state.lastNavigatedOrigin);
         }
       }
     });
@@ -153,7 +153,7 @@ Future<void> runServe(List<String> args) async {
       if (e.toString().contains('-32000') ||
           e.toString().contains('Inspected target navigated or closed')) {
         print('   ⚠️ CDP target lost, attempting to reconnect...');
-        await _reconnectCdpTarget(cdp, state.cdpPort);
+        await _reconnectCdpTarget(cdp, state.cdpPort, preferOrigin: state.lastNavigatedOrigin);
       }
       print('   ❌ Request error: $e');
       try {
@@ -172,14 +172,15 @@ class _ServeState {
   List<Map<String, dynamic>> tools;
   DateTime updatedAt;
   final int cdpPort;
+  String? lastNavigatedOrigin; // Track which origin we're connected to
   _ServeState(this.tools, this.updatedAt, this.cdpPort);
 }
 
-/// Reconnect to the CDP target after it navigates or closes
-Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort) async {
+/// Reconnect to the CDP target after it navigates or closes.
+/// If [preferOrigin] is set, prefer a tab matching that origin.
+Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort, {String? preferOrigin}) async {
   try {
     await Future.delayed(const Duration(seconds: 1));
-    // Fetch the latest tab list from CDP
     final client = HttpClient();
     final request =
         await client.getUrl(Uri.parse('http://localhost:$cdpPort/json'));
@@ -188,8 +189,16 @@ Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort) async {
     final tabs = (jsonDecode(body) as List).cast<Map<String, dynamic>>();
     client.close();
 
-    // Find first page-type tab
-    final pageTab = tabs.firstWhere(
+    // Prefer tab matching the last navigated origin
+    Map<String, dynamic>? pageTab;
+    if (preferOrigin != null) {
+      pageTab = tabs.cast<Map<String, dynamic>?>().firstWhere(
+        (t) => t!['type'] == 'page' && (t['url'] as String? ?? '').startsWith(preferOrigin),
+        orElse: () => null,
+      );
+    }
+    // Fallback to first page tab
+    pageTab ??= tabs.firstWhere(
       (t) => t['type'] == 'page',
       orElse: () => tabs.isNotEmpty ? tabs.first : <String, dynamic>{},
     );
@@ -201,6 +210,51 @@ Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort) async {
     }
   } catch (e) {
     print('   ❌ Failed to reconnect CDP target: $e');
+  }
+}
+
+/// Navigate to a URL — find an existing tab with matching origin and reconnect,
+/// or navigate in current tab if no match found.
+Future<void> _navigateToUrl(CdpDriver cdp, String url, int cdpPort) async {
+  try {
+    final targetUri = Uri.parse(url);
+    final targetOrigin = '${targetUri.scheme}://${targetUri.host}';
+
+    // Fetch all tabs
+    final client = HttpClient();
+    final request =
+        await client.getUrl(Uri.parse('http://localhost:$cdpPort/json'));
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+    final tabs = (jsonDecode(body) as List).cast<Map<String, dynamic>>();
+    client.close();
+
+    // Find tab with matching origin
+    final matchingTab = tabs.cast<Map<String, dynamic>?>().firstWhere(
+      (t) => t!['type'] == 'page' && (t['url'] as String? ?? '').startsWith(targetOrigin),
+      orElse: () => null,
+    );
+
+    if (matchingTab != null) {
+      // Connect to existing tab with same origin
+      final wsUrl = matchingTab['webSocketDebuggerUrl'] as String?;
+      if (wsUrl != null && wsUrl.isNotEmpty) {
+        await cdp.reconnectTo(wsUrl);
+        print('   ✅ Connected to existing tab: ${matchingTab['url']}');
+      }
+      // Navigate within this tab to the exact URL
+      await cdp.call('Page.navigate', {'url': url});
+      await Future.delayed(const Duration(seconds: 3));
+    } else {
+      // No matching tab — navigate in current tab
+      await cdp.call('Page.navigate', {'url': url});
+      await Future.delayed(const Duration(seconds: 3));
+      print('   ✅ Navigated current tab to: $url');
+    }
+  } catch (e) {
+    print('   ⚠️ Smart navigate failed ($e), using direct navigate');
+    await cdp.call('Page.navigate', {'url': url});
+    await Future.delayed(const Duration(seconds: 3));
   }
 }
 
@@ -250,6 +304,8 @@ Future<void> _handleRequest(
     case '/tools/list':
     case '/tools':
       final toolDefs = tools.map(_toMcpToolDef).toList();
+      // Add built-in CDP tools
+      toolDefs.addAll(_builtInCdpToolDefs());
       response
         ..statusCode = 200
         ..headers.contentType = ContentType.json
@@ -333,6 +389,17 @@ Future<void> _handleRequest(
         return;
       }
 
+      // Route built-in CDP tools that need native Dart handling
+      final builtInResult = await _handleBuiltInCdpTool(cdp, toolName, toolArgs, state);
+      if (builtInResult != null) {
+        response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode(builtInResult));
+        await response.close();
+        return;
+      }
+
       final result = await cdp.callTool(toolName, toolArgs);
       response
         ..statusCode = 200
@@ -387,12 +454,11 @@ Future<void> _handleRequest(
       }
       print('   🌐 Navigating to: $navUrl');
       try {
-        // Use CDP Page.navigate directly to stay on same WS connection
-        await cdp.call('Page.navigate', {'url': navUrl});
-        // Wait for page load
-        await Future.delayed(const Duration(seconds: 3));
-        // Re-discover CDP target in case of redirect
-        await _reconnectCdpTarget(cdp, state.cdpPort);
+        // Track the origin so reconnect logic prefers this tab
+        final navUri = Uri.parse(navUrl);
+        state.lastNavigatedOrigin = '${navUri.scheme}://${navUri.host}';
+        // Navigate in the current tab — find matching tab or open new one
+        await _navigateToUrl(cdp, navUrl, state.cdpPort);
         // Re-setup observers and re-scan tools
         await _setupHotReloadDetection(cdp);
         state.tools = await _discoverAndPrint(cdp);
@@ -636,3 +702,226 @@ const _snapshotJs = '''
   return lines.join('\\n');
 })()
 ''';
+
+/// Built-in CDP tool definitions for /tools/list
+List<Map<String, dynamic>> _builtInCdpToolDefs() => [
+  {'name': 'tap', 'description': 'Tap/click an element by text, CSS selector, ref, or x,y coordinates',
+   'inputSchema': {'type': 'object', 'properties': {
+     'text': {'type': 'string', 'description': 'Visible text of element to tap'},
+     'selector': {'type': 'string', 'description': 'CSS selector'},
+     'key': {'type': 'string', 'description': 'CSS selector (alias for selector)'},
+     'ref': {'type': 'string', 'description': 'Element ref from snapshot'},
+     'x': {'type': 'number', 'description': 'X coordinate'},
+     'y': {'type': 'number', 'description': 'Y coordinate'},
+   }}},
+  {'name': 'type_text', 'description': 'Type text via keyboard (into focused element or specified selector)',
+   'inputSchema': {'type': 'object', 'properties': {
+     'text': {'type': 'string', 'description': 'Text to type'},
+   }, 'required': ['text']}},
+  {'name': 'screenshot', 'description': 'Take a screenshot of the current page',
+   'inputSchema': {'type': 'object', 'properties': {
+     'quality': {'type': 'number', 'description': 'JPEG quality 0.0-1.0 (default 0.8)'},
+     'max_width': {'type': 'integer', 'description': 'Max width in pixels (default 1280)'},
+   }}},
+  {'name': 'snapshot', 'description': 'Get a text-based accessibility snapshot of the page (token-efficient)',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'upload_file', 'description': 'Upload file(s) to an input[type=file] element. Supports Shadow DOM.',
+   'inputSchema': {'type': 'object', 'properties': {
+     'selector': {'type': 'string', 'description': 'CSS selector for file input (default: input[type="file"])'},
+     'files': {'type': 'array', 'items': {'type': 'string'}, 'description': 'List of absolute file paths to upload'},
+   }, 'required': ['files']}},
+  {'name': 'navigate', 'description': 'Navigate to a URL (finds matching tab or navigates current tab)',
+   'inputSchema': {'type': 'object', 'properties': {
+     'url': {'type': 'string', 'description': 'URL to navigate to'},
+   }, 'required': ['url']}},
+  {'name': 'evaluate', 'description': 'Execute JavaScript in the browser and return the result',
+   'inputSchema': {'type': 'object', 'properties': {
+     'expression': {'type': 'string', 'description': 'JavaScript expression to evaluate'},
+   }, 'required': ['expression']}},
+  {'name': 'scroll', 'description': 'Scroll to an element by CSS selector or text',
+   'inputSchema': {'type': 'object', 'properties': {
+     'key': {'type': 'string', 'description': 'CSS selector to scroll to'},
+     'text': {'type': 'string', 'description': 'Text of element to scroll to'},
+   }}},
+  {'name': 'hover', 'description': 'Hover over an element',
+   'inputSchema': {'type': 'object', 'properties': {
+     'key': {'type': 'string', 'description': 'CSS selector'},
+     'text': {'type': 'string', 'description': 'Visible text'},
+     'ref': {'type': 'string', 'description': 'Element ref from snapshot'},
+   }}},
+  {'name': 'press_key', 'description': 'Press a keyboard key (Enter, Tab, Escape, etc.)',
+   'inputSchema': {'type': 'object', 'properties': {
+     'key': {'type': 'string', 'description': 'Key name (Enter, Tab, Escape, Backspace, ArrowDown, etc.)'},
+   }, 'required': ['key']}},
+  {'name': 'select_option', 'description': 'Select an option from a <select> dropdown',
+   'inputSchema': {'type': 'object', 'properties': {
+     'selector': {'type': 'string', 'description': 'CSS selector for the select element'},
+     'value': {'type': 'string', 'description': 'Value to select'},
+   }, 'required': ['selector', 'value']}},
+  {'name': 'get_text', 'description': 'Get visible text of the page or a specific element',
+   'inputSchema': {'type': 'object', 'properties': {
+     'selector': {'type': 'string', 'description': 'Optional CSS selector to scope text extraction'},
+   }}},
+  {'name': 'get_title', 'description': 'Get the page title',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'get_url', 'description': 'Get the current page URL',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'get_cookies', 'description': 'Get all browser cookies for the current page',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'set_cookie', 'description': 'Set a browser cookie',
+   'inputSchema': {'type': 'object', 'properties': {
+     'name': {'type': 'string'}, 'value': {'type': 'string'}, 'domain': {'type': 'string'},
+   }, 'required': ['name', 'value']}},
+  {'name': 'go_back', 'description': 'Navigate back in browser history',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'go_forward', 'description': 'Navigate forward in browser history',
+   'inputSchema': {'type': 'object', 'properties': {}}},
+  {'name': 'wait', 'description': 'Wait for a specified duration',
+   'inputSchema': {'type': 'object', 'properties': {
+     'ms': {'type': 'integer', 'description': 'Milliseconds to wait (default 1000)'},
+   }}},
+  {'name': 'reset_app', 'description': 'Clear storage, cookies, and reload the page',
+   'inputSchema': {'type': 'object', 'properties': {
+     'clear_storage': {'type': 'boolean', 'description': 'Clear localStorage/sessionStorage (default true)'},
+     'clear_cookies': {'type': 'boolean', 'description': 'Clear cookies (default true)'},
+   }}},
+];
+
+/// Handle built-in CDP tools that require native Dart methods.
+/// Returns null if the tool is not a built-in CDP tool.
+Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
+    CdpDriver cdp, String toolName, Map<String, dynamic> args, [_ServeState? state]) async {
+  switch (toolName) {
+    case 'upload_file':
+      final selector = args['selector'] as String? ?? 'input[type="file"]';
+      final files = (args['files'] as List<dynamic>?)?.cast<String>() ?? [];
+      return await cdp.uploadFile(selector, files);
+
+    case 'tap':
+      final x = args['x'] as num?;
+      final y = args['y'] as num?;
+      if (x != null && y != null) {
+        await cdp.tapAt(x.toDouble(), y.toDouble());
+        return {'success': true, 'x': x, 'y': y};
+      }
+      return await cdp.tap(
+        key: args['selector'] as String? ?? args['key'] as String?,
+        text: args['text'] as String?,
+        ref: args['ref'] as String?,
+      );
+
+    case 'type_text':
+    case 'enter_text':
+      final text = args['text'] as String? ?? '';
+      await cdp.typeText(text);
+      return {'success': true, 'text': text};
+
+    case 'snapshot':
+      final snapResult = await cdp.call('Runtime.evaluate', {
+        'expression': _snapshotJs,
+        'returnByValue': true,
+      });
+      final snapText = snapResult['result']?['value'] as String? ?? '';
+      return {'success': true, 'snapshot': snapText, 'length': snapText.length};
+
+    case 'screenshot':
+      final quality = (args['quality'] as num?)?.toDouble() ?? 0.8;
+      final maxWidth = (args['max_width'] as num?)?.toInt() ?? 1280;
+      final data = await cdp.takeScreenshot(quality: quality, maxWidth: maxWidth);
+      if (data != null) {
+        return {'success': true, 'base64': data, 'format': 'jpeg'};
+      }
+      return {'success': false, 'error': 'Screenshot failed'};
+
+    case 'scroll':
+      return await cdp.scrollTo(
+        key: args['selector'] as String? ?? args['key'] as String?,
+        text: args['text'] as String?,
+      );
+
+    case 'navigate':
+      final url = args['url'] as String?;
+      if (url == null) return {'success': false, 'error': 'Missing url'};
+      if (state != null) {
+        final navUri = Uri.parse(url);
+        state.lastNavigatedOrigin = '${navUri.scheme}://${navUri.host}';
+        await _navigateToUrl(cdp, url, state.cdpPort);
+        // Re-scan tools after navigation
+        state.tools = await _discoverTools(cdp);
+        state.updatedAt = DateTime.now();
+      } else {
+        await cdp.navigate(url);
+      }
+      return {'success': true, 'url': url};
+
+    case 'get_text':
+    case 'get_visible_text':
+      final selector = args['selector'] as String?;
+      final text = await cdp.getVisibleText(selector: selector);
+      return {'success': true, 'text': text};
+
+    case 'evaluate':
+    case 'eval':
+      final expression = args['expression'] as String? ?? args['code'] as String? ?? '';
+      final result = await cdp.call('Runtime.evaluate', {
+        'expression': expression,
+        'returnByValue': true,
+        'awaitPromise': true,
+      });
+      return {'success': true, 'result': result['result']?['value']};
+
+    case 'wait':
+      final ms = (args['ms'] as num?)?.toInt() ?? (args['milliseconds'] as num?)?.toInt() ?? 1000;
+      await Future.delayed(Duration(milliseconds: ms));
+      return {'success': true, 'waited_ms': ms};
+
+    case 'press_key':
+      final key = args['key'] as String? ?? '';
+      await cdp.pressKey(key);
+      return {'success': true, 'key': key};
+
+    case 'hover':
+      return await cdp.hover(
+        key: args['selector'] as String? ?? args['key'] as String?,
+        text: args['text'] as String?,
+        ref: args['ref'] as String?,
+      );
+
+    case 'select_option':
+      final selector = args['selector'] as String? ?? 'select';
+      final value = args['value'] as String? ?? '';
+      await cdp.selectOption(selector, value);
+      return {'success': true, 'selector': selector, 'value': value};
+
+    case 'get_cookies':
+      return await cdp.getCookies();
+
+    case 'set_cookie':
+      final name = args['name'] as String? ?? '';
+      final value = args['value'] as String? ?? '';
+      final domain = args['domain'] as String?;
+      return await cdp.setCookie(name, value, domain: domain ?? '');
+
+    case 'go_back':
+      final went = await cdp.goBack();
+      return {'success': went};
+
+    case 'go_forward':
+      final went = await cdp.goForward();
+      return {'success': went};
+
+    case 'get_title':
+      final title = await cdp.getTitle();
+      return {'success': true, 'title': title};
+
+    case 'get_url':
+      final result = await cdp.call('Runtime.evaluate', {
+        'expression': 'window.location.href',
+        'returnByValue': true,
+      });
+      return {'success': true, 'url': result['result']?['value']};
+
+    default:
+      return null; // Not a built-in tool
+  }
+}
