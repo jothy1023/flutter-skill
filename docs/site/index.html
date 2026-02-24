@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flutter-skill - AI-powered app automation</title>
+  <meta name="description" content="Give any AI agent eyes and hands inside any running app. 10 platforms. Zero test code. One MCP server.">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --code-bg: #1c2128;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    code, pre {
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    nav a {
+      margin-left: 24px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 0 64px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .hero-badges { margin-bottom: 40px; }
+    .hero-badges img { margin: 0 4px; }
+
+    .install-box {
+      display: inline-block;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-family: monospace;
+      font-size: 16px;
+      color: var(--green);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .install-box:hover { border-color: var(--accent); }
+
+    .install-box::before { content: '$ '; color: var(--text-muted); }
+
+    /* Sections */
+    section {
+      padding: 64px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    section h2 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    section h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 32px 0 12px;
+      color: var(--accent);
+    }
+
+    section p { color: var(--text-muted); margin-bottom: 16px; }
+
+    /* Cards grid */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover { border-color: var(--accent); }
+
+    .card h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    .card code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .status { color: var(--green); }
+
+    /* Code blocks */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 16px 0;
+    }
+
+    .keyword { color: #ff7b72; }
+    .string { color: #a5d6ff; }
+    .comment { color: #8b949e; }
+
+    /* Comparison */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .compare-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .compare-card h4 {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .compare-card .value {
+      font-size: 36px;
+      font-weight: 700;
+    }
+
+    .compare-card .label {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    footer a { color: var(--text-muted); }
+    footer a:hover { color: var(--text); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      .compare-grid { grid-template-columns: 1fr; }
+      nav a { margin-left: 16px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <div class="logo">flutter-skill</div>
+    <nav>
+      <a href="#getting-started">Getting Started</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#cli">CLI Reference</a>
+      <a href="#ide-setup">IDE Setup</a>
+      <a href="https://github.com/ai-dashboad/flutter-skill">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>flutter-skill</h1>
+    <p>Give any AI agent eyes and hands inside any running app. 10 platforms. Zero test code. One MCP server.</p>
+    <div class="hero-badges">
+      <a href="https://github.com/ai-dashboad/flutter-skill/stargazers"><img src="https://img.shields.io/github/stars/ai-dashboad/flutter-skill?style=flat&color=yellow" alt="Stars"></a>
+      <a href="https://pub.dev/packages/flutter_skill"><img src="https://img.shields.io/pub/v/flutter_skill.svg" alt="pub.dev"></a>
+      <a href="https://www.npmjs.com/package/flutter-skill"><img src="https://img.shields.io/npm/v/flutter-skill.svg" alt="npm"></a>
+      <a href="https://github.com/ai-dashboad/flutter-skill/actions"><img src="https://img.shields.io/github/actions/workflow/status/ai-dashboad/flutter-skill/ci.yml?label=tests" alt="CI"></a>
+    </div>
+    <div class="install-box" onclick="navigator.clipboard.writeText('npm install -g flutter-skill')">npm install -g flutter-skill</div>
+  </div>
+
+  <!-- Getting Started -->
+  <section id="getting-started">
+    <h2>Getting Started</h2>
+    <p>Install flutter-skill and connect it to your AI in under 60 seconds.</p>
+
+    <h3>1. Install</h3>
+    <pre>npm install -g flutter-skill</pre>
+
+    <h3>2. Add to your AI</h3>
+    <p>Copy this into your MCP config (Cursor, Claude Desktop, Windsurf, VSCode, etc.):</p>
+    <pre>{
+  <span class="string">"mcpServers"</span>: {
+    <span class="string">"flutter-skill"</span>: {
+      <span class="string">"command"</span>: <span class="string">"flutter-skill"</span>,
+      <span class="string">"args"</span>: [<span class="string">"server"</span>]
+    }
+  }
+}</pre>
+
+    <h3>3. Add to your Flutter app (optional)</h3>
+    <pre><span class="keyword">import</span> <span class="string">'package:flutter_skill/flutter_skill.dart'</span>;
+
+<span class="keyword">void</span> main() {
+  <span class="keyword">if</span> (kDebugMode) FlutterSkillBinding.ensureInitialized();
+  runApp(MyApp());
+}</pre>
+
+    <h3>4. Test</h3>
+    <p>Just talk to your AI: <em>"Launch my app, explore every screen, and report any bugs"</em></p>
+  </section>
+
+  <!-- Platforms -->
+  <section id="platforms">
+    <h2>10 Platforms, One Tool</h2>
+    <p>Most testing tools work on 1-2 platforms. flutter-skill works on 10.</p>
+
+    <table>
+      <thead>
+        <tr><th>Platform</th><th>SDK</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Flutter (iOS/Android/Web)</td><td><code>flutter_skill</code></td><td class="status">188/195</td></tr>
+        <tr><td>React Native</td><td><code>sdks/react-native</code></td><td class="status">75/75</td></tr>
+        <tr><td>Electron</td><td><code>sdks/electron</code></td><td class="status">75/75</td></tr>
+        <tr><td>Tauri (Rust)</td><td><code>sdks/tauri</code></td><td class="status">75/75</td></tr>
+        <tr><td>Android (Kotlin)</td><td><code>sdks/android</code></td><td class="status">74/75</td></tr>
+        <tr><td>KMP Desktop</td><td><code>sdks/kmp</code></td><td class="status">75/75</td></tr>
+        <tr><td>.NET MAUI</td><td><code>sdks/dotnet-maui</code></td><td class="status">75/75</td></tr>
+        <tr><td>iOS (Swift/UIKit)</td><td><code>sdks/ios</code></td><td class="status">19/19</td></tr>
+        <tr><td>Web (any website)</td><td><code>sdks/web</code></td><td class="status">-</td></tr>
+        <tr><td>Web CDP (zero-config)</td><td>No SDK needed</td><td class="status">141/156</td></tr>
+      </tbody>
+    </table>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <h4>MCP Tools</h4>
+        <div class="value" style="color: var(--accent)">253</div>
+        <div class="label">Dynamic tools per page</div>
+      </div>
+      <div class="compare-card">
+        <h4>Test Score</h4>
+        <div class="value" style="color: var(--green)">98.8%</div>
+        <div class="label">656/664 tests passing</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Two Modes -->
+  <section id="modes">
+    <h2>Two Modes</h2>
+    <p>Choose the mode that fits your workflow.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h4><code>server</code> — MCP stdio</h4>
+        <p>For IDE and AI agent integration. Communicates via MCP (JSON-RPC over stdio). 253 dynamic tools. Auto-launches Chrome.</p>
+        <p style="margin-top: 12px"><strong>Best for:</strong> Cursor, Claude Desktop, VSCode Copilot, Windsurf, Cline</p>
+      </div>
+      <div class="card">
+        <h4><code>serve</code> — HTTP REST</h4>
+        <p>For CLI, automation, and CI/CD pipelines. HTTP API on configurable port. 246 generic tools. Connects to existing Chrome.</p>
+        <p style="margin-top: 12px"><strong>Best for:</strong> OpenClaw, scripts, CI/CD, remote access</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLI Reference -->
+  <section id="cli">
+    <h2>CLI Client Reference</h2>
+    <p>Command-line access to a running <code>flutter-skill serve</code> instance.</p>
+
+    <pre><span class="comment"># Start server</span>
+flutter-skill serve https://your-app.com
+
+<span class="comment"># Navigation</span>
+flutter-skill nav https://google.com
+
+<span class="comment"># Accessibility tree (99% fewer tokens than screenshot)</span>
+flutter-skill snap
+
+<span class="comment"># Screenshot</span>
+flutter-skill screenshot /tmp/ss.jpg
+
+<span class="comment"># Interaction</span>
+flutter-skill tap <span class="string">"Login"</span>
+flutter-skill type <span class="string">"hello@example.com"</span>
+flutter-skill key Enter
+
+<span class="comment"># JavaScript</span>
+flutter-skill eval <span class="string">"document.title"</span>
+
+<span class="comment"># All tools</span>
+flutter-skill tools</pre>
+
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>nav &lt;url&gt;</code></td><td>Navigate to URL</td></tr>
+        <tr><td><code>snap</code></td><td>Accessibility tree snapshot</td></tr>
+        <tr><td><code>screenshot [path]</code></td><td>Take screenshot</td></tr>
+        <tr><td><code>tap &lt;text|ref|x y&gt;</code></td><td>Tap element</td></tr>
+        <tr><td><code>type &lt;text&gt;</code></td><td>Type via keyboard</td></tr>
+        <tr><td><code>key &lt;key&gt; [mod]</code></td><td>Press key</td></tr>
+        <tr><td><code>eval &lt;js&gt;</code></td><td>Execute JavaScript</td></tr>
+        <tr><td><code>title</code></td><td>Get page title</td></tr>
+        <tr><td><code>text</code></td><td>Get visible text</td></tr>
+        <tr><td><code>hover &lt;text&gt;</code></td><td>Hover element</td></tr>
+        <tr><td><code>upload &lt;sel&gt; &lt;file&gt;</code></td><td>Upload file</td></tr>
+        <tr><td><code>tools</code></td><td>List all tools</td></tr>
+        <tr><td><code>call &lt;tool&gt; [json]</code></td><td>Call any tool directly</td></tr>
+        <tr><td><code>wait [ms]</code></td><td>Wait (default 1000ms)</td></tr>
+      </tbody>
+    </table>
+
+    <p><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/CLI_CLIENT.md">Full CLI client documentation &rarr;</a></p>
+  </section>
+
+  <!-- IDE Setup -->
+  <section id="ide-setup">
+    <h2>IDE Setup</h2>
+    <p>One config line. Works with all MCP-compatible AI tools.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h4>Cursor</h4>
+        <p>Add to <code>.cursor/mcp.json</code></p>
+      </div>
+      <div class="card">
+        <h4>Claude Desktop</h4>
+        <p>Add to <code>claude_desktop_config.json</code></p>
+      </div>
+      <div class="card">
+        <h4>Windsurf</h4>
+        <p>Add to <code>~/.codeium/windsurf/mcp_config.json</code></p>
+      </div>
+      <div class="card">
+        <h4>VSCode Copilot</h4>
+        <p>Add to <code>.vscode/mcp.json</code></p>
+      </div>
+      <div class="card">
+        <h4>Cline</h4>
+        <p>VSCode Settings &rarr; Cline &rarr; MCP</p>
+      </div>
+      <div class="card">
+        <h4>OpenClaw</h4>
+        <p>Skill or MCP config. Also supports <code>serve</code> mode.</p>
+      </div>
+      <div class="card">
+        <h4>Continue.dev</h4>
+        <p>Add to <code>.continue/config.json</code></p>
+      </div>
+    </div>
+
+    <p style="margin-top: 24px"><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/IDE_SETUP.md">Full IDE setup guide &rarr;</a></p>
+  </section>
+
+  <!-- API Reference -->
+  <section id="api">
+    <h2>Documentation</h2>
+    <p>Detailed guides for every aspect of flutter-skill.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/USAGE_GUIDE.md">Usage Guide</a></h4>
+        <p>Complete walkthrough of all features and workflows.</p>
+      </div>
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/CLI_CLIENT.md">CLI Client</a></h4>
+        <p>Command-line client reference for serve mode.</p>
+      </div>
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/IDE_SETUP.md">IDE Setup</a></h4>
+        <p>Configuration guides for all supported AI platforms.</p>
+      </div>
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/ARCHITECTURE.md">Architecture</a></h4>
+        <p>Technical deep-dive into how flutter-skill works.</p>
+      </div>
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/docs/TROUBLESHOOTING.md">Troubleshooting</a></h4>
+        <p>Common issues and solutions.</p>
+      </div>
+      <div class="card">
+        <h4><a href="https://github.com/ai-dashboad/flutter-skill/blob/main/CHANGELOG.md">Changelog</a></h4>
+        <p>Version history and release notes.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="container">
+    <p>MIT License &copy; 2025 &mdash; <a href="https://github.com/ai-dashboad/flutter-skill">GitHub</a> &middot; <a href="https://pub.dev/packages/flutter_skill">pub.dev</a> &middot; <a href="https://www.npmjs.com/package/flutter-skill">npm</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

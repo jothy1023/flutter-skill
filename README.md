@@ -22,6 +22,7 @@
 <p align="center">
   <a href="#30-second-demo">Demo</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#use-with-ai-platforms">AI Platforms</a> •
   <a href="#10-platforms-one-tool">Platforms</a> •
   <a href="#why-not-playwright--appium--detox">vs Others</a> •
   <a href="docs/USAGE_GUIDE.md">Docs</a>
@@ -118,6 +119,83 @@ That's it. **Zero configuration. Zero test code. Works in under 60 seconds.**
 
 ---
 
+## Use with AI Platforms
+
+### MCP Server Mode (IDE Integration)
+
+Works with any MCP-compatible AI tool. One config line:
+
+```json
+{
+  "mcpServers": {
+    "flutter-skill": {
+      "command": "flutter-skill",
+      "args": ["server"]
+    }
+  }
+}
+```
+
+| Platform | Config File | Status |
+|----------|-------------|--------|
+| **Cursor** | `.cursor/mcp.json` | ✅ |
+| **Claude Desktop** | `claude_desktop_config.json` | ✅ |
+| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` | ✅ |
+| **VSCode Copilot** | `.vscode/mcp.json` | ✅ |
+| **Cline** | VSCode Settings → Cline → MCP | ✅ |
+| **OpenClaw** | Skill or MCP config | ✅ |
+| **Continue.dev** | `.continue/config.json` | ✅ |
+
+### HTTP Serve Mode (CLI & Automation)
+
+For standalone browser automation, CI/CD pipelines, or remote access:
+
+```bash
+# Start server
+flutter-skill serve https://your-app.com
+
+# Use CLI client commands (NEW in v0.9.1)
+flutter-skill nav https://google.com
+flutter-skill snap                    # Accessibility tree (99% fewer tokens)
+flutter-skill screenshot /tmp/ss.jpg
+flutter-skill tap "Login"
+flutter-skill type "hello@example.com"
+flutter-skill eval "document.title"
+flutter-skill tools                   # List all available tools
+```
+
+| Command | Description |
+|---------|-------------|
+| `nav <url>` | Navigate to URL |
+| `snap` | Accessibility tree snapshot |
+| `screenshot [path]` | Take screenshot |
+| `tap <text\|ref\|x y>` | Tap element |
+| `type <text>` | Type via keyboard |
+| `key <key> [mod]` | Press key |
+| `eval <js>` | Execute JavaScript |
+| `title` | Get page title |
+| `text` | Get visible text |
+| `hover <text>` | Hover element |
+| `upload <sel> <file>` | Upload file |
+| `tools` | List tools |
+| `call <tool> [json]` | Call any tool |
+
+Supports `--port=N`, `--host=H` flags and `FS_PORT`/`FS_HOST` env vars.
+
+### Two Modes Compared
+
+| | `server` (MCP stdio) | `serve` (HTTP) |
+|---|---|---|
+| **Use case** | IDE / AI agent integration | CLI / automation / CI/CD |
+| **Protocol** | MCP (JSON-RPC over stdio) | HTTP REST |
+| **Tools** | 253 (dynamic per page) | 246 (generic) |
+| **Browser** | Auto-launches Chrome | Connects to existing Chrome |
+| **Best for** | Cursor, Claude, VSCode | OpenClaw, scripts, pipelines |
+
+> **Full CLI client reference:** [docs/CLI_CLIENT.md](docs/CLI_CLIENT.md)
+
+---
+
 ## 10 Platforms, One Tool
 
 Most testing tools work on 1-2 platforms. flutter-skill works on **10**.
@@ -177,7 +255,7 @@ Tested 15 MCP tools against production websites — **75/75 passed, zero timeout
 
 | | flutter-skill | Playwright MCP | Appium | Detox |
 |---|:---:|:---:|:---:|:---:|
-| **MCP tools** | **237** | ~33 | ❌ | ❌ |
+| **MCP tools** | **253** | ~33 | ❌ | ❌ |
 | **Platforms** | **10** | 1 (web) | Mobile | React Native |
 | **Setup time** | 30 sec | Minutes | Hours | Hours |
 | **Test code needed** | ❌ None | ✅ Yes | ✅ Yes | ✅ Yes |
@@ -309,7 +387,7 @@ Then batch multiple actions in one call:
 </table>
 
 <details>
-<summary><strong>237 tools — full reference</strong></summary>
+<summary><strong>253 tools — full reference</strong></summary>
 
 **AI Explore:** `page_summary`, `explore_actions`, `boundary_test`, `explore_report`
 
@@ -362,7 +440,7 @@ Then batch multiple actions in one call:
 
 ```yaml
 dependencies:
-  flutter_skill: ^0.9.0
+  flutter_skill: ^0.9.1
 ```
 
 ```dart

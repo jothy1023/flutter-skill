@@ -1,3 +1,23 @@
+## 0.9.1
+
+**CLI client commands, GitHub Pages docs, comprehensive platform guide**
+
+### New Features
+- **CLI client commands for serve API**: `nav`, `snap`, `screenshot`, `tap`, `type`, `key`, `eval`, `title`, `text`, `hover`, `upload`, `tools`, `call`, `wait`
+- **GitHub Pages documentation site**: Static docs site at `docs/site/` with auto-deploy workflow
+
+### Documentation
+- Comprehensive IDE/platform integration guide with all supported AI platforms
+- CLI client reference (`docs/CLI_CLIENT.md`) with scripting examples and CI/CD patterns
+- Updated IDE setup guide with OpenClaw serve mode and Continue.dev sections
+
+### Bug Fixes
+- **Chrome WebSocket 403 Forbidden**: Fixed Origin header handling
+- **Domain-based tab matching**: Never hijack unrelated tabs
+- **PUT for /json/new**: Chrome 145+ requires PUT instead of GET
+
+---
+
 ## 0.9.0
 
 **iOS native automation + React Native support + bridge reliability**
