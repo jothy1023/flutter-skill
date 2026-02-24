@@ -1503,11 +1503,58 @@ class CdpDriver implements AppDriver {
 
   /// Type text character by character (more realistic than enterText).
   Future<void> typeText(String text) async {
+    // Snapshot focused element's value before typing
+    final beforeResult = await _evalJs('''
+      (() => {
+        const el = document.activeElement;
+        if (!el) return JSON.stringify({tag: null});
+        return JSON.stringify({tag: el.tagName, val: el.value || '', len: (el.value || '').length});
+      })()
+    ''');
+    final beforeParsed = _parseJsonEval(beforeResult);
+    final beforeLen = (beforeParsed?['len'] as num?)?.toInt() ?? 0;
+
+    // Primary: keyDown(text) + keyUp per character
     for (final char in text.split('')) {
+      final code = char.codeUnitAt(0);
+      final keyCode = code >= 97 && code <= 122 ? code - 32 : code;
+      final codeStr = code >= 65 && code <= 90 || code >= 97 && code <= 122
+          ? 'Key${char.toUpperCase()}'
+          : '';
       await _call('Input.dispatchKeyEvent', {
-        'type': 'char',
+        'type': 'keyDown',
         'text': char,
+        'key': char,
+        'unmodifiedText': char,
+        if (codeStr.isNotEmpty) 'code': codeStr,
+        'windowsVirtualKeyCode': keyCode,
+        'nativeVirtualKeyCode': keyCode,
       });
+      await _call('Input.dispatchKeyEvent', {
+        'type': 'keyUp',
+        'key': char,
+        if (codeStr.isNotEmpty) 'code': codeStr,
+        'windowsVirtualKeyCode': keyCode,
+        'nativeVirtualKeyCode': keyCode,
+      });
+    }
+
+    // Verify text was inserted; fallback to execCommand if not
+    final afterResult = await _evalJs('''
+      (() => {
+        const el = document.activeElement;
+        if (!el) return JSON.stringify({len: 0});
+        return JSON.stringify({len: (el.value || el.textContent || '').length});
+      })()
+    ''');
+    final afterParsed = _parseJsonEval(afterResult);
+    final afterLen = (afterParsed?['len'] as num?)?.toInt() ?? 0;
+
+    if (afterLen <= beforeLen) {
+      // dispatchKeyEvent didn't insert text — use execCommand fallback
+      final escaped = text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+      await _evalJs(
+          "document.execCommand('insertText', false, '$escaped')");
     }
   }
 
@@ -2425,14 +2472,44 @@ function _dqAll(sel, root) {
         $deepQ
         let el = _dq('$selector');
         if (el) return el;
+        // Visibility check helper
+        function _vis(e) {
+          const s = window.getComputedStyle(e);
+          if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false;
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && r.height > 0;
+        }
+        // Interactive tags get priority
+        const interactive = new Set(['A','BUTTON','INPUT','SELECT','TEXTAREA','LABEL']);
+        function _score(e) {
+          let s = 0;
+          if (_vis(e)) s += 1000;
+          if (interactive.has(e.tagName) || e.getAttribute('role') === 'button' || e.getAttribute('role') === 'link' || e.getAttribute('role') === 'tab') s += 500;
+          // Prefer smallest textContent (most specific match)
+          s -= Math.min((e.textContent || '').length, 999);
+          return s;
+        }
         const all = _dqAll('a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, li, td, th, [role]');
+        // Exact match — pick best scored
+        let best = null, bestScore = -Infinity;
         for (const e of all) {
-          if (e.textContent && e.textContent.trim() === '$escaped') return e;
+          const t = (e.textContent || '').trim();
+          if (t === '$escaped') {
+            const sc = _score(e);
+            if (sc > bestScore) { best = e; bestScore = sc; }
+          }
         }
+        if (best) return best;
+        // Contains match — pick best scored
+        best = null; bestScore = -Infinity;
         for (const e of all) {
-          if (e.textContent && e.textContent.trim().includes('$escaped')) return e;
+          const t = (e.textContent || '').trim();
+          if (t.includes('$escaped')) {
+            const sc = _score(e);
+            if (sc > bestScore) { best = e; bestScore = sc; }
+          }
         }
-        return null;
+        return best;
       })()''';
     }
     if (ref != null) {
