@@ -1505,18 +1505,27 @@ class CdpDriver implements AppDriver {
 
   /// Type text character by character (more realistic than enterText).
   Future<void> typeText(String text) async {
-    // Snapshot focused element's value before typing
-    final beforeResult = await _evalJs('''
+    // Check if focused element is contenteditable — use Input.insertText directly
+    // (dispatchKeyEvent drops special chars like '.', '(', '%' in contenteditable)
+    final focusInfo = await _evalJs('''
       (() => {
         const el = document.activeElement;
-        if (!el) return JSON.stringify({tag: null});
-        return JSON.stringify({tag: el.tagName, val: el.value || '', len: (el.value || '').length});
+        if (!el) return JSON.stringify({tag: null, ce: false});
+        const ce = el.isContentEditable || el.getAttribute('contenteditable') === 'true' || el.getAttribute('role') === 'textbox';
+        return JSON.stringify({tag: el.tagName, ce: ce, val: el.value || '', len: (el.value || el.textContent || '').length});
       })()
     ''');
-    final beforeParsed = _parseJsonEval(beforeResult);
-    final beforeLen = (beforeParsed?['len'] as num?)?.toInt() ?? 0;
+    final info = _parseJsonEval(focusInfo);
+    final isContentEditable = info?['ce'] == true;
+    final beforeLen = (info?['len'] as num?)?.toInt() ?? 0;
 
-    // Primary: keyDown(text) + keyUp per character
+    if (isContentEditable) {
+      // Use Input.insertText for contenteditable — reliable for all characters
+      await _call('Input.insertText', {'text': text});
+      return;
+    }
+
+    // For regular inputs/textareas: keyDown(text) + keyUp per character
     for (final char in text.split('')) {
       final code = char.codeUnitAt(0);
       final keyCode = code >= 97 && code <= 122 ? code - 32 : code;
