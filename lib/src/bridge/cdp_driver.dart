@@ -1503,155 +1503,177 @@ class CdpDriver implements AppDriver {
     });
   }
 
-  /// Keyboard key info for a character (US QWERTY layout).
-  static _KeyInfo _charToKeyInfo(String char) {
-    final c = char.codeUnitAt(0);
+  /// Type text into the focused element.
+  /// Complete US QWERTY keyboard layout mapping.
+  /// Maps every printable ASCII character to its physical key, keyCode,
+  /// and whether Shift is required. Based on Puppeteer's USKeyboardLayout.
+  static const _usKeyboard = <String, List<dynamic>>{
+    // [code, keyCode, shifted]
+    // --- Letters (a-z unshifted, A-Z shifted) ---
+    'a': ['KeyA', 65, false], 'b': ['KeyB', 66, false],
+    'c': ['KeyC', 67, false], 'd': ['KeyD', 68, false],
+    'e': ['KeyE', 69, false], 'f': ['KeyF', 70, false],
+    'g': ['KeyG', 71, false], 'h': ['KeyH', 72, false],
+    'i': ['KeyI', 73, false], 'j': ['KeyJ', 74, false],
+    'k': ['KeyK', 75, false], 'l': ['KeyL', 76, false],
+    'm': ['KeyM', 77, false], 'n': ['KeyN', 78, false],
+    'o': ['KeyO', 79, false], 'p': ['KeyP', 80, false],
+    'q': ['KeyQ', 81, false], 'r': ['KeyR', 82, false],
+    's': ['KeyS', 83, false], 't': ['KeyT', 84, false],
+    'u': ['KeyU', 85, false], 'v': ['KeyV', 86, false],
+    'w': ['KeyW', 87, false], 'x': ['KeyX', 88, false],
+    'y': ['KeyY', 89, false], 'z': ['KeyZ', 90, false],
+    'A': ['KeyA', 65, true], 'B': ['KeyB', 66, true],
+    'C': ['KeyC', 67, true], 'D': ['KeyD', 68, true],
+    'E': ['KeyE', 69, true], 'F': ['KeyF', 70, true],
+    'G': ['KeyG', 71, true], 'H': ['KeyH', 72, true],
+    'I': ['KeyI', 73, true], 'J': ['KeyJ', 74, true],
+    'K': ['KeyK', 75, true], 'L': ['KeyL', 76, true],
+    'M': ['KeyM', 77, true], 'N': ['KeyN', 78, true],
+    'O': ['KeyO', 79, true], 'P': ['KeyP', 80, true],
+    'Q': ['KeyQ', 81, true], 'R': ['KeyR', 82, true],
+    'S': ['KeyS', 83, true], 'T': ['KeyT', 84, true],
+    'U': ['KeyU', 85, true], 'V': ['KeyV', 86, true],
+    'W': ['KeyW', 87, true], 'X': ['KeyX', 88, true],
+    'Y': ['KeyY', 89, true], 'Z': ['KeyZ', 90, true],
+    // --- Digits (unshifted) ---
+    '0': ['Digit0', 48, false], '1': ['Digit1', 49, false],
+    '2': ['Digit2', 50, false], '3': ['Digit3', 51, false],
+    '4': ['Digit4', 52, false], '5': ['Digit5', 53, false],
+    '6': ['Digit6', 54, false], '7': ['Digit7', 55, false],
+    '8': ['Digit8', 56, false], '9': ['Digit9', 57, false],
+    // --- Shifted digit symbols ---
+    ')': ['Digit0', 48, true], '!': ['Digit1', 49, true],
+    '@': ['Digit2', 50, true], '#': ['Digit3', 51, true],
+    '\$': ['Digit4', 52, true], '%': ['Digit5', 53, true],
+    '^': ['Digit6', 54, true], '&': ['Digit7', 55, true],
+    '*': ['Digit8', 56, true], '(': ['Digit9', 57, true],
+    // --- Punctuation (unshifted) ---
+    ' ': ['Space', 32, false],
+    '-': ['Minus', 189, false], '=': ['Equal', 187, false],
+    '[': ['BracketLeft', 219, false], ']': ['BracketRight', 221, false],
+    '\\': ['Backslash', 220, false], ';': ['Semicolon', 186, false],
+    "'": ['Quote', 222, false], '`': ['Backquote', 192, false],
+    ',': ['Comma', 188, false], '.': ['Period', 190, false],
+    '/': ['Slash', 191, false],
+    // --- Punctuation (shifted) ---
+    '_': ['Minus', 189, true], '+': ['Equal', 187, true],
+    '{': ['BracketLeft', 219, true], '}': ['BracketRight', 221, true],
+    '|': ['Backslash', 220, true], ':': ['Semicolon', 186, true],
+    '"': ['Quote', 222, true], '~': ['Backquote', 192, true],
+    '<': ['Comma', 188, true], '>': ['Period', 190, true],
+    '?': ['Slash', 191, true],
+  };
 
-    // a-z
-    if (c >= 97 && c <= 122) {
-      return _KeyInfo('Key${char.toUpperCase()}', c - 32, false, char);
-    }
-    // A-Z (shifted)
-    if (c >= 65 && c <= 90) {
-      return _KeyInfo('Key$char', c, true, char.toLowerCase());
-    }
-    // 0-9
-    if (c >= 48 && c <= 57) {
-      return _KeyInfo('Digit$char', c, false, char);
-    }
-
-    // Shifted number keys: !@#$%^&*()
-    const shiftedDigits = <String, List<dynamic>>{
-      '!': ['Digit1', 49], '@': ['Digit2', 50], '#': ['Digit3', 51],
-      '\$': ['Digit4', 52], '%': ['Digit5', 53], '^': ['Digit6', 54],
-      '&': ['Digit7', 55], '*': ['Digit8', 56], '(': ['Digit9', 57],
-      ')': ['Digit0', 48],
-    };
-    if (shiftedDigits.containsKey(char)) {
-      final info = shiftedDigits[char]!;
-      return _KeyInfo(info[0] as String, info[1] as int, true,
-          String.fromCharCode(info[1] as int));
-    }
-
-    // Special keys (unshifted)
-    const specialKeys = <String, List<dynamic>>{
-      ' ': ['Space', 32],
-      '-': ['Minus', 189], '=': ['Equal', 187],
-      '[': ['BracketLeft', 219], ']': ['BracketRight', 221],
-      '\\': ['Backslash', 220], ';': ['Semicolon', 186],
-      "'": ['Quote', 222], '`': ['Backquote', 192],
-      ',': ['Comma', 188], '.': ['Period', 190],
-      '/': ['Slash', 191], '\t': ['Tab', 9],
-    };
-    if (specialKeys.containsKey(char)) {
-      final info = specialKeys[char]!;
-      return _KeyInfo(info[0] as String, info[1] as int, false, char);
-    }
-
-    // Shifted special keys
-    const shiftedSpecial = <String, List<dynamic>>{
-      '_': ['Minus', 189, '-'], '+': ['Equal', 187, '='],
-      '{': ['BracketLeft', 219, '['], '}': ['BracketRight', 221, ']'],
-      '|': ['Backslash', 220, '\\'], ':': ['Semicolon', 186, ';'],
-      '"': ['Quote', 222, "'"], '~': ['Backquote', 192, '`'],
-      '<': ['Comma', 188, ','], '>': ['Period', 190, '.'],
-      '?': ['Slash', 191, '/'],
-    };
-    if (shiftedSpecial.containsKey(char)) {
-      final info = shiftedSpecial[char]!;
-      return _KeyInfo(
-          info[0] as String, info[1] as int, true, info[2] as String);
-    }
-
-    // Fallback: use charCode directly
-    return _KeyInfo('', c, false, char);
-  }
-
-  /// Type text character by character (more realistic than enterText).
+  /// Type text character-by-character via dispatchKeyEvent.
+  ///
+  /// Full US QWERTY mapping for ALL printable ASCII (letters, digits,
+  /// symbols, punctuation). Control characters (Enter, Tab) dispatched
+  /// with proper key codes. Non-ASCII characters (CJK, emoji, etc.)
+  /// fall back to Input.insertText since they have no physical key.
   Future<void> typeText(String text) async {
-    // Check if focused element is contenteditable — use Input.insertText directly
-    // (dispatchKeyEvent drops special chars like '.', '(', '%' in contenteditable)
-    final focusInfo = await _evalJs('''
+    // Snapshot focused element before typing
+    final beforeResult = await _evalJs('''
       (() => {
         const el = document.activeElement;
-        if (!el) return JSON.stringify({tag: null, ce: false});
-        const ce = el.isContentEditable || el.getAttribute('contenteditable') === 'true' || el.getAttribute('role') === 'textbox';
-        return JSON.stringify({tag: el.tagName, ce: ce, val: el.value || '', len: (el.value || el.textContent || '').length});
+        if (!el) return JSON.stringify({tag: null, len: 0});
+        return JSON.stringify({
+          tag: el.tagName,
+          len: (el.value || el.textContent || '').length
+        });
       })()
     ''');
-    final info = _parseJsonEval(focusInfo);
-    final isContentEditable = info?['ce'] == true;
-    final beforeLen = (info?['len'] as num?)?.toInt() ?? 0;
+    final beforeParsed = _parseJsonEval(beforeResult);
+    final beforeLen = (beforeParsed?['len'] as num?)?.toInt() ?? 0;
 
-    if (isContentEditable) {
-      // Use Input.insertText for contenteditable — reliable for all characters
-      await _call('Input.insertText', {'text': text});
-      return;
-    }
-
-    // For regular inputs/textareas: keyDown(text) + keyUp per character
     for (final char in text.split('')) {
-      if (char == '\n') {
-        // Enter key
+      // --- Control characters ---
+      if (char == '\n' || char == '\r') {
+        await _dispatchKey('Enter', 'Enter', 13, text: '\r');
+        continue;
+      }
+      if (char == '\t') {
+        await _dispatchKey('Tab', 'Tab', 9);
+        continue;
+      }
+
+      // --- Mapped ASCII characters (dispatchKeyEvent) ---
+      final mapping = _usKeyboard[char];
+      if (mapping != null) {
+        final code = mapping[0] as String;
+        final keyCode = mapping[1] as int;
+        final shifted = mapping[2] as bool;
+        final modifiers = shifted ? 8 : 0; // 8 = Shift
+
         await _call('Input.dispatchKeyEvent', {
           'type': 'keyDown',
-          'key': 'Enter',
-          'code': 'Enter',
-          'text': '\r',
-          'unmodifiedText': '\r',
-          'windowsVirtualKeyCode': 13,
-          'nativeVirtualKeyCode': 13,
+          'key': char,
+          'code': code,
+          'text': char,
+          'unmodifiedText': char,
+          'windowsVirtualKeyCode': keyCode,
+          'nativeVirtualKeyCode': keyCode,
+          if (modifiers > 0) 'modifiers': modifiers,
         });
         await _call('Input.dispatchKeyEvent', {
           'type': 'keyUp',
-          'key': 'Enter',
-          'code': 'Enter',
-          'windowsVirtualKeyCode': 13,
-          'nativeVirtualKeyCode': 13,
+          'key': char,
+          'code': code,
+          'windowsVirtualKeyCode': keyCode,
+          'nativeVirtualKeyCode': keyCode,
         });
         continue;
       }
 
-      final keyInfo = _charToKeyInfo(char);
-      final params = <String, dynamic>{
-        'text': char,
-        'key': char,
-        'unmodifiedText': keyInfo.shifted ? keyInfo.unmodified : char,
-        if (keyInfo.code.isNotEmpty) 'code': keyInfo.code,
-        'windowsVirtualKeyCode': keyInfo.keyCode,
-        'nativeVirtualKeyCode': keyInfo.keyCode,
-        if (keyInfo.shifted) 'modifiers': 8, // Shift
-      };
-      await _call('Input.dispatchKeyEvent', {
-        'type': 'keyDown',
-        ...params,
-      });
-      await _call('Input.dispatchKeyEvent', {
-        'type': 'keyUp',
-        'key': char,
-        if (keyInfo.code.isNotEmpty) 'code': keyInfo.code,
-        'windowsVirtualKeyCode': keyInfo.keyCode,
-        'nativeVirtualKeyCode': keyInfo.keyCode,
-      });
+      // --- Non-ASCII (CJK, emoji, accented chars, etc.) ---
+      // No physical key mapping exists; use Input.insertText for this char
+      await _call('Input.insertText', {'text': char});
     }
 
-    // Verify text was inserted; fallback to execCommand if not
+    // Verify text was inserted; fall back to execCommand if failed
     final afterResult = await _evalJs('''
       (() => {
         const el = document.activeElement;
         if (!el) return JSON.stringify({len: 0});
-        return JSON.stringify({len: (el.value || el.textContent || '').length});
+        return JSON.stringify({
+          len: (el.value || el.textContent || '').length
+        });
       })()
     ''');
     final afterParsed = _parseJsonEval(afterResult);
     final afterLen = (afterParsed?['len'] as num?)?.toInt() ?? 0;
 
-    if (afterLen <= beforeLen) {
-      // dispatchKeyEvent didn't insert text — use execCommand fallback
-      final escaped = text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    if (afterLen <= beforeLen && text.isNotEmpty) {
+      // dispatchKeyEvent failed — try execCommand fallback
+      final escaped = text
+          .replaceAll('\\', '\\\\')
+          .replaceAll("'", "\\'")
+          .replaceAll('\n', '\\n')
+          .replaceAll('\t', '\\t');
       await _evalJs(
           "document.execCommand('insertText', false, '$escaped')");
     }
+  }
+
+  /// Helper: dispatch a keyDown + keyUp pair for control keys.
+  Future<void> _dispatchKey(String key, String code, int keyCode,
+      {String? text}) async {
+    await _call('Input.dispatchKeyEvent', {
+      'type': 'keyDown',
+      'key': key,
+      'code': code,
+      if (text != null) 'text': text,
+      if (text != null) 'unmodifiedText': text,
+      'windowsVirtualKeyCode': keyCode,
+      'nativeVirtualKeyCode': keyCode,
+    });
+    await _call('Input.dispatchKeyEvent', {
+      'type': 'keyUp',
+      'key': key,
+      'code': code,
+      'windowsVirtualKeyCode': keyCode,
+      'nativeVirtualKeyCode': keyCode,
+    });
   }
 
   /// Hover over element.
@@ -2804,12 +2826,4 @@ function _dqAll(sel, root) {
   }
 }
 
-/// Key info for CDP Input.dispatchKeyEvent (US QWERTY layout).
-class _KeyInfo {
-  final String code;
-  final int keyCode;
-  final bool shifted;
-  final String unmodified; // The unshifted character
-
-  const _KeyInfo(this.code, this.keyCode, this.shifted, this.unmodified);
-}
+// (removed _TypeSegment — no longer needed)
