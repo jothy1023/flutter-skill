@@ -72,16 +72,23 @@ Future<void> runServe(List<String> args) async {
   print('   Hot Reload Watch: $watch');
   print('');
 
-  // Step 1: Connect via CDP
+  // Step 1: Connect via CDP (always connect to about:blank first to avoid
+  // creating duplicate tabs when target URL redirects to a different subdomain)
   print('📡 Connecting to Chrome...');
   final cdp = CdpDriver(
-    url: url,
+    url: '',  // Connect to any existing tab, don't create one for target URL
     port: cdpPort,
     launchChrome: launchChrome,
     headless: headless,
   );
   await cdp.connect();
   print('✅ Connected via CDP');
+
+  // Step 1b: Navigate to target URL via smart navigation (reuses tabs by domain)
+  if (url.isNotEmpty && url != 'about:blank') {
+    await _navigateToUrl(cdp, url, cdpPort);
+    await Future.delayed(const Duration(seconds: 2));
+  }
 
   // Step 2: Initial tool discovery
   print('🔍 Scanning page for interactive elements...');
@@ -237,7 +244,6 @@ Future<void> _navigateToUrl(CdpDriver cdp, String url, int cdpPort) async {
         : targetHost;
 
     Map<String, dynamic>? matchingTab;
-    bool isRootDomainMatch = false;
 
     // 1. Exact origin match
     matchingTab = tabs.cast<Map<String, dynamic>?>().firstWhere(
@@ -259,7 +265,6 @@ Future<void> _navigateToUrl(CdpDriver cdp, String url, int cdpPort) async {
         },
         orElse: () => null,
       );
-      if (matchingTab != null) isRootDomainMatch = true;
     }
 
     if (matchingTab != null) {
