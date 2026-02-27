@@ -76,7 +76,7 @@ Future<void> runServe(List<String> args) async {
   // creating duplicate tabs when target URL redirects to a different subdomain)
   print('📡 Connecting to Chrome...');
   final cdp = CdpDriver(
-    url: '',  // Connect to any existing tab, don't create one for target URL
+    url: '', // Connect to any existing tab, don't create one for target URL
     port: cdpPort,
     launchChrome: launchChrome,
     headless: headless,
@@ -117,7 +117,12 @@ Future<void> runServe(List<String> args) async {
   print('');
   print('Press Ctrl+C to stop.');
 
-  final server = await HttpServer.bind(InternetAddress.anyIPv4, serverPort);
+  final server = await HttpServer.bind(
+    InternetAddress.anyIPv4,
+    serverPort,
+    shared:
+        true, // SO_REUSEADDR — avoids "Address already in use" on TIME_WAIT sockets
+  );
 
   // Shared mutable state
   final state = _ServeState(toolCache, DateTime.now(), cdpPort);
@@ -137,7 +142,8 @@ Future<void> runServe(List<String> args) async {
         if (e.toString().contains('-32000') ||
             e.toString().contains('Inspected target navigated or closed')) {
           print('⚠️ CDP target lost, attempting to reconnect...');
-          await _reconnectCdpTarget(cdp, cdpPort, preferOrigin: state.lastNavigatedOrigin);
+          await _reconnectCdpTarget(cdp, cdpPort,
+              preferOrigin: state.lastNavigatedOrigin);
         }
       }
     });
@@ -160,7 +166,8 @@ Future<void> runServe(List<String> args) async {
       if (e.toString().contains('-32000') ||
           e.toString().contains('Inspected target navigated or closed')) {
         print('   ⚠️ CDP target lost, attempting to reconnect...');
-        await _reconnectCdpTarget(cdp, state.cdpPort, preferOrigin: state.lastNavigatedOrigin);
+        await _reconnectCdpTarget(cdp, state.cdpPort,
+            preferOrigin: state.lastNavigatedOrigin);
       }
       print('   ❌ Request error: $e');
       try {
@@ -185,7 +192,8 @@ class _ServeState {
 
 /// Reconnect to the CDP target after it navigates or closes.
 /// If [preferOrigin] is set, prefer a tab matching that origin.
-Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort, {String? preferOrigin}) async {
+Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort,
+    {String? preferOrigin}) async {
   try {
     await Future.delayed(const Duration(seconds: 1));
     final client = HttpClient();
@@ -200,9 +208,11 @@ Future<void> _reconnectCdpTarget(CdpDriver cdp, int cdpPort, {String? preferOrig
     Map<String, dynamic>? pageTab;
     if (preferOrigin != null) {
       pageTab = tabs.cast<Map<String, dynamic>?>().firstWhere(
-        (t) => t!['type'] == 'page' && (t['url'] as String? ?? '').startsWith(preferOrigin),
-        orElse: () => null,
-      );
+            (t) =>
+                t!['type'] == 'page' &&
+                (t['url'] as String? ?? '').startsWith(preferOrigin),
+            orElse: () => null,
+          );
     }
     // Fallback to first page tab
     pageTab ??= tabs.firstWhere(
@@ -247,9 +257,11 @@ Future<void> _navigateToUrl(CdpDriver cdp, String url, int cdpPort) async {
 
     // 1. Exact origin match
     matchingTab = tabs.cast<Map<String, dynamic>?>().firstWhere(
-      (t) => t!['type'] == 'page' && (t['url'] as String? ?? '').startsWith(targetOrigin),
-      orElse: () => null,
-    );
+          (t) =>
+              t!['type'] == 'page' &&
+              (t['url'] as String? ?? '').startsWith(targetOrigin),
+          orElse: () => null,
+        );
 
     // 2. Root domain match (e.g. passport.csdn.net → www.csdn.net)
     if (matchingTab == null) {
@@ -318,7 +330,8 @@ Future<void> _retryWithJsNavIfBroken(CdpDriver cdp, String url) async {
     ''');
     final status = result['result']?['value'] as String? ?? 'ok';
     if (status == 'broken') {
-      print('   ⚠️ Anti-bot error page detected, retrying via JS navigation...');
+      print(
+          '   ⚠️ Anti-bot error page detected, retrying via JS navigation...');
       final escaped = url.replaceAll("'", "\\'");
       await cdp.evaluate("window.location.href = '$escaped'");
       await Future.delayed(const Duration(seconds: 4));
@@ -460,7 +473,8 @@ Future<void> _handleRequest(
       }
 
       // Route built-in CDP tools that need native Dart handling
-      final builtInResult = await _handleBuiltInCdpTool(cdp, toolName, toolArgs, state);
+      final builtInResult =
+          await _handleBuiltInCdpTool(cdp, toolName, toolArgs, state);
       if (builtInResult != null) {
         response
           ..statusCode = 200
@@ -775,93 +789,269 @@ const _snapshotJs = '''
 
 /// Built-in CDP tool definitions for /tools/list
 List<Map<String, dynamic>> _builtInCdpToolDefs() => [
-  {'name': 'tap', 'description': 'Tap/click an element by text, CSS selector, ref, or x,y coordinates',
-   'inputSchema': {'type': 'object', 'properties': {
-     'text': {'type': 'string', 'description': 'Visible text of element to tap'},
-     'selector': {'type': 'string', 'description': 'CSS selector'},
-     'key': {'type': 'string', 'description': 'CSS selector (alias for selector)'},
-     'ref': {'type': 'string', 'description': 'Element ref from snapshot'},
-     'x': {'type': 'number', 'description': 'X coordinate'},
-     'y': {'type': 'number', 'description': 'Y coordinate'},
-   }}},
-  {'name': 'type_text', 'description': 'Type text via keyboard (into focused element or specified selector)',
-   'inputSchema': {'type': 'object', 'properties': {
-     'text': {'type': 'string', 'description': 'Text to type'},
-   }, 'required': ['text']}},
-  {'name': 'screenshot', 'description': 'Take a screenshot of the current page',
-   'inputSchema': {'type': 'object', 'properties': {
-     'quality': {'type': 'number', 'description': 'JPEG quality 0.0-1.0 (default 0.8)'},
-     'max_width': {'type': 'integer', 'description': 'Max width in pixels (default 1280)'},
-   }}},
-  {'name': 'snapshot', 'description': 'Get a text-based accessibility snapshot of the page (token-efficient)',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'upload_file', 'description': 'Upload file(s) to an input[type=file] element. Supports Shadow DOM.',
-   'inputSchema': {'type': 'object', 'properties': {
-     'selector': {'type': 'string', 'description': 'CSS selector for file input (default: input[type="file"])'},
-     'files': {'type': 'array', 'items': {'type': 'string'}, 'description': 'List of absolute file paths to upload'},
-   }, 'required': ['files']}},
-  {'name': 'navigate', 'description': 'Navigate to a URL (finds matching tab or navigates current tab)',
-   'inputSchema': {'type': 'object', 'properties': {
-     'url': {'type': 'string', 'description': 'URL to navigate to'},
-   }, 'required': ['url']}},
-  {'name': 'evaluate', 'description': 'Execute JavaScript in the browser and return the result',
-   'inputSchema': {'type': 'object', 'properties': {
-     'expression': {'type': 'string', 'description': 'JavaScript expression to evaluate'},
-   }, 'required': ['expression']}},
-  {'name': 'scroll', 'description': 'Scroll to an element by CSS selector or text',
-   'inputSchema': {'type': 'object', 'properties': {
-     'key': {'type': 'string', 'description': 'CSS selector to scroll to'},
-     'text': {'type': 'string', 'description': 'Text of element to scroll to'},
-   }}},
-  {'name': 'hover', 'description': 'Hover over an element',
-   'inputSchema': {'type': 'object', 'properties': {
-     'key': {'type': 'string', 'description': 'CSS selector'},
-     'text': {'type': 'string', 'description': 'Visible text'},
-     'ref': {'type': 'string', 'description': 'Element ref from snapshot'},
-   }}},
-  {'name': 'press_key', 'description': 'Press a keyboard key (Enter, Tab, Escape, etc.)',
-   'inputSchema': {'type': 'object', 'properties': {
-     'key': {'type': 'string', 'description': 'Key name (Enter, Tab, Escape, Backspace, ArrowDown, etc.)'},
-     'modifiers': {'type': 'string', 'description': 'Comma-separated modifiers: Alt, Control, Meta, Shift'},
-   }, 'required': ['key']}},
-  {'name': 'select_option', 'description': 'Select an option from a <select> dropdown',
-   'inputSchema': {'type': 'object', 'properties': {
-     'selector': {'type': 'string', 'description': 'CSS selector for the select element'},
-     'value': {'type': 'string', 'description': 'Value to select'},
-   }, 'required': ['selector', 'value']}},
-  {'name': 'get_text', 'description': 'Get visible text of the page or a specific element',
-   'inputSchema': {'type': 'object', 'properties': {
-     'selector': {'type': 'string', 'description': 'Optional CSS selector to scope text extraction'},
-   }}},
-  {'name': 'get_title', 'description': 'Get the page title',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'get_url', 'description': 'Get the current page URL',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'get_cookies', 'description': 'Get all browser cookies for the current page',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'set_cookie', 'description': 'Set a browser cookie',
-   'inputSchema': {'type': 'object', 'properties': {
-     'name': {'type': 'string'}, 'value': {'type': 'string'}, 'domain': {'type': 'string'},
-   }, 'required': ['name', 'value']}},
-  {'name': 'go_back', 'description': 'Navigate back in browser history',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'go_forward', 'description': 'Navigate forward in browser history',
-   'inputSchema': {'type': 'object', 'properties': {}}},
-  {'name': 'wait', 'description': 'Wait for a specified duration',
-   'inputSchema': {'type': 'object', 'properties': {
-     'ms': {'type': 'integer', 'description': 'Milliseconds to wait (default 1000)'},
-   }}},
-  {'name': 'reset_app', 'description': 'Clear storage, cookies, and reload the page',
-   'inputSchema': {'type': 'object', 'properties': {
-     'clear_storage': {'type': 'boolean', 'description': 'Clear localStorage/sessionStorage (default true)'},
-     'clear_cookies': {'type': 'boolean', 'description': 'Clear cookies (default true)'},
-   }}},
-];
+      {
+        'name': 'tap',
+        'description':
+            'Tap/click an element by text, CSS selector, ref, or x,y coordinates',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'text': {
+              'type': 'string',
+              'description': 'Visible text of element to tap'
+            },
+            'selector': {'type': 'string', 'description': 'CSS selector'},
+            'key': {
+              'type': 'string',
+              'description': 'CSS selector (alias for selector)'
+            },
+            'ref': {
+              'type': 'string',
+              'description': 'Element ref from snapshot'
+            },
+            'x': {'type': 'number', 'description': 'X coordinate'},
+            'y': {'type': 'number', 'description': 'Y coordinate'},
+          }
+        }
+      },
+      {
+        'name': 'type_text',
+        'description':
+            'Type text via keyboard (into focused element or specified selector)',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'text': {'type': 'string', 'description': 'Text to type'},
+          },
+          'required': ['text']
+        }
+      },
+      {
+        'name': 'screenshot',
+        'description': 'Take a screenshot of the current page',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'quality': {
+              'type': 'number',
+              'description': 'JPEG quality 0.0-1.0 (default 0.8)'
+            },
+            'max_width': {
+              'type': 'integer',
+              'description': 'Max width in pixels (default 1280)'
+            },
+          }
+        }
+      },
+      {
+        'name': 'snapshot',
+        'description':
+            'Get a text-based accessibility snapshot of the page (token-efficient)',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'upload_file',
+        'description':
+            'Upload file(s) to an input[type=file] element. Supports Shadow DOM.',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'selector': {
+              'type': 'string',
+              'description':
+                  'CSS selector for file input (default: input[type="file"])'
+            },
+            'files': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'List of absolute file paths to upload'
+            },
+          },
+          'required': ['files']
+        }
+      },
+      {
+        'name': 'navigate',
+        'description':
+            'Navigate to a URL (finds matching tab or navigates current tab)',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'url': {'type': 'string', 'description': 'URL to navigate to'},
+          },
+          'required': ['url']
+        }
+      },
+      {
+        'name': 'evaluate',
+        'description':
+            'Execute JavaScript in the browser and return the result',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'expression': {
+              'type': 'string',
+              'description': 'JavaScript expression to evaluate'
+            },
+          },
+          'required': ['expression']
+        }
+      },
+      {
+        'name': 'scroll',
+        'description': 'Scroll to an element by CSS selector or text',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'key': {
+              'type': 'string',
+              'description': 'CSS selector to scroll to'
+            },
+            'text': {
+              'type': 'string',
+              'description': 'Text of element to scroll to'
+            },
+          }
+        }
+      },
+      {
+        'name': 'hover',
+        'description': 'Hover over an element',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'key': {'type': 'string', 'description': 'CSS selector'},
+            'text': {'type': 'string', 'description': 'Visible text'},
+            'ref': {
+              'type': 'string',
+              'description': 'Element ref from snapshot'
+            },
+          }
+        }
+      },
+      {
+        'name': 'press_key',
+        'description': 'Press a keyboard key (Enter, Tab, Escape, etc.)',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'key': {
+              'type': 'string',
+              'description':
+                  'Key name (Enter, Tab, Escape, Backspace, ArrowDown, etc.)'
+            },
+            'modifiers': {
+              'type': 'string',
+              'description':
+                  'Comma-separated modifiers: Alt, Control, Meta, Shift'
+            },
+          },
+          'required': ['key']
+        }
+      },
+      {
+        'name': 'select_option',
+        'description': 'Select an option from a <select> dropdown',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'selector': {
+              'type': 'string',
+              'description': 'CSS selector for the select element'
+            },
+            'value': {'type': 'string', 'description': 'Value to select'},
+          },
+          'required': ['selector', 'value']
+        }
+      },
+      {
+        'name': 'get_text',
+        'description': 'Get visible text of the page or a specific element',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'selector': {
+              'type': 'string',
+              'description': 'Optional CSS selector to scope text extraction'
+            },
+          }
+        }
+      },
+      {
+        'name': 'get_title',
+        'description': 'Get the page title',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'get_url',
+        'description': 'Get the current page URL',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'get_cookies',
+        'description': 'Get all browser cookies for the current page',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'set_cookie',
+        'description': 'Set a browser cookie',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'name': {'type': 'string'},
+            'value': {'type': 'string'},
+            'domain': {'type': 'string'},
+          },
+          'required': ['name', 'value']
+        }
+      },
+      {
+        'name': 'go_back',
+        'description': 'Navigate back in browser history',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'go_forward',
+        'description': 'Navigate forward in browser history',
+        'inputSchema': {'type': 'object', 'properties': {}}
+      },
+      {
+        'name': 'wait',
+        'description': 'Wait for a specified duration',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'ms': {
+              'type': 'integer',
+              'description': 'Milliseconds to wait (default 1000)'
+            },
+          }
+        }
+      },
+      {
+        'name': 'reset_app',
+        'description': 'Clear storage, cookies, and reload the page',
+        'inputSchema': {
+          'type': 'object',
+          'properties': {
+            'clear_storage': {
+              'type': 'boolean',
+              'description': 'Clear localStorage/sessionStorage (default true)'
+            },
+            'clear_cookies': {
+              'type': 'boolean',
+              'description': 'Clear cookies (default true)'
+            },
+          }
+        }
+      },
+    ];
 
 /// Handle built-in CDP tools that require native Dart methods.
 /// Returns null if the tool is not a built-in CDP tool.
 Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
-    CdpDriver cdp, String toolName, Map<String, dynamic> args, [_ServeState? state]) async {
+    CdpDriver cdp, String toolName, Map<String, dynamic> args,
+    [_ServeState? state]) async {
   switch (toolName) {
     case 'upload_file':
       final selector = args['selector'] as String? ?? 'input[type="file"]';
@@ -898,7 +1088,8 @@ Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
     case 'screenshot':
       final quality = (args['quality'] as num?)?.toDouble() ?? 0.8;
       final maxWidth = (args['max_width'] as num?)?.toInt() ?? 1280;
-      final data = await cdp.takeScreenshot(quality: quality, maxWidth: maxWidth);
+      final data =
+          await cdp.takeScreenshot(quality: quality, maxWidth: maxWidth);
       if (data != null) {
         return {'success': true, 'base64': data, 'format': 'jpeg'};
       }
@@ -933,7 +1124,8 @@ Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
 
     case 'evaluate':
     case 'eval':
-      final expression = args['expression'] as String? ?? args['code'] as String? ?? '';
+      final expression =
+          args['expression'] as String? ?? args['code'] as String? ?? '';
       final result = await cdp.call('Runtime.evaluate', {
         'expression': expression,
         'returnByValue': true,
@@ -942,7 +1134,9 @@ Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
       return {'success': true, 'result': result['result']?['value']};
 
     case 'wait':
-      final ms = (args['ms'] as num?)?.toInt() ?? (args['milliseconds'] as num?)?.toInt() ?? 1000;
+      final ms = (args['ms'] as num?)?.toInt() ??
+          (args['milliseconds'] as num?)?.toInt() ??
+          1000;
       await Future.delayed(Duration(milliseconds: ms));
       return {'success': true, 'waited_ms': ms};
 
@@ -952,7 +1146,11 @@ Future<Map<String, dynamic>?> _handleBuiltInCdpTool(
       final modifiers = rawMod is List
           ? rawMod.cast<String>()
           : rawMod is String
-              ? rawMod.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+              ? rawMod
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList()
               : null;
       await cdp.pressKey(key, modifiers: modifiers);
       return {'success': true, 'key': key};
@@ -1089,7 +1287,8 @@ Future<Map<String, dynamic>> _handleQrLoginStartServe(
           'matched_selector': qrRect['selector'] ?? selector,
           'initial_url': currentUrl,
           'initial_cookie_length': cookieLen,
-          'hint': 'Send this base64 image to the user for scanning. Then call qr_login_wait to detect login success.',
+          'hint':
+              'Send this base64 image to the user for scanning. Then call qr_login_wait to detect login success.',
         };
       }
     }
@@ -1142,14 +1341,18 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
         if (successUrlPattern != null) {
           if (RegExp(successUrlPattern).hasMatch(currentUrl)) {
             return {
-              'success': true, 'method': 'url_pattern_match',
-              'url': currentUrl, 'waited_ms': sw.elapsedMilliseconds,
+              'success': true,
+              'method': 'url_pattern_match',
+              'url': currentUrl,
+              'waited_ms': sw.elapsedMilliseconds,
             };
           }
         } else {
           return {
-            'success': true, 'method': 'url_changed',
-            'previous_url': initialUrl, 'url': currentUrl,
+            'success': true,
+            'method': 'url_changed',
+            'previous_url': initialUrl,
+            'url': currentUrl,
             'waited_ms': sw.elapsedMilliseconds,
           };
         }
@@ -1160,9 +1363,11 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
       final currentCookieLen = (cookieResult['result']?['value'] as int?) ?? 0;
       if (currentCookieLen > initialCookieLen + 20) {
         return {
-          'success': true, 'method': 'cookie_changed',
+          'success': true,
+          'method': 'cookie_changed',
           'cookie_length_delta': currentCookieLen - initialCookieLen,
-          'url': currentUrl, 'waited_ms': sw.elapsedMilliseconds,
+          'url': currentUrl,
+          'waited_ms': sw.elapsedMilliseconds,
         };
       }
 
@@ -1172,8 +1377,10 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
             'document.querySelector(${jsonEncode(qrSelector)}) === null');
         if (qrCheck['result']?['value'] == true) {
           return {
-            'success': true, 'method': 'qr_disappeared',
-            'url': currentUrl, 'waited_ms': sw.elapsedMilliseconds,
+            'success': true,
+            'method': 'qr_disappeared',
+            'url': currentUrl,
+            'waited_ms': sw.elapsedMilliseconds,
           };
         }
       }
@@ -1184,8 +1391,10 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
             'document.body.innerText.includes(${jsonEncode(successText)})');
         if (textCheck['result']?['value'] == true) {
           return {
-            'success': true, 'method': 'success_text_found',
-            'text': successText, 'url': currentUrl,
+            'success': true,
+            'method': 'success_text_found',
+            'text': successText,
+            'url': currentUrl,
             'waited_ms': sw.elapsedMilliseconds,
           };
         }
@@ -1193,16 +1402,21 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
     } catch (e) {
       if (sw.elapsedMilliseconds > 5000) {
         return {
-          'success': true, 'method': 'connection_disrupted',
+          'success': true,
+          'method': 'connection_disrupted',
           'note': 'Page may have redirected during login',
-          'waited_ms': sw.elapsedMilliseconds, 'error': e.toString(),
+          'waited_ms': sw.elapsedMilliseconds,
+          'error': e.toString(),
         };
       }
     }
   }
 
   return {
-    'success': false, 'method': 'timeout', 'waited_ms': timeoutMs,
-    'hint': 'QR code may have expired. Call qr_login_start again for a fresh code.',
+    'success': false,
+    'method': 'timeout',
+    'waited_ms': timeoutMs,
+    'hint':
+        'QR code may have expired. Call qr_login_start again for a fresh code.',
   };
 }

@@ -81,6 +81,7 @@ class CdpDriver implements AppDriver {
   bool get isConnected => _connected;
 
   @override
+
   /// Whether connect() found an existing tab matching the target URL
   /// (skipped navigation to avoid duplicate tabs).
   bool connectedToExistingTab = false;
@@ -107,14 +108,16 @@ class CdpDriver implements AppDriver {
 
     // Discover tabs via CDP JSON endpoint
     var wsUrl = await _discoverTarget();
-    
+
     // No suitable tab found — create a new one via CDP HTTP API
     if (wsUrl == null && _url.isNotEmpty) {
       try {
-        final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+        final client = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 2);
         final encodedUrl = Uri.encodeComponent(_url);
         // Chrome 145+ requires PUT for /json/new
-        final request = await client.openUrl('PUT', Uri.parse('http://127.0.0.1:$_port/json/new?$encodedUrl'));
+        final request = await client.openUrl(
+            'PUT', Uri.parse('http://127.0.0.1:$_port/json/new?$encodedUrl'));
         final response = await request.close();
         final body = await response.transform(utf8.decoder).join();
         client.close();
@@ -124,9 +127,10 @@ class CdpDriver implements AppDriver {
         if (wsUrl != null) connectedToExistingTab = true;
       } catch (_) {}
     }
-    
+
     if (wsUrl == null) {
-      throw Exception('Could not find or create a debuggable tab on port $_port. '
+      throw Exception(
+          'Could not find or create a debuggable tab on port $_port. '
           'Ensure Chrome is running with --remote-debugging-port=$_port');
     }
 
@@ -154,16 +158,22 @@ class CdpDriver implements AppDriver {
         (currentUrl != null && _url.isNotEmpty && currentUrl.startsWith(_url));
 
     // Also check root domain match (e.g. passport.csdn.net redirected to csdn.net)
-    final sameRootDomain = !alreadyOnTarget && currentUrl != null && _url.isNotEmpty && (() {
-      final targetHost = Uri.tryParse(_url)?.host ?? '';
-      final currentHost = Uri.tryParse(currentUrl)?.host ?? '';
-      if (targetHost.isEmpty || currentHost.isEmpty) return false;
-      final tp = targetHost.split('.');
-      final cp = currentHost.split('.');
-      final tr = tp.length >= 2 ? tp.sublist(tp.length - 2).join('.') : targetHost;
-      final cr = cp.length >= 2 ? cp.sublist(cp.length - 2).join('.') : currentHost;
-      return tr == cr;
-    })();
+    final sameRootDomain = !alreadyOnTarget &&
+        currentUrl != null &&
+        _url.isNotEmpty &&
+        (() {
+          final targetHost = Uri.tryParse(_url)?.host ?? '';
+          final currentHost = Uri.tryParse(currentUrl)?.host ?? '';
+          if (targetHost.isEmpty || currentHost.isEmpty) return false;
+          final tp = targetHost.split('.');
+          final cp = currentHost.split('.');
+          final tr =
+              tp.length >= 2 ? tp.sublist(tp.length - 2).join('.') : targetHost;
+          final cr = cp.length >= 2
+              ? cp.sublist(cp.length - 2).join('.')
+              : currentHost;
+          return tr == cr;
+        })();
 
     // Navigate to URL and wait for load event.
     final skipNav = _url.isEmpty ||
@@ -187,8 +197,10 @@ class CdpDriver implements AppDriver {
   /// Check if CDP port is already responding
   Future<bool> _isCdpPortAlive() async {
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
-      final request = await client.getUrl(Uri.parse('http://127.0.0.1:$_port/json/version'));
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 2);
+      final request = await client
+          .getUrl(Uri.parse('http://127.0.0.1:$_port/json/version'));
       final response = await request.close();
       await response.drain<void>();
       client.close();
@@ -624,7 +636,22 @@ class CdpDriver implements AppDriver {
       } catch(e) { /* cross-origin iframe — skip */ }
     }
   } catch(e) {}
-  const combinedEls = [...allEls, ...iframeEls];
+  // Second pass: find clickable custom elements inside shadow roots that the
+  // selector-based dqAll may have missed (e.g. Reddit's faceplate-button).
+  function findShadowInteractive(root) {
+    let results = [];
+    for (const el of root.querySelectorAll('*')) {
+      if (el.shadowRoot) {
+        for (const inner of el.shadowRoot.querySelectorAll('button, [role="button"], [type="submit"]')) {
+          if (!allEls.includes(inner)) results.push(inner);
+        }
+        results = results.concat(findShadowInteractive(el.shadowRoot));
+      }
+    }
+    return results;
+  }
+  const shadowEls = findShadowInteractive(document);
+  const combinedEls = [...allEls, ...iframeEls, ...shadowEls];
 
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -778,10 +805,18 @@ class CdpDriver implements AppDriver {
     bool dispatchRealEvents = false,
   }) async {
     // Escape parameters for JS
-    final jsText = text?.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n') ?? '';
+    final jsText = text
+            ?.replaceAll('\\', '\\\\')
+            .replaceAll("'", "\\'")
+            .replaceAll('\n', '\\n') ??
+        '';
     final jsKey = key?.replaceAll('\\', '\\\\').replaceAll("'", "\\'") ?? '';
     final jsRef = ref?.replaceAll('\\', '\\\\').replaceAll("'", "\\'") ?? '';
-    final jsValue = value?.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n') ?? '';
+    final jsValue = value
+            ?.replaceAll('\\', '\\\\')
+            .replaceAll("'", "\\'")
+            .replaceAll('\n', '\\n') ??
+        '';
 
     // Single JS eval: find + scroll + act
     final result = await _evalJs('''
@@ -914,12 +949,16 @@ class CdpDriver implements AppDriver {
     if (parsed != null) {
       // For click actions needing real mouse events (e.g., custom components),
       // fall back to CDP Input.dispatch
-      if (dispatchRealEvents && parsed['success'] == true && parsed['position'] != null) {
+      if (dispatchRealEvents &&
+          parsed['success'] == true &&
+          parsed['position'] != null) {
         final pos = parsed['position'] as Map<String, dynamic>;
         final cx = (pos['x'] as num).toDouble();
         final cy = (pos['y'] as num).toDouble();
-        await _dispatchMouseEvent('mousePressed', cx, cy, button: 'left', clickCount: 1);
-        await _dispatchMouseEvent('mouseReleased', cx, cy, button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mousePressed', cx, cy,
+            button: 'left', clickCount: 1);
+        await _dispatchMouseEvent('mouseReleased', cx, cy,
+            button: 'left', clickCount: 1);
       }
       return parsed;
     }
@@ -1685,8 +1724,7 @@ class CdpDriver implements AppDriver {
           .replaceAll("'", "\\'")
           .replaceAll('\n', '\\n')
           .replaceAll('\t', '\\t');
-      await _evalJs(
-          "document.execCommand('insertText', false, '$escaped')");
+      await _evalJs("document.execCommand('insertText', false, '$escaped')");
 
       // 2. If still failed, try per-char dispatchKeyEvent as last resort
       final fallbackResult = await _evalJs('''
@@ -1863,8 +1901,10 @@ class CdpDriver implements AppDriver {
     final content = html ?? text ?? '';
     final isHtml = html != null;
     final sel = selector ?? '[contenteditable="true"]';
-    final escapedContent =
-        content.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('\$', '\\\$');
+    final escapedContent = content
+        .replaceAll('\\', '\\\\')
+        .replaceAll('`', '\\`')
+        .replaceAll('\$', '\\\$');
 
     final result = await _evalJs('''
       (() => {
@@ -2002,7 +2042,8 @@ class CdpDriver implements AppDriver {
         } else if (captchaType == 'image') {
           // For image CAPTCHA, download and send base64
           final imgSrc = detected['imgSrc'] as String?;
-          if (imgSrc == null) return {"success": false, "message": "No CAPTCHA image found"};
+          if (imgSrc == null)
+            return {"success": false, "message": "No CAPTCHA image found"};
           final imgResponse = await httpClient.get(Uri.parse(imgSrc));
           params['method'] = 'base64';
           params['body'] = base64Encode(imgResponse.bodyBytes);
@@ -2011,16 +2052,21 @@ class CdpDriver implements AppDriver {
         final response = await httpClient.post(submitUrl, body: params);
         final submitResult = jsonDecode(response.body) as Map<String, dynamic>;
         if (submitResult['status'] != 1) {
-          return {"success": false, "message": "Submit failed: ${submitResult['request']}"};
+          return {
+            "success": false,
+            "message": "Submit failed: ${submitResult['request']}"
+          };
         }
         taskId = submitResult['request'] as String;
 
         // Step 3: Poll for result
         for (int i = 0; i < 60; i++) {
           await Future.delayed(const Duration(seconds: 5));
-          final pollUrl = Uri.parse('http://2captcha.com/res.php?key=$apiKey&action=get&id=$taskId&json=1');
+          final pollUrl = Uri.parse(
+              'http://2captcha.com/res.php?key=$apiKey&action=get&id=$taskId&json=1');
           final pollResponse = await httpClient.get(pollUrl);
-          final pollResult = jsonDecode(pollResponse.body) as Map<String, dynamic>;
+          final pollResult =
+              jsonDecode(pollResponse.body) as Map<String, dynamic>;
           if (pollResult['status'] == 1) {
             final token = pollResult['request'] as String;
 
@@ -2073,17 +2119,27 @@ class CdpDriver implements AppDriver {
             return {
               "success": true,
               "type": captchaType,
-              "token": token.length > 50 ? '${token.substring(0, 50)}...' : token,
+              "token":
+                  token.length > 50 ? '${token.substring(0, 50)}...' : token,
               "message": "CAPTCHA solved and injected"
             };
           }
           if (pollResult['request'] != 'CAPCHA_NOT_READY') {
-            return {"success": false, "message": "Solve failed: ${pollResult['request']}"};
+            return {
+              "success": false,
+              "message": "Solve failed: ${pollResult['request']}"
+            };
           }
         }
-        return {"success": false, "message": "Timeout waiting for CAPTCHA solution"};
+        return {
+          "success": false,
+          "message": "Timeout waiting for CAPTCHA solution"
+        };
       } else {
-        return {"success": false, "message": "Service '$service' not supported yet. Use 'twocaptcha'."};
+        return {
+          "success": false,
+          "message": "Service '$service' not supported yet. Use 'twocaptcha'."
+        };
       }
     } finally {
       httpClient.close();
@@ -2242,13 +2298,11 @@ class CdpDriver implements AppDriver {
 
       // macOS: remove quarantine attribute
       if (Platform.isMacOS) {
-        final appDir = Directory(installDir)
-            .listSync()
-            .whereType<Directory>()
-            .firstWhere(
-              (d) => d.path.contains('chrome-mac'),
-              orElse: () => Directory(installDir),
-            );
+        final appDir =
+            Directory(installDir).listSync().whereType<Directory>().firstWhere(
+                  (d) => d.path.contains('chrome-mac'),
+                  orElse: () => Directory(installDir),
+                );
         await Process.run('xattr', ['-cr', appDir.path]);
       }
 
@@ -2431,7 +2485,10 @@ class CdpDriver implements AppDriver {
         client.close();
 
         final tabs = jsonDecode(body) as List;
-        final pageTabs = tabs.where((t) => t is Map && t['type'] == 'page').cast<Map>().toList();
+        final pageTabs = tabs
+            .where((t) => t is Map && t['type'] == 'page')
+            .cast<Map>()
+            .toList();
 
         // Parse target host for domain matching
         final targetUri = _url.isNotEmpty ? Uri.tryParse(_url) : null;
@@ -2482,7 +2539,9 @@ class CdpDriver implements AppDriver {
         //    NEVER navigate an unrelated site's tab to our URL.
         for (final tab in pageTabs) {
           final tabUrl = tab['url']?.toString() ?? '';
-          if (tabUrl == 'about:blank' || tabUrl == 'chrome://newtab/' || tabUrl == 'chrome://new-tab-page/') {
+          if (tabUrl == 'about:blank' ||
+              tabUrl == 'chrome://newtab/' ||
+              tabUrl == 'chrome://new-tab-page/') {
             return tab['webSocketDebuggerUrl'] as String?;
           }
         }
@@ -2754,7 +2813,7 @@ function _dqAll(sel, root) {
           s -= Math.min((e.textContent || '').length, 999);
           return s;
         }
-        const all = _dqAll('a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, li, td, th, [role]');
+        const all = _dqAll('*');
         // Exact match — pick best scored
         let best = null, bestScore = -Infinity;
         for (const e of all) {
