@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "pytest-flutter-skill"
+version = "0.1.0"
+description = "pytest plugin for flutter-skill AI app automation"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["pytest>=7.0"]
+
+[project.entry-points."pytest11"]
+flutter_skill = "pytest_flutter_skill.fixture"
+
+[project.urls]
+Homepage = "https://github.com/ai-dashboad/flutter-skill"

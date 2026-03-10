@@ -259,6 +259,18 @@ URI: $wsUri''');
     return result['success'] == true;
   }
 
+  /// Press a key by name in the running Flutter app via the VM Service extension.
+  /// Supported keys: enter, tab, escape, backspace, delete, space, up, down,
+  /// left, right, and any single character.
+  Future<Map<String, dynamic>> pressKey(String key,
+      {List<String>? modifiers}) async {
+    return await _call('ext.flutter.flutter_skill.pressKey', {
+      'key': key,
+      if (modifiers != null && modifiers.isNotEmpty)
+        'modifiers': modifiers.join(','),
+    });
+  }
+
   // ==================== STATE & VALIDATION ====================
 
   Future<String?> getTextValue(String? key) async {

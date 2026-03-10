@@ -1,0 +1,13 @@
+{
+  "name": "flutter-skill-harmonyos",
+  "version": "0.1.0",
+  "description": "flutter-skill AI testing bridge SDK for HarmonyOS (ArkTS/ArkUI)",
+  "main": "FlutterSkillAbility.ets",
+  "keywords": ["flutter-skill", "harmonyos", "ohos", "testing", "ai"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ai-dashboad/flutter-skill"
+  },
+  "dependencies": {}
+}

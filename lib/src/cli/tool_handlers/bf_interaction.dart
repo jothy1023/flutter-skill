@@ -206,10 +206,20 @@ extension _BfInteraction on FlutterMcpServer {
           await client.callMethod('press_key', {'key': key});
           return {"success": true, "message": "Key pressed: $key"};
         }
+        // Flutter VM Service — use the registered pressKey extension
+        if (client is FlutterSkillClient) {
+          final result = await client.pressKey(key);
+          return result['success'] == true
+              ? {"success": true, "message": "Key pressed: $key"}
+              : {
+                  "success": false,
+                  "error": result['error'] ?? "pressKey failed"
+                };
+        }
         return {
           "success": false,
           "error":
-              "press_key not supported on this platform. Use CDP mode or a bridge SDK."
+              "press_key requires CDP mode, a bridge SDK, or a connected Flutter app."
         };
 
       case 'scroll':

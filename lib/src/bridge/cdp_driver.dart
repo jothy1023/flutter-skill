@@ -2813,7 +2813,21 @@ function _dqAll(sel, root) {
           s -= Math.min((e.textContent || '').length, 999);
           return s;
         }
-        const all = _dqAll('*');
+        const all = _dqAll('a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, div, li, td, th, [role], [contenteditable], [tabindex], [onclick]');
+        // Also search shadow roots for button-like custom elements
+        function _shadowButtons(root) {
+          let r = [];
+          for (const n of (root || document).querySelectorAll('*')) {
+            if (n.shadowRoot) {
+              r = r.concat(Array.from(n.shadowRoot.querySelectorAll('button, [role="button"], [type="submit"], a, span, label')));
+              r = r.concat(_shadowButtons(n.shadowRoot));
+            }
+          }
+          return r;
+        }
+        for (const sb of _shadowButtons(document)) {
+          if (!all.includes(sb)) all.push(sb);
+        }
         // Exact match — pick best scored
         let best = null, bestScore = -Infinity;
         for (const e of all) {
