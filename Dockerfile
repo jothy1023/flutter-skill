@@ -1,20 +1,20 @@
 # Flutter Skill - AI Agent Bridge for Flutter Apps
 # Multi-stage build for minimal image size
 
-# Stage 1: Build
-FROM dart:stable AS builder
+# Stage 1: Build — use Flutter image so `flutter pub get` works
+FROM ghcr.io/cirruslabs/flutter:stable AS builder
 
 WORKDIR /app
 
-# Copy pubspec files first for better caching
+# Copy pubspec files first for better layer caching
 COPY pubspec.yaml pubspec.lock ./
-RUN dart pub get
+RUN flutter pub get
 
 # Copy source code
 COPY bin/ bin/
 COPY lib/ lib/
 
-# Compile to native executable
+# Compile to self-contained native binary (no Dart/Flutter needed at runtime)
 RUN dart compile exe bin/flutter_skill.dart -o flutter_skill
 
 # Stage 2: Runtime
