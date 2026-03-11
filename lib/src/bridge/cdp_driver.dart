@@ -80,8 +80,6 @@ class CdpDriver implements AppDriver {
   @override
   bool get isConnected => _connected;
 
-  @override
-
   /// Whether connect() found an existing tab matching the target URL
   /// (skipped navigation to avoid duplicate tabs).
   bool connectedToExistingTab = false;

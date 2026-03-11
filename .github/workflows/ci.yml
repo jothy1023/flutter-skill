@@ -95,13 +95,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Install flutter_skill globally (from repo)
-        run: dart pub global activate --source path .
+        run: flutter pub global activate --source path .
 
       - name: Add pub cache bin to PATH
         run: echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
