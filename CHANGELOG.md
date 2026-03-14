@@ -1,3 +1,16 @@
+## 0.9.10
+
+**UX fixes: fill tool, press_key iOS fallback, go_back count, coordinate hint**
+
+### Bug Fixes
+- **`fill` tool registered**: `fill` was documented but threw `Unknown tool: fill`. Now maps to `enter_text` (clear + set value). Closes user-reported issue.
+- **`press_key` on iOS/Android**: Added NativeDriver fallback so `press_key` works in Flutter VM Service mode on simulators/emulators (previously returned unsupported error). Enter key now triggers iOS search without needing CDP mode.
+- **`enter_text` without key**: When called without `key`/`ref`, returns an actionable `hint` field pointing to `inspect_interactive()` instead of the confusing `No TextField matching key 'null' found` error.
+- **`go_back` with `count`**: Accepts a `count` parameter to pop multiple routes in one call with 300 ms pauses between steps — replaces repeated `go_back()` chains.
+- **`native_screenshot` coordinate hint**: Response now includes `scale_factor` and a `coordinate_hint` field that explains the physical→logical pixel conversion, eliminating manual coordinate guessing.
+
+---
+
 ## 0.9.9
 
 **C++ desktop automation SDK**

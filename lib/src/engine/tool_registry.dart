@@ -1948,8 +1948,20 @@ By default, saves screenshot to a temporary file and returns file path. Optional
       },
       {
         "name": "go_back",
-        "description": "Navigate back",
-        "inputSchema": {"type": "object", "properties": {}}
+        "description":
+            "Navigate back. Use count > 1 to pop multiple routes at once instead of calling go_back() repeatedly.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description":
+                  "Number of back steps (default: 1). A 300 ms pause between steps allows route transitions to complete.",
+              "default": 1,
+              "minimum": 1,
+            }
+          }
+        }
       },
       {
         "name": "get_navigation_stack",

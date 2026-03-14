@@ -12,13 +12,31 @@ extension _BfNavigation on FlutterMcpServer {
         final fc = _asFlutterClient(client!, 'get_current_route');
         return await fc.getCurrentRoute();
       case 'go_back':
-        if (client is BridgeDriver) {
-          final success = await client.goBack();
-          return success ? "Navigated back" : "Cannot go back";
+        final count = (args['count'] as num?)?.toInt() ?? 1;
+        var steps = 0;
+        for (var i = 0; i < count; i++) {
+          bool ok;
+          if (client is BridgeDriver) {
+            ok = await client.goBack();
+          } else {
+            final fc = _asFlutterClient(client!, 'go_back');
+            ok = await fc.goBack();
+          }
+          if (!ok) break;
+          steps++;
+          if (i < count - 1) {
+            // Brief pause so the route transition completes before next pop
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
         }
-        final fc = _asFlutterClient(client!, 'go_back');
-        final success = await fc.goBack();
-        return success ? "Navigated back" : "Cannot go back";
+        if (steps == 0) return {"success": false, "message": "Cannot go back"};
+        return {
+          "success": true,
+          "message": steps == count
+              ? "Navigated back $steps step${steps > 1 ? 's' : ''}"
+              : "Navigated back $steps of $count steps (reached root)",
+          "steps": steps,
+        };
       case 'get_navigation_stack':
         if (client is BridgeDriver) {
           return await client.callMethod('get_navigation_stack');

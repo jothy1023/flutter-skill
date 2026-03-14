@@ -22,7 +22,30 @@ extension _NativeHandlers on FlutterMcpServer {
       }
       final saveToFile = args['save_to_file'] ?? true;
       final result = await driver.screenshot(saveToFile: saveToFile);
-      return result.toJson();
+      final json = result.toJson();
+      // Attach scale_factor so callers can convert physical → logical pixels.
+      // Flutter's tap(x,y) uses logical pixels; native_screenshot returns
+      // physical (device) pixels.  logical = physical / scale_factor.
+      if (json['success'] == true) {
+        final meta = result.metadata;
+        final pw = (meta?['width'] as num?)?.toDouble();
+        final ph = (meta?['height'] as num?)?.toDouble();
+        final lw = (meta?['logical_width'] as num?)?.toDouble();
+        final lh = (meta?['logical_height'] as num?)?.toDouble();
+        if (pw != null && lw != null && lw > 0) {
+          final scale = double.parse((pw / lw).toStringAsFixed(2));
+          json['scale_factor'] = scale;
+          json['coordinate_hint'] = 'Physical: ${pw.toInt()}×${ph?.toInt()}px. '
+              'Flutter tap() uses logical px — divide by $scale. '
+              'Logical: ${lw.toInt()}×${lh?.toInt()}px.';
+        } else if (pw != null && ph != null) {
+          json['coordinate_hint'] =
+              'Image is ${pw.toInt()}×${ph.toInt()} physical px. '
+              'Flutter tap(x,y) uses logical px (divide by device scale, '
+              'typically 2× or 3×). Use native_tap for physical-px coordinates.';
+        }
+      }
+      return json;
     }
 
     if (name == 'native_tap') {

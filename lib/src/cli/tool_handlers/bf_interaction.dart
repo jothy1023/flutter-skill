@@ -55,19 +55,31 @@ extension _BfInteraction on FlutterMcpServer {
           if (result['position'] != null) "position": result['position'],
         };
 
+      case 'fill':
       case 'enter_text':
+        final etKey = args['key'] as String?;
+        final etText = (args['text'] ?? args['value'] ?? '') as String;
+        // If no key/ref provided, try entering into the currently focused field.
+        // The Flutter binding handles null key by targeting the focused TextField.
         final result = await client!.enterText(
-          args['key'],
-          args['text'],
+          etKey,
+          etText,
           ref: args['ref'],
         );
         if (result['success'] != true) {
+          final err = result['error'];
+          final errMsg = err is Map ? err['message'] : err?.toString();
+          final noKey = etKey == null && args['ref'] == null;
           return {
             "success": false,
             "error": result['error'] ?? {"message": "TextField not found"},
-            "target": result['target'] ?? {"key": args['key']},
+            "target": result['target'] ?? {"key": etKey},
             if (result['suggestions'] != null)
               "suggestions": result['suggestions'],
+            // Actionable hint when called without a key and field not found
+            if (noKey && (errMsg?.contains('null') ?? false))
+              "hint":
+                  "No focused TextField detected. Call inspect_interactive() to list available TextFields, then pass 'key' or tap the field first.",
           };
         }
         return {"success": true, "message": "Text entered"};
@@ -209,17 +221,31 @@ extension _BfInteraction on FlutterMcpServer {
         // Flutter VM Service — use the registered pressKey extension
         if (client is FlutterSkillClient) {
           final result = await client.pressKey(key);
-          return result['success'] == true
-              ? {"success": true, "message": "Key pressed: $key"}
+          if (result['success'] == true) {
+            return {"success": true, "message": "Key pressed: $key"};
+          }
+          // FlutterSkillClient failed — fall through to NativeDriver below
+        }
+        // NativeDriver fallback: works on iOS Simulator and Android Emulator
+        // even when no VM Service extension is registered.
+        final nativeDriver = await _getNativeDriver(args);
+        if (nativeDriver != null) {
+          final nResult = await nativeDriver.pressKey(key);
+          return nResult.success
+              ? {"success": true, "message": "Key pressed via native: $key"}
               : {
                   "success": false,
-                  "error": result['error'] ?? "pressKey failed"
+                  "error": nResult.message ?? "Native pressKey failed",
+                  "hint":
+                      "Try native_press_key tool, or use a UI button instead of keyboard.",
                 };
         }
         return {
           "success": false,
           "error":
-              "press_key requires CDP mode, a bridge SDK, or a connected Flutter app."
+              "press_key not supported in this mode. Connect via CDP, a bridge SDK, or ensure a simulator/emulator is running for native key injection.",
+          "hint":
+              "For iOS: use native_press_key. For web: use CDP mode (connect_cdp).",
         };
 
       case 'scroll':
