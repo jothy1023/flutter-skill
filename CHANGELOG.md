@@ -1,3 +1,18 @@
+## 0.9.9
+
+**C++ desktop automation SDK**
+
+### New SDK
+- **C++ Bridge SDK** (`sdks/cpp/`): Cross-platform native C++ automation bridge. Embeds a zero-dependency WebSocket server (RFC 6455) + JSON-RPC 2.0 dispatcher in your C++ app so AI agents can control it via the flutter-skill protocol. Closes #22.
+  - **macOS**: CGEvent for input synthesis, `screencapture` for screenshots, AXUIElement for accessibility inspection
+  - **Windows**: `SendInput` + GDI+ (screenshots) + `GetForegroundWindow`
+  - **Linux**: XTest extension + XGetImage/libpng + EWMH
+  - No external dependencies — SHA-1, base64, and WebSocket framing are bundled
+  - Full CMake build system (`CMakeLists.txt`) for all three platforms
+- **Tests**: 30 unit tests (JSON-RPC, SHA-1/base64/WebSocket RFC vectors, bridge protocol with mock backend) + 27 real integration tests verified live on macOS (1630 KB PNG screenshot, tap, scroll, all key names, enter_text, inspect, window title)
+
+---
+
 ## 0.9.8
 
 **Multi-flavor app detection, fresh-install UX, Docker/Snap build fixes, CI smoke tests**
