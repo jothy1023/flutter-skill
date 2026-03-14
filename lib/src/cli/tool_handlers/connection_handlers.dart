@@ -444,6 +444,8 @@ extension _ConnectionHandlers on FlutterMcpServer {
       final portStart = args['port_start'] ?? 50000;
       final portEnd = args['port_end'] ?? 50100;
       final sessionId = args['session_id'] as String? ?? _generateSessionId();
+      final scanFlavor = args['flavor'] as String?;
+      final scanDeviceId = args['device_id'] as String?;
 
       // Auto-fix configuration if project_path is provided
       final projectPath = args['project_path'] as String?;
@@ -544,18 +546,32 @@ extension _ConnectionHandlers on FlutterMcpServer {
         };
       }
 
-      // Fall back to VM Service discovery (Flutter)
-      final vmServices = await _scanVmServices(portStart, portEnd);
-      if (vmServices.isEmpty) {
-        return {
-          "success": false,
-          "message":
-              "No running apps found (checked bridge ports and VM Service ports)"
-        };
+      // Fall back to VM Service discovery (Flutter), using process-based
+      // discovery first so we can filter by flavor/device
+      final flutterApps = await ProcessBasedDiscovery.discoverAll();
+      String uri;
+      if (flutterApps.isNotEmpty) {
+        final selected = await ProcessBasedDiscovery.smartSelect(
+          flutterApps,
+          deviceId: scanDeviceId,
+          flavor: scanFlavor,
+        );
+        if (selected == null) {
+          return {"success": false, "message": "No app selected"};
+        }
+        uri = selected.vmServiceUri;
+      } else {
+        // Last resort: raw port scan
+        final vmServices = await _scanVmServices(portStart, portEnd);
+        if (vmServices.isEmpty) {
+          return {
+            "success": false,
+            "message":
+                "No running apps found (checked bridge ports and VM Service ports)"
+          };
+        }
+        uri = vmServices.first;
       }
-
-      // Connect to the first one
-      final uri = vmServices.first;
 
       // Disconnect old client for this session if exists
       if (_clients.containsKey(sessionId)) {
@@ -586,7 +602,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
         "framework": "Flutter",
         "session_id": sessionId,
         "active_session": true,
-        "available": vmServices
+        "available": [uri]
       };
     }
 

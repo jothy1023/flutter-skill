@@ -338,6 +338,16 @@ Omitting session_id in other tools will use the active session.""",
               "type": "string",
               "description": "Optional session name for identification"
             },
+            "flavor": {
+              "type": "string",
+              "description":
+                  "Optional: Flutter build flavor (e.g. 'dev', 'staging', 'prod'). Selects the correct instance when multiple flavors run simultaneously."
+            },
+            "device_id": {
+              "type": "string",
+              "description":
+                  "Optional: Device ID to target when multiple devices run the same app."
+            },
           },
         },
       },

@@ -21,6 +21,8 @@ class UnifiedDiscovery {
   /// No requirement for --vm-service-port=50000!
   static Future<DiscoveryResult> discover({
     bool verbose = false,
+    String? deviceId,
+    String? flavor,
   }) async {
     if (verbose) {
       print('🔍 Smart discovery of running apps...\n');
@@ -73,7 +75,11 @@ class UnifiedDiscovery {
 
       if (apps.isNotEmpty) {
         // Smart selection or user selection
-        final app = await ProcessBasedDiscovery.smartSelect(apps);
+        final app = await ProcessBasedDiscovery.smartSelect(
+          apps,
+          deviceId: deviceId,
+          flavor: flavor,
+        );
 
         if (app != null) {
           if (verbose) {

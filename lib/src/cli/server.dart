@@ -11,6 +11,7 @@ import '../bridge/bridge_protocol.dart';
 import '../bridge/cdp_driver.dart';
 import '../bridge/web_bridge_listener.dart';
 import '../discovery/bridge_discovery.dart';
+import '../discovery/process_based_discovery.dart';
 import '../drivers/web_bridge_driver.dart';
 import '../drivers/app_driver.dart';
 import '../drivers/bridge_driver.dart';

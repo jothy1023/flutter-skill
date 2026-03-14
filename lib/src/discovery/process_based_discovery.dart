@@ -138,6 +138,7 @@ class ProcessBasedDiscovery {
   ) async {
     // Map PIDs to their parent flutter run processes
     final pidToDevice = <int, String>{};
+    final pidToFlavor = <int, String>{};
 
     for (final line in psLines) {
       // Look for flutter run commands with -d device flag
@@ -155,6 +156,14 @@ class ProcessBasedDiscovery {
         if (deviceMatch != null && flutterPid != null) {
           final deviceId = deviceMatch.group(1)!;
           pidToDevice[flutterPid] = deviceId;
+        }
+
+        // Extract --flavor flag
+        if (flutterPid != null) {
+          final flavorMatch = RegExp(r'--flavor[=\s]+(\S+)').firstMatch(line);
+          if (flavorMatch != null) {
+            pidToFlavor[flutterPid] = flavorMatch.group(1)!;
+          }
         }
       }
     }
@@ -174,11 +183,8 @@ class ProcessBasedDiscovery {
             if (ppid != null && pidToDevice.containsKey(ppid)) {
               app.deviceId = pidToDevice[ppid];
             } else {
-              // Try to infer from VM Service URI or other heuristics
-              // iOS typically uses higher ports, Android lower ports
-              // This is a heuristic and may not always be accurate
+              // Try to infer device from VM Service URI or other heuristics
               if (app.port >= 50000) {
-                // Could be any platform, check ps output for clues
                 for (final line in psLines) {
                   if (line.contains('${app.pid}')) {
                     if (line.contains('iPhone') || line.contains('iOS')) {
@@ -192,6 +198,9 @@ class ProcessBasedDiscovery {
                 }
               }
             }
+            if (ppid != null && pidToFlavor.containsKey(ppid)) {
+              app.flavor = pidToFlavor[ppid];
+            }
           }
         } catch (e) {
           // Failed to get parent PID, skip
@@ -200,19 +209,21 @@ class ProcessBasedDiscovery {
     }
   }
 
-  /// Smart app selection (based on current directory and device)
+  /// Smart app selection (based on current directory, device, and flavor)
   ///
   /// Priority ranking:
-  /// 1. Exact directory match + device match
-  /// 2. Exact directory match
-  /// 3. Prefix directory match + device match
-  /// 4. Prefix directory match
-  /// 5. Device match only
-  /// 6. Most recently started (lowest PID)
+  /// 1. Exact directory match + device match + flavor match
+  /// 2. Exact directory match + flavor match
+  /// 3. Exact directory match + device match
+  /// 4. Exact directory match
+  /// 5. Prefix directory match + device/flavor match
+  /// 6. Device match only
+  /// 7. Most recently started (lowest PID)
   static Future<FlutterApp?> smartSelect(
     List<FlutterApp> apps, {
     String? cwd,
     String? deviceId,
+    String? flavor,
   }) async {
     if (apps.isEmpty) return null;
     if (apps.length == 1) return apps.first;
@@ -227,30 +238,41 @@ class ProcessBasedDiscovery {
       }
     }
 
-    // Step 2: If exact match with device, return immediately
-    if (exactMatches.isNotEmpty && deviceId != null) {
-      final deviceMatches = exactMatches
-          .where((app) =>
-              app.deviceId != null &&
-              app.deviceId!.toLowerCase().contains(deviceId.toLowerCase()))
-          .toList();
+    // Step 2: Narrow exact matches by flavor, then device
+    if (exactMatches.isNotEmpty) {
+      // Apply flavor filter first (most specific)
+      var candidates = flavor != null
+          ? exactMatches
+              .where((app) =>
+                  app.flavor != null &&
+                  app.flavor!.toLowerCase() == flavor.toLowerCase())
+              .toList()
+          : exactMatches;
 
-      if (deviceMatches.length == 1) {
-        return deviceMatches.first;
-      } else if (deviceMatches.length > 1) {
-        // Multiple matches, rank by recency (lowest PID = most recent)
-        deviceMatches.sort((a, b) => a.pid.compareTo(b.pid));
-        return deviceMatches.first;
+      if (candidates.isEmpty)
+        candidates = exactMatches; // fallback if no flavor match
+
+      // Then apply device filter
+      if (deviceId != null) {
+        final deviceMatches = candidates
+            .where((app) =>
+                app.deviceId != null &&
+                app.deviceId!.toLowerCase().contains(deviceId.toLowerCase()))
+            .toList();
+        if (deviceMatches.length == 1) return deviceMatches.first;
+        if (deviceMatches.length > 1) {
+          deviceMatches.sort((a, b) => a.pid.compareTo(b.pid));
+          return deviceMatches.first;
+        }
       }
-    }
 
-    // Step 3: Single exact match without device filter
-    if (exactMatches.length == 1) {
-      return exactMatches.first;
-    } else if (exactMatches.length > 1) {
-      // Multiple exact matches, rank by recency
-      exactMatches.sort((a, b) => a.pid.compareTo(b.pid));
-      return await userSelect(exactMatches);
+      if (candidates.length == 1) return candidates.first;
+      if (candidates.length > 1) {
+        candidates.sort((a, b) => a.pid.compareTo(b.pid));
+        // If flavor was the differentiator, pick best match; otherwise ask user
+        if (flavor != null) return candidates.first;
+        return await userSelect(candidates);
+      }
     }
 
     // Step 4: Try prefix matching (subdirectory case)
@@ -360,6 +382,7 @@ class FlutterApp {
   String? dtdUri;
   String? projectPath;
   String? deviceId;
+  String? flavor;
 
   FlutterApp({
     required this.vmServiceUri,
@@ -368,6 +391,7 @@ class FlutterApp {
     this.dtdUri,
     this.projectPath,
     this.deviceId,
+    this.flavor,
   });
 
   String get description {
@@ -377,6 +401,9 @@ class FlutterApp {
     }
     if (deviceId != null) {
       parts.add('📱 $deviceId');
+    }
+    if (flavor != null) {
+      parts.add('🍦 $flavor');
     }
     if (port > 0) parts.add('Port $port');
     if (parts.isEmpty) parts.add('PID $pid');

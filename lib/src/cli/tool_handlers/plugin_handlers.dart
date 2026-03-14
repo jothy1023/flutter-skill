@@ -4,8 +4,7 @@ extension _PluginHandlers on FlutterMcpServer {
   Future<void> _loadPlugins() async {
     final dir = Directory(_pluginsDir);
     if (!await dir.exists()) {
-      stderr.writeln('Plugins directory not found: $_pluginsDir (skipping)');
-      return;
+      return; // No plugins directory — normal on fresh install, silently skip
     }
     await for (final entity in dir.list()) {
       if (entity is File && entity.path.endsWith('.json')) {
