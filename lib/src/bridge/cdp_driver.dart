@@ -95,24 +95,20 @@ class CdpDriver implements AppDriver {
     // Check if CDP debug port is already responding.
     final cdpAlive = await _isCdpPortAlive();
     if (!cdpAlive) {
-      if (_launchChrome) {
-        // Explicitly requested to launch Chrome.
+      final chromeRunning = await _isChromeRunning();
+      if (chromeRunning) {
+        // Chrome is running but without --remote-debugging-port.
+        // Quit Chrome and relaunch it with the user's own profile + debug port.
+        // This is equivalent to enabling chrome://inspect/#remote-debugging on
+        // the existing instance — same session, same logins, no new profile.
+        await _restartChromeWithDebugPort();
+        await _waitForCdpReady();
+      } else if (_launchChrome) {
+        // Chrome is not running — launch a fresh flutter-skill profile.
         await _launchChromeProcess();
         await _waitForCdpReady();
-      } else {
-        // launch_chrome: false — but port is not responding.
-        // Smart auto-launch: if Chrome is running without --remote-debugging-port,
-        // start a parallel flutter-skill Chrome profile that has it enabled.
-        // This mirrors chrome://inspect/#remote-debugging — enabling the debug
-        // port without disturbing the user's existing Chrome session.
-        final chromeRunning = await _isChromeRunning();
-        if (chromeRunning) {
-          await _launchChromeProcess();
-          await _waitForCdpReady();
-        }
-        // If Chrome is not running and launch_chrome: false, fall through;
-        // _discoverTarget will fail with a clear error.
       }
+      // else: Chrome not running + launch_chrome: false → fall through to error.
     }
 
     // Discover tabs via CDP JSON endpoint
@@ -254,6 +250,123 @@ class CdpDriver implements AppDriver {
       }
     } catch (_) {}
     return false;
+  }
+
+  /// Returns the OS-default Chrome user-data-dir (the user's actual profile).
+  String _defaultChromeUserDataDir() {
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '';
+    if (Platform.isMacOS) {
+      return '$home/Library/Application Support/Google/Chrome';
+    } else if (Platform.isLinux) {
+      return '$home/.config/google-chrome';
+    } else if (Platform.isWindows) {
+      final appData =
+          Platform.environment['LOCALAPPDATA'] ?? '$home/AppData/Local';
+      return '$appData\\Google\\Chrome\\User Data';
+    }
+    return '$home/.config/google-chrome';
+  }
+
+  /// Quit Chrome gracefully (AppleScript on macOS, SIGTERM on Linux, taskkill on Windows).
+  Future<void> _quitChrome() async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.run(
+            'osascript', ['-e', 'tell application "Google Chrome" to quit']);
+      } else if (Platform.isLinux) {
+        await Process.run('pkill', ['-x', 'google-chrome']);
+        await Process.run('pkill', ['-x', 'chromium']);
+      } else if (Platform.isWindows) {
+        await Process.run('taskkill', ['/F', '/IM', 'chrome.exe']);
+      }
+    } catch (_) {}
+  }
+
+  /// Poll until Chrome process is no longer running (max 3 seconds).
+  Future<void> _waitForChromeExit() async {
+    for (var i = 0; i < 30; i++) {
+      if (!await _isChromeRunning()) return;
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
+  /// Quit the user's running Chrome and relaunch it with the same profile +
+  /// --remote-debugging-port, so remote debugging is enabled without losing
+  /// the user's existing session / logins.
+  ///
+  /// Chrome 136+ blocks --remote-debugging-port on the default user-data-dir.
+  /// If that happens (process exits fast), we automatically fall back to
+  /// launching Chrome for Testing with a flutter-skill profile.
+  Future<void> _restartChromeWithDebugPort() async {
+    final userDataDir = _defaultChromeUserDataDir();
+
+    // Quit the running Chrome instance.
+    await _quitChrome();
+    await _waitForChromeExit();
+
+    // Find the Chrome executable (same search order as _launchChromeProcess).
+    String? chromePath;
+    if (_chromePath != null) {
+      chromePath = _chromePath;
+    } else if (Platform.isMacOS) {
+      chromePath =
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    } else if (Platform.isLinux) {
+      for (final p in ['google-chrome', 'google-chrome-stable', 'chromium']) {
+        final r = await Process.run('which', [p]);
+        if (r.exitCode == 0) {
+          chromePath = r.stdout.toString().trim();
+          break;
+        }
+      }
+    } else if (Platform.isWindows) {
+      chromePath = r'C:\Program Files\Google\Chrome\Application\chrome.exe';
+    }
+
+    if (chromePath == null) {
+      await _launchChromeProcess();
+      return;
+    }
+
+    final args = [
+      '--remote-debugging-port=$_port',
+      '--remote-allow-origins=*',
+      '--user-data-dir=$userDataDir',
+      '--no-first-run',
+      '--no-default-browser-check',
+      if (_headless) '--headless=new',
+      if (_proxy != null) '--proxy-server=$_proxy',
+      if (_ignoreSsl) '--ignore-certificate-errors',
+      if (_url.isNotEmpty) _url,
+    ];
+
+    try {
+      if (Platform.isMacOS && chromePath.contains('.app/')) {
+        final appBundle = chromePath.substring(
+            0, chromePath.indexOf('.app/') + '.app/'.length - 1);
+        await Process.run('xattr', ['-cr', appBundle]);
+      }
+      _chromeProcess = await Process.start(chromePath, args);
+    } catch (_) {
+      // Could not start Chrome — fall back to flutter-skill profile.
+      await _launchChromeProcess();
+      return;
+    }
+
+    // Chrome 136+ exits immediately when given --remote-debugging-port on the
+    // default user-data-dir.  Wait briefly and check.
+    await Future.delayed(const Duration(milliseconds: 800));
+    final code = await _chromeProcess!.exitCode
+        .timeout(const Duration(milliseconds: 200), onTimeout: () => -1);
+    if (code != -1) {
+      // Chrome rejected the debug port on the default profile.
+      // Fall back to Chrome for Testing / flutter-skill profile.
+      _chromeProcess = null;
+      await _launchChromeProcess();
+    }
+    // else: Chrome accepted — it is running with debug port on the user's profile.
   }
 
   /// Get the current page URL via Runtime.evaluate
