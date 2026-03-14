@@ -80,15 +80,22 @@ The codebase has two main parts:
 
 ### Quick Release
 
-When the user asks to release a new version:
+**CRITICAL: ALWAYS use the release script. NEVER bump versions or commit/tag/push manually.**
+
+When the user asks to release a new version, run:
 
 ```bash
-# Option 1: Automated (recommended)
-./scripts/release.sh 0.3.2 "Brief description"
-
-# Option 2: Manual (for fine control)
-# See RELEASE_PROCESS.md for detailed steps
+./scripts/release.sh X.Y.Z "Brief description"
 ```
+
+Example:
+```bash
+./scripts/release.sh 0.9.9 "C++ desktop automation SDK"
+```
+
+The script handles everything: version bumps across all files, CHANGELOG entry, git commit, tag, and push — which triggers GitHub Actions to auto-publish to pub.dev, npm, VSCode, JetBrains, Homebrew, Scoop, MCP Registry, and GitHub Release.
+
+**Never do any of these steps manually** (no `sed` version bumps, no `git tag`, no `git push --tags`, no `gh release create`) unless the script explicitly fails and you explain why to the user first.
 
 ### Manual Release Steps
 
