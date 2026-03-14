@@ -97,12 +97,28 @@ class CdpDriver implements AppDriver {
     if (!cdpAlive) {
       final chromeRunning = await _isChromeRunning();
       if (chromeRunning) {
-        // Chrome is running but without --remote-debugging-port.
-        // Quit Chrome and relaunch it with the user's own profile + debug port.
-        // This is equivalent to enabling chrome://inspect/#remote-debugging on
-        // the existing instance — same session, same logins, no new profile.
-        await _restartChromeWithDebugPort();
-        await _waitForCdpReady();
+        // Step 1: Chrome may already have remote debugging enabled on a
+        // different port (Chrome 136+ picks a random port when the
+        // chrome://inspect/#remote-debugging checkbox is ticked).
+        // Scan all Chrome TCP ports before touching anything.
+        final existingPort = await _discoverChromeCdpPort();
+        if (existingPort != null) {
+          _port = existingPort;
+          // CDP is already live — fall through to _discoverTarget().
+        } else {
+          // Step 2: Try to enable via chrome://inspect/#remote-debugging.
+          // Navigate Chrome to that page, tick the checkbox via the
+          // macOS Accessibility API, then discover the new port.
+          // This is zero-disruption: no restart, all tabs/sessions intact.
+          final enabledPort = await _enableChromeRemoteDebugging();
+          if (enabledPort != null) {
+            _port = enabledPort;
+          } else {
+            // Step 3: Fallback — quit Chrome and relaunch with debug port.
+            await _restartChromeWithDebugPort();
+            await _waitForCdpReady();
+          }
+        }
       } else if (_launchChrome) {
         // Chrome is not running — launch a fresh flutter-skill profile.
         await _launchChromeProcess();
@@ -250,6 +266,156 @@ class CdpDriver implements AppDriver {
       }
     } catch (_) {}
     return false;
+  }
+
+  /// Scan all TCP ports that Chrome is currently listening on and return the
+  /// first port that responds as a valid CDP endpoint.
+  /// Handles Chrome 136+ which assigns a random port when the user enables
+  /// chrome://inspect/#remote-debugging (not necessarily 9222).
+  Future<int?> _discoverChromeCdpPort() async {
+    try {
+      final result = await Process.run('bash',
+          ['-c', 'lsof -c "Google Chrome" -a -i TCP -sTCP:LISTEN 2>/dev/null']);
+      final portRegex = RegExp(r'127\.0\.0\.1:(\d+)');
+      final ports = portRegex
+          .allMatches(result.stdout.toString())
+          .map((m) => int.tryParse(m.group(1)!) ?? 0)
+          .where((p) => p > 1024)
+          .toSet()
+          .toList();
+      for (final port in ports) {
+        final prev = _port;
+        _port = port;
+        if (await _isCdpPortAlive()) return port;
+        _port = prev;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Enable Chrome remote debugging via the chrome://inspect/#remote-debugging
+  /// page WITHOUT restarting Chrome.
+  ///
+  /// Chrome 136+ added a "Allow remote debugging for this browser instance"
+  /// checkbox on that page.  This method:
+  ///   1. Navigates Chrome to chrome://inspect/#remote-debugging
+  ///   2. Ticks the checkbox via the macOS Accessibility API (AXCheckBox)
+  ///   3. Scans Chrome's new listening port and returns it
+  ///
+  /// Returns the enabled CDP port, or null if the approach failed (caller
+  /// should fall back to restarting Chrome).
+  Future<int?> _enableChromeRemoteDebugging() async {
+    if (!Platform.isMacOS) return null;
+    try {
+      // Snapshot of ports before we do anything (to detect the new one).
+      final portsBefore = await _getChromeTcpPorts();
+
+      // Navigate to the remote-debugging settings page.
+      await Process.run('osascript', [
+        '-e',
+        'tell application "Google Chrome" to open location '
+            '"chrome://inspect/#remote-debugging"'
+      ]);
+      await Process.run(
+          'osascript', ['-e', 'tell application "Google Chrome" to activate']);
+      await Future.delayed(const Duration(milliseconds: 2000));
+
+      // Try to tick the checkbox via the macOS Accessibility API.
+      // Chrome DevTools WebUI pages expose their content as AX elements.
+      final axResult = await Process.run('osascript', [
+        '-e',
+        r'''
+tell application "System Events"
+  tell process "Google Chrome"
+    activate
+    try
+      set allElems to entire contents of front window
+      repeat with e in allElems
+        try
+          if role of e is "AXCheckBox" then
+            if value of e is 0 then
+              click e
+            end if
+            return "ok:" & (value of e as string)
+          end if
+        end try
+      end repeat
+    end try
+    return "notfound"
+  end tell
+end tell
+'''
+      ]).timeout(const Duration(seconds: 8), onTimeout: () {
+        return ProcessResult(0, 0, 'timeout', '');
+      });
+
+      final axOut = axResult.stdout.toString().trim();
+      if (axOut == 'notfound' || axOut == 'timeout') {
+        // AX approach failed — try clicking at the approximate screen position
+        // of the checkbox (Chrome devtools page layout is consistent).
+        final boundsResult = await Process.run('osascript', [
+          '-e',
+          '''
+tell application "System Events"
+  tell process "Google Chrome"
+    set w to front window
+    return ((item 1 of position of w) as string) & "," & ¬
+           ((item 2 of position of w) as string) & "," & ¬
+           ((item 1 of size of w) as string) & "," & ¬
+           ((item 2 of size of w) as string)
+  end tell
+end tell
+'''
+        ]);
+        final parts = boundsResult.stdout
+            .toString()
+            .trim()
+            .split(',')
+            .map((s) => double.tryParse(s.trim()))
+            .whereType<double>()
+            .toList();
+        if (parts.length >= 4) {
+          // Checkbox is roughly at: sidebar(230) + margin(30), toolbar(130) + 100
+          final cx = (parts[0] + 265).toInt();
+          final cy = (parts[1] + 230).toInt();
+          await Process.run('osascript', [
+            '-e',
+            'tell application "System Events" to click at {$cx, $cy}'
+          ]);
+        }
+      }
+
+      await Future.delayed(const Duration(milliseconds: 1200));
+
+      // Discover the newly opened CDP port (port that wasn't there before).
+      final portsAfter = await _getChromeTcpPorts();
+      final newPorts =
+          portsAfter.where((p) => !portsBefore.contains(p)).toList();
+
+      // Check new ports first, then all Chrome ports.
+      for (final port in [...newPorts, ...portsAfter]) {
+        _port = port;
+        if (await _isCdpPortAlive()) return port;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Returns all TCP ports Chrome is currently listening on (127.0.0.1 only).
+  Future<List<int>> _getChromeTcpPorts() async {
+    try {
+      final result = await Process.run('bash',
+          ['-c', 'lsof -c "Google Chrome" -a -i TCP -sTCP:LISTEN 2>/dev/null']);
+      final portRegex = RegExp(r'127\.0\.0\.1:(\d+)');
+      return portRegex
+          .allMatches(result.stdout.toString())
+          .map((m) => int.tryParse(m.group(1)!) ?? 0)
+          .where((p) => p > 1024)
+          .toSet()
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// Returns the OS-default Chrome user-data-dir (the user's actual profile).
