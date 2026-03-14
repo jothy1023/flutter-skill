@@ -1,3 +1,12 @@
+## 0.9.12
+
+**Restart existing Chrome with debug port; preserve user session**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.11
 
 **Auto-enable Chrome remote debugging when connecting via CDP**
