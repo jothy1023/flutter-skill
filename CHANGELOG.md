@@ -1,9 +1,26 @@
+## 0.9.19
+
+**Fix Chrome 146 consent port: skip Origin header in WebSocket upgrade**
+
+### Changes
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
+
+---
+
 ## 0.9.18
 
 **Support Chrome 146 consent-based remote debugging port**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -12,7 +29,11 @@
 **Session-copy profile: preserve user logins when Chrome 145+ blocks default profile debug port**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -21,7 +42,11 @@
 **Fix Chrome 145+ silently ignoring --remote-debugging-port on default profile**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -30,7 +55,11 @@
 **Remove Chrome for Testing dependency from CDP driver**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -39,7 +68,11 @@
 **Fix Page.enable hang on chrome://newtab; auto-enable remote debugging**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -48,7 +81,11 @@
 **Auto-tick chrome remote debugging checkbox; no Chrome restart**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -57,7 +94,11 @@
 **Restart existing Chrome with debug port; preserve user session**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -66,7 +107,11 @@
 **Auto-enable Chrome remote debugging when connecting via CDP**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -243,7 +288,11 @@
 **Fix WebSocket stability + ping/pong keepalive**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -252,7 +301,11 @@
 **Zero-config CDP, 143 device presets, smart tool filtering, 5 codegen formats, retry/reconnect**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -261,7 +314,11 @@
 **139 MCP tools, CDP browser testing, 10-platform support, screenshot fixes**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -270,7 +327,11 @@
 **inspect_interactive, semantic refs, press_key, 75-test E2E suite**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -279,7 +340,11 @@
 **Release 0.7.8**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -288,7 +353,11 @@
 **Release 0.7.7**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -297,7 +366,11 @@
 **CI improvements + MCP Registry auto-publish**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -306,7 +379,11 @@
 **Release 0.7.5**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -1183,7 +1260,11 @@ Claude Code now automatically recognizes and prioritizes flutter-skill MCP tools
 **AI Tool Discovery Enhancement - 95%+ Recognition Rate**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 
@@ -1463,7 +1544,11 @@ Claude Code (and other AI agents) couldn't auto-invoke flutter-skill when users 
 **P0/P1 Expert-level Optimizations**
 
 ### Changes
-- TODO: Add your changes here
+- Fixed 403 Forbidden error when connecting to Chrome 146 consent port (port opened via chrome://inspect/#remote-debugging)
+- Chrome 146 rejects WebSocket connections that include an Origin header; Dart built-in WebSocket.connect() always adds one
+- Added _connectWebSocketNoOrigin(): raw TCP socket WebSocket upgrade that omits the Origin header
+- All CDP WebSocket connections now use no-Origin mode when consent port is detected
+- Users can now connect to their real Chrome browser without any session-copy workaround
 
 ---
 

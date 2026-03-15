@@ -163,7 +163,7 @@ class CdpDriver implements AppDriver {
       throw Exception(hint);
     }
 
-    _ws = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 10));
+    _ws = await _connectCdpWebSocket(wsUrl);
     _connected = true;
 
     _ws!.listen(
@@ -717,7 +717,7 @@ end tell
     } catch (_) {}
     _ws = null;
 
-    _ws = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 10));
+    _ws = await _connectCdpWebSocket(wsUrl);
     _connected = true;
 
     _ws!.listen(
@@ -2837,7 +2837,7 @@ end tell
     final wsUrl = 'ws://127.0.0.1:$_port/devtools/browser/${_generateUuid()}';
     WebSocket? ws;
     try {
-      ws = await WebSocket.connect(wsUrl).timeout(timeout);
+      ws = await _connectWebSocketNoOrigin(wsUrl, timeout: timeout);
     } catch (_) {
       return null;
     }
@@ -2938,6 +2938,104 @@ end tell
       await ws.close();
     } catch (_) {}
     return null;
+  }
+
+  /// Connect to a WebSocket without sending an Origin header.
+  ///
+  /// Chrome 146 consent ports reject all WebSocket connections that include an
+  /// Origin header (returns 403 Forbidden). Dart's built-in WebSocket.connect()
+  /// always adds an Origin header, so we do the upgrade manually via a raw
+  /// TCP socket and then hand it off to WebSocket.fromUpgradedSocket().
+  Future<WebSocket> _connectWebSocketNoOrigin(
+    String wsUrl, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final uri = Uri.parse(wsUrl);
+    final host = uri.host;
+    final port = uri.port;
+    final path = uri.path.isEmpty ? '/' : uri.path;
+
+    // Random WebSocket key (16 bytes, base64-encoded)
+    final r = Random.secure();
+    final key = base64Encode(List<int>.generate(16, (_) => r.nextInt(256)));
+
+    // Open raw TCP connection
+    final socket = await Socket.connect(host, port, timeout: timeout);
+    socket.setOption(SocketOption.tcpNoDelay, true);
+
+    // Send HTTP WebSocket upgrade request WITHOUT Origin header
+    socket.add(utf8.encode(
+      'GET $path HTTP/1.1\r\n'
+      'Host: $host:$port\r\n'
+      'Upgrade: websocket\r\n'
+      'Connection: Upgrade\r\n'
+      'Sec-WebSocket-Key: $key\r\n'
+      'Sec-WebSocket-Version: 13\r\n'
+      '\r\n',
+    ));
+    await socket.flush();
+
+    // Read HTTP response headers until \r\n\r\n
+    final headerBuf = <int>[];
+    final completer = Completer<void>();
+    StreamSubscription<List<int>>? sub;
+
+    sub = socket.listen(
+      (chunk) {
+        if (completer.isCompleted) return;
+        headerBuf.addAll(chunk);
+        for (var i = 0; i <= headerBuf.length - 4; i++) {
+          if (headerBuf[i] == 13 &&
+              headerBuf[i + 1] == 10 &&
+              headerBuf[i + 2] == 13 &&
+              headerBuf[i + 3] == 10) {
+            sub?.pause();
+            final headerStr = utf8.decode(headerBuf.sublist(0, i));
+            if (!headerStr.contains(' 101 ')) {
+              completer.completeError(
+                  Exception('WebSocket upgrade failed:\n$headerStr'));
+            } else {
+              completer.complete();
+            }
+            return;
+          }
+        }
+      },
+      onError: (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      },
+      onDone: () {
+        if (!completer.isCompleted) {
+          completer.completeError(
+              Exception('Socket closed during WebSocket upgrade'));
+        }
+      },
+      cancelOnError: true,
+    );
+
+    try {
+      await completer.future.timeout(timeout);
+    } catch (e) {
+      await sub.cancel();
+      socket.destroy();
+      rethrow;
+    }
+
+    // Cancel our subscription so WebSocket.fromUpgradedSocket can subscribe.
+    // dart:io Socket allows re-subscription after cancel — this is the same
+    // pattern HttpServer uses when upgrading an HTTP connection to WebSocket.
+    await sub.cancel();
+
+    return WebSocket.fromUpgradedSocket(socket, serverSide: false);
+  }
+
+  /// Connect to a CDP WebSocket, using no-Origin mode for Chrome 146 consent ports.
+  Future<WebSocket> _connectCdpWebSocket(String wsUrl,
+      {Duration timeout = const Duration(seconds: 10)}) {
+    if (_isChrome146ConsentPort) {
+      return _connectWebSocketNoOrigin(wsUrl, timeout: timeout);
+    }
+    return WebSocket.connect(wsUrl).timeout(timeout);
   }
 
   /// Generate a random UUID v4.
@@ -3469,8 +3567,7 @@ function _dqAll(sel, root) {
           final wsUrl = await _discoverTarget();
           if (wsUrl == null) continue;
 
-          _ws = await WebSocket.connect(wsUrl)
-              .timeout(const Duration(seconds: 10));
+          _ws = await _connectCdpWebSocket(wsUrl);
           _connected = true;
 
           _ws!.listen(
