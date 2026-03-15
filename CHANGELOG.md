@@ -1,3 +1,12 @@
+## 0.9.17
+
+**Session-copy profile: preserve user logins when Chrome 145+ blocks default profile debug port**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.16
 
 **Fix Chrome 145+ silently ignoring --remote-debugging-port on default profile**

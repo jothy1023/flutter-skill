@@ -435,6 +435,99 @@ end tell
     return '$home/.config/google-chrome';
   }
 
+  /// Path for the session-copy profile directory.
+  /// Uses a non-default path so Chrome 136+ allows --remote-debugging-port.
+  static String get _sessionCopyProfileDir {
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '.';
+    return '$home/.flutter-skill/chrome-session';
+  }
+
+  /// Find the most recently modified profile subdirectory within [userDataDir].
+  /// Checks Default, Profile 1 … Profile 9, and returns the one whose Cookies
+  /// file was most recently modified (best proxy for the active profile).
+  Future<String?> _findActiveProfileDir(String userDataDir) async {
+    final names = [
+      'Default',
+      ...List.generate(9, (i) => 'Profile ${i + 1}'),
+    ];
+    String? latest;
+    DateTime? latestMod;
+    for (final name in names) {
+      final cookies = File('$userDataDir/$name/Cookies');
+      if (!cookies.existsSync()) continue;
+      final mod = cookies.statSync().modified;
+      if (latestMod == null || mod.isAfter(latestMod)) {
+        latestMod = mod;
+        latest = '$userDataDir/$name';
+      }
+    }
+    return latest;
+  }
+
+  /// Copy a directory recursively, skipping locked / unreadable files silently.
+  Future<void> _copyDirectory(Directory src, Directory dest) async {
+    if (!dest.existsSync()) dest.createSync(recursive: true);
+    try {
+      await for (final entity in src.list()) {
+        final name = entity.uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
+        if (name.isEmpty) continue;
+        if (entity is File) {
+          try {
+            await entity.copy('${dest.path}/$name');
+          } catch (_) {}
+        } else if (entity is Directory) {
+          await _copyDirectory(entity, Directory('${dest.path}/$name'));
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Create (or refresh) a session-copy profile at [_sessionCopyProfileDir] by
+  /// copying the essential login/cookie files from the user's active Chrome profile.
+  /// Returns the path to use as --user-data-dir when launching Chrome.
+  Future<String> _createSessionCopyProfile(String userDataDir) async {
+    final destRoot = _sessionCopyProfileDir;
+    final destProfile = '$destRoot/Default';
+    await Directory(destProfile).create(recursive: true);
+
+    final sourceProfile = await _findActiveProfileDir(userDataDir);
+    if (sourceProfile != null) {
+      // Essential files for session preservation.
+      for (final filename in [
+        'Cookies',
+        'Extension Cookies',
+        'Login Data',
+        'Login Data For Account',
+        'Preferences',
+        'Secure Preferences',
+      ]) {
+        final src = File('$sourceProfile/$filename');
+        if (src.existsSync()) {
+          try {
+            await src.copy('$destProfile/$filename');
+          } catch (_) {}
+        }
+      }
+      // Local Storage contains IndexedDB / localStorage session tokens.
+      final lsDir = Directory('$sourceProfile/Local Storage');
+      if (lsDir.existsSync()) {
+        await _copyDirectory(lsDir, Directory('$destProfile/Local Storage'));
+      }
+    }
+
+    // Local State holds multi-profile config and the encryption key reference.
+    final localState = File('$userDataDir/Local State');
+    if (localState.existsSync()) {
+      try {
+        await localState.copy('$destRoot/Local State');
+      } catch (_) {}
+    }
+
+    return destRoot;
+  }
+
   /// Quit Chrome gracefully (AppleScript on macOS, SIGTERM on Linux, taskkill on Windows).
   Future<void> _quitChrome() async {
     try {
@@ -541,11 +634,39 @@ end tell
         timeout: const Duration(seconds: 4), interval: const Duration(milliseconds: 200));
     if (!portOpened) {
       // Chrome silently ignored --remote-debugging-port (Chrome 145+ behaviour).
-      // Kill this instance and fall back to flutter-skill's own profile.
+      // Kill this instance, then try session-copy profile (copies user's cookies/storage
+      // to a non-default path so Chrome allows the debug port while preserving logins).
       try {
         _chromeProcess?.kill();
       } catch (_) {}
       _chromeProcess = null;
+
+      try {
+        final sessionDir = await _createSessionCopyProfile(userDataDir);
+        final sessionArgs = [
+          '--remote-debugging-port=$_port',
+          '--remote-allow-origins=*',
+          '--user-data-dir=$sessionDir',
+          '--no-first-run',
+          '--no-default-browser-check',
+          if (_headless) '--headless=new',
+          if (_proxy != null) '--proxy-server=$_proxy',
+          if (_ignoreSsl) '--ignore-certificate-errors',
+          if (_url.isNotEmpty) _url,
+        ];
+        _chromeProcess = await Process.start(chromePath, sessionArgs);
+        final sessionPortOpened = await _pollCdpPort(
+          timeout: const Duration(seconds: 6),
+          interval: const Duration(milliseconds: 200),
+        );
+        if (sessionPortOpened) return; // Session copy worked with debug port open.
+        try {
+          _chromeProcess?.kill();
+        } catch (_) {}
+        _chromeProcess = null;
+      } catch (_) {}
+
+      // Final fallback: flutter-skill's own blank profile (no user session).
       await _launchChromeProcess();
     }
     // else: Chrome accepted and port is open — running with user's profile.
