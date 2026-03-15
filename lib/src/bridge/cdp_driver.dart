@@ -464,7 +464,7 @@ end tell
   ///
   /// Chrome 136+ blocks --remote-debugging-port on the default user-data-dir.
   /// If that happens (process exits fast), we automatically fall back to
-  /// launching Chrome for Testing with a flutter-skill profile.
+  /// launching with a separate flutter-skill profile (no user session).
   Future<void> _restartChromeWithDebugPort() async {
     final userDataDir = _defaultChromeUserDataDir();
 
@@ -528,7 +528,7 @@ end tell
         .timeout(const Duration(milliseconds: 200), onTimeout: () => -1);
     if (code != -1) {
       // Chrome rejected the debug port on the default profile.
-      // Fall back to Chrome for Testing / flutter-skill profile.
+      // Fall back to flutter-skill profile.
       _chromeProcess = null;
       await _launchChromeProcess();
     }
@@ -2512,142 +2512,6 @@ end tell
     return '$home/.flutter-skill/chrome-profile';
   }
 
-  /// Directory where Chrome for Testing is installed.
-  static String get _cftInstallDir {
-    final home = Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '.';
-    return '$home/.flutter-skill/chrome-for-testing';
-  }
-
-  /// Detect Chrome for Testing binary path if installed.
-  static String? get _cftBinaryPath {
-    final dir = _cftInstallDir;
-    if (Platform.isMacOS) {
-      final arm64 =
-          '$dir/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
-      final x64 =
-          '$dir/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
-      if (File(arm64).existsSync()) return arm64;
-      if (File(x64).existsSync()) return x64;
-    } else if (Platform.isLinux) {
-      for (final sub in ['chrome-linux64', 'chrome-linux-arm64']) {
-        final path = '$dir/$sub/chrome';
-        if (File(path).existsSync()) return path;
-      }
-    } else if (Platform.isWindows) {
-      final path = '$dir/chrome-win64/chrome.exe';
-      if (File(path).existsSync()) return path;
-    }
-    return null;
-  }
-
-  /// Platform identifier for Chrome for Testing downloads.
-  static String get _cftPlatform {
-    if (Platform.isMacOS) {
-      try {
-        final result = Process.runSync('uname', ['-m']);
-        if (result.stdout.toString().trim() == 'arm64') return 'mac-arm64';
-      } catch (_) {}
-      return 'mac-x64';
-    }
-    if (Platform.isLinux) {
-      try {
-        final result = Process.runSync('uname', ['-m']);
-        final arch = result.stdout.toString().trim();
-        if (arch == 'aarch64' || arch == 'arm64') return 'linux-arm64';
-      } catch (_) {}
-      return 'linux64';
-    }
-    if (Platform.isWindows) {
-      // Windows ARM64 runs x64 Chrome via emulation
-      return 'win64';
-    }
-    return 'linux64'; // fallback
-  }
-
-  /// Download and install Chrome for Testing.
-  ///
-  /// Returns the path to the installed binary, or throws on failure.
-  static Future<String> installChromeForTesting() async {
-    final client = http.Client();
-    try {
-      // Fetch latest stable version info
-      final resp = await client.get(Uri.parse(
-        'https://googlechromelabs.github.io/chrome-for-testing/'
-        'last-known-good-versions-with-downloads.json',
-      ));
-      if (resp.statusCode != 200) {
-        throw Exception('Failed to fetch Chrome for Testing versions');
-      }
-      final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final stable = data['channels']['Stable'] as Map<String, dynamic>;
-      final downloads = stable['downloads']['chrome'] as List;
-      final platform = _cftPlatform;
-      final entry = downloads.firstWhere(
-        (d) => d['platform'] == platform,
-        orElse: () => null,
-      );
-      if (entry == null) {
-        throw Exception(
-            'No Chrome for Testing download for platform: $platform. '
-            '${platform == 'linux-arm64' ? 'Chrome for Testing does not support Linux ARM64 yet. Use Chromium instead: sudo apt install chromium-browser' : 'Check https://googlechromelabs.github.io/chrome-for-testing/ for available platforms.'}');
-      }
-      final url = entry['url'] as String;
-
-      // Download
-      final zipPath = '${Directory.systemTemp.path}/chrome-for-testing.zip';
-      final zipResp = await client.get(Uri.parse(url));
-      if (zipResp.statusCode != 200) {
-        throw Exception('Failed to download Chrome for Testing from $url');
-      }
-      await File(zipPath).writeAsBytes(zipResp.bodyBytes);
-
-      // Extract
-      final installDir = _cftInstallDir;
-      await Directory(installDir).create(recursive: true);
-
-      if (Platform.isWindows) {
-        await Process.run('powershell', [
-          '-Command',
-          'Expand-Archive',
-          '-Path',
-          zipPath,
-          '-DestinationPath',
-          installDir,
-          '-Force'
-        ]);
-      } else {
-        await Process.run('unzip', ['-o', zipPath, '-d', installDir]);
-      }
-
-      // macOS: remove quarantine attribute
-      if (Platform.isMacOS) {
-        final appDir =
-            Directory(installDir).listSync().whereType<Directory>().firstWhere(
-                  (d) => d.path.contains('chrome-mac'),
-                  orElse: () => Directory(installDir),
-                );
-        await Process.run('xattr', ['-cr', appDir.path]);
-      }
-
-      // Clean up zip
-      try {
-        await File(zipPath).delete();
-      } catch (_) {}
-
-      final binary = _cftBinaryPath;
-      if (binary == null) {
-        throw Exception(
-            'Chrome for Testing installed but binary not found in $installDir');
-      }
-
-      return binary;
-    } finally {
-      client.close();
-    }
-  }
-
   Future<void> _launchChromeProcess() async {
     final chromePaths = <String>[];
 
@@ -2656,13 +2520,7 @@ end tell
       chromePaths.add(_chromePath!);
     }
 
-    // 2. Chrome for Testing (recommended for automation — no debug port restrictions)
-    final cftPath = _cftBinaryPath;
-    if (cftPath != null) {
-      chromePaths.add(cftPath);
-    }
-
-    // 3. Standard Chrome / Chromium
+    // 2. Standard Chrome / Chromium
     if (Platform.isMacOS) {
       chromePaths
           .add('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
@@ -2721,7 +2579,7 @@ end tell
             .timeout(const Duration(milliseconds: 200), onTimeout: () => -1);
         if (code != -1) {
           // Process already exited — likely Chrome 136+ rejecting debug port.
-          // Try next candidate (Chrome for Testing should work).
+          // Try next candidate.
           _chromeProcess = null;
           continue;
         }
@@ -2733,31 +2591,18 @@ end tell
       }
     }
 
-    // All candidates failed — try auto-installing Chrome for Testing
-    try {
-      final installed = await installChromeForTesting();
-      _chromeProcess = await Process.start(installed, chromeArgs);
-      return;
-    } catch (installError) {
-      throw Exception(
-        'Could not launch Chrome for CDP debugging.\n\n'
-        '📋 What happened:\n'
-        '   Chrome 136+ blocks --remote-debugging-port on the default profile\n'
-        '   for security (https://developer.chrome.com/blog/remote-debugging-port).\n\n'
-        '🔧 Solutions (pick one):\n\n'
-        '   1. Auto-install Chrome for Testing (recommended):\n'
-        '      We tried but failed: $installError\n'
-        '      Manual: download from https://googlechromelabs.github.io/chrome-for-testing/\n'
-        '      Then: connect_cdp(chrome_path: "/path/to/chrome-for-testing")\n\n'
-        '   2. Start Chrome manually with a custom profile:\n'
-        '      google-chrome --remote-debugging-port=$_port --user-data-dir=/tmp/my-profile\n'
-        '      Then: connect_cdp(url: "...", launch_chrome: false)\n\n'
-        '   3. Use an existing Chrome with debugging enabled:\n'
-        '      Close Chrome, relaunch with: --remote-debugging-port=$_port\n'
-        '      Then: connect_cdp(url: "...", launch_chrome: false)\n\n'
-        'Tried browsers: ${chromePaths.join(', ')}',
-      );
-    }
+    throw Exception(
+      'Could not launch Chrome for CDP debugging.\n\n'
+      'Chrome 136+ blocks --remote-debugging-port on the default profile.\n\n'
+      'Solutions:\n'
+      '  1. Start Chrome manually with a custom profile:\n'
+      '     google-chrome --remote-debugging-port=$_port --user-data-dir=/tmp/my-profile\n'
+      '     Then: connect_cdp(url: "...", launch_chrome: false)\n\n'
+      '  2. Use Chromium (no debug port restrictions):\n'
+      '     brew install chromium\n'
+      '     Then: connect_cdp(url: "...")\n\n'
+      'Tried browsers: ${chromePaths.join(", ")}',
+    );
   }
 
   /// Poll CDP endpoint until it responds (replaces fixed 2s delay after Chrome launch)
@@ -3296,7 +3141,7 @@ function _dqAll(sel, root) {
     _autoReconnect();
   }
 
-  /// Auto-reconnect to CDP when connection drops (e.g. CfT restart).
+  /// Auto-reconnect to CDP when connection drops.
   Future<void> _autoReconnect() async {
     if (_reconnecting) return;
     _reconnecting = true;

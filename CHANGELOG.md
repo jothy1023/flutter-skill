@@ -1,3 +1,12 @@
+## 0.9.15
+
+**Remove Chrome for Testing dependency from CDP driver**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.14
 
 **Fix Page.enable hang on chrome://newtab; auto-enable remote debugging**
