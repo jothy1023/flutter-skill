@@ -1,3 +1,12 @@
+## 0.9.16
+
+**Fix Chrome 145+ silently ignoring --remote-debugging-port on default profile**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.15
 
 **Remove Chrome for Testing dependency from CDP driver**

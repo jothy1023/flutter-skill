@@ -521,18 +521,34 @@ end tell
       return;
     }
 
-    // Chrome 136+ exits immediately when given --remote-debugging-port on the
-    // default user-data-dir.  Wait briefly and check.
+    // Chrome 136+ may reject --remote-debugging-port on the default user-data-dir
+    // in two ways:
+    //   a) Exit immediately (early Chrome 136 behaviour)
+    //   b) Stay alive but silently ignore the flag (Chrome 145+ behaviour)
+    // Check both: process exit AND port actually opening.
     await Future.delayed(const Duration(milliseconds: 800));
     final code = await _chromeProcess!.exitCode
         .timeout(const Duration(milliseconds: 200), onTimeout: () => -1);
     if (code != -1) {
-      // Chrome rejected the debug port on the default profile.
-      // Fall back to flutter-skill profile.
+      // Chrome exited immediately — rejected the debug port.
+      _chromeProcess = null;
+      await _launchChromeProcess();
+      return;
+    }
+
+    // Chrome is still running — verify the debug port actually opened.
+    final portOpened = await _pollCdpPort(
+        timeout: const Duration(seconds: 4), interval: const Duration(milliseconds: 200));
+    if (!portOpened) {
+      // Chrome silently ignored --remote-debugging-port (Chrome 145+ behaviour).
+      // Kill this instance and fall back to flutter-skill's own profile.
+      try {
+        _chromeProcess?.kill();
+      } catch (_) {}
       _chromeProcess = null;
       await _launchChromeProcess();
     }
-    // else: Chrome accepted — it is running with debug port on the user's profile.
+    // else: Chrome accepted and port is open — running with user's profile.
   }
 
   /// Get the current page URL via Runtime.evaluate
@@ -2603,6 +2619,29 @@ end tell
       '     Then: connect_cdp(url: "...")\n\n'
       'Tried browsers: ${chromePaths.join(", ")}',
     );
+  }
+
+  /// Poll CDP port, returning true if it responds within [timeout], false otherwise.
+  Future<bool> _pollCdpPort({
+    Duration timeout = const Duration(seconds: 4),
+    Duration interval = const Duration(milliseconds: 200),
+  }) async {
+    final client = http.Client();
+    final deadline = DateTime.now().add(timeout);
+    try {
+      while (DateTime.now().isBefore(deadline)) {
+        try {
+          final resp = await client
+              .get(Uri.parse('http://127.0.0.1:$_port/json/version'))
+              .timeout(const Duration(milliseconds: 300));
+          if (resp.statusCode == 200) return true;
+        } catch (_) {}
+        await Future.delayed(interval);
+      }
+      return false;
+    } finally {
+      client.close();
+    }
   }
 
   /// Poll CDP endpoint until it responds (replaces fixed 2s delay after Chrome launch)
