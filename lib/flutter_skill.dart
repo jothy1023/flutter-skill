@@ -1479,6 +1479,7 @@ class FlutterSkillBinding {
   /// This is a fallback for when pointer dispatch doesn't trigger the callback
   /// (e.g., when an overlay intercepts events or hit testing fails).
   static void _tryInvokeCallback(Element element) {
+    if (!element.mounted) return;
     final widget = element.widget;
 
     if (widget is ElevatedButton && widget.onPressed != null) {

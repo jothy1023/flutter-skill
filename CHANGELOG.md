@@ -1,3 +1,12 @@
+## 0.9.23
+
+**fix null check crash and stop auto-opening browser on RPC errors from target app**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.22
 
 **Support Chrome 146 WebMCP: discover and call navigator.modelContextTesting tools**

@@ -68,7 +68,7 @@ part 'tool_handlers/bug_report_handlers.dart';
 part 'tool_handlers/fixture_handlers.dart';
 part 'tool_handlers/explore_handlers.dart';
 
-const String currentVersion = '0.9.22';
+const String currentVersion = '0.9.23';
 
 /// Session information for multi-session support
 class SessionInfo {
@@ -982,6 +982,8 @@ class FlutterMcpServer {
       'no isolates found',
       'connection refused',
       'timeout',
+      'rpcerror',      // errors from target app, not flutter-skill itself
+      'server error',  // RPC server errors from target app
     ];
 
     // Check if it's a critical error
