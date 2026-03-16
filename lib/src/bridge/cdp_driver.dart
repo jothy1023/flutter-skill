@@ -2826,17 +2826,56 @@ end tell
     _eventSubscriptions.remove('Page.frameStoppedLoading');
   }
 
+  /// Auto-click the "Allow remote debugging?" dialog that Chrome 146 shows
+  /// when an external app connects via the consent port.
+  ///
+  /// Chrome renders the dialog as a native AXSheet inside the front window.
+  /// The Allow button has description="Allow" (not name="Allow"), so we
+  /// search by description via the macOS Accessibility API using AppleScript.
+  Future<void> _autoAllowChromeConsentDialog() async {
+    const script = '''
+tell application "System Events"
+  tell process "Google Chrome"
+    repeat 15 times
+      try
+        set frontWin to front window
+        set theSheet to sheet 1 of frontWin
+        set allElems to entire contents of theSheet
+        repeat with e in allElems
+          try
+            if role of e is "AXButton" and description of e is "Allow" then
+              click e
+              return "ok"
+            end if
+          end try
+        end repeat
+      end try
+      delay 0.5
+    end repeat
+    return "not_found"
+  end tell
+end tell
+''';
+    try {
+      await Process.run('osascript', ['-e', script]);
+    } catch (_) {}
+  }
+
   /// For Chrome 146+'s consent-based port (no HTTP endpoints):
   /// Connect via WebSocket to the browser-level CDP endpoint, send
   /// Target.getTargets, find the best matching target, and return its WS URL.
   ///
-  /// Chrome shows "Allow remote debugging?" dialog on first connection.
-  /// We wait up to [timeout] seconds for the user to click Allow.
+  /// Chrome shows "Allow remote debugging?" dialog — auto-clicked via
+  /// macOS Accessibility API so the user never has to manually confirm.
   Future<String?> _discoverTargetViaConsentPort({
     Duration timeout = const Duration(seconds: 30),
   }) async {
     final wsUrl = 'ws://127.0.0.1:$_port/devtools/browser/${_generateUuid()}';
     WebSocket? ws;
+    // Auto-click the Allow dialog in parallel with the WebSocket connection.
+    // Chrome shows the dialog as soon as the upgrade request arrives; the
+    // WebSocket handshake completes only after the user (or us) clicks Allow.
+    unawaited(_autoAllowChromeConsentDialog());
     try {
       ws = await _connectWebSocketNoOrigin(wsUrl, timeout: timeout);
     } catch (_) {
