@@ -1,3 +1,12 @@
+## 0.9.24
+
+**fix 6 UX issues: DTD error detection, wider port scan, connect_by_pid, stale session cleanup, screenshot save_to_file default**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.23
 
 **fix null check crash and stop auto-opening browser on RPC errors from target app**
