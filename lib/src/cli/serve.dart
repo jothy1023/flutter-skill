@@ -27,6 +27,9 @@ Future<void> runServe(List<String> args) async {
       url = arg.substring(6);
     } else if (arg.startsWith('--cdp-port=')) {
       cdpPort = int.parse(arg.substring(11));
+    } else if (arg.startsWith('--chrome-port=')) {
+      // Support --chrome-port as an alias for --cdp-port
+      cdpPort = int.parse(arg.substring(14));
     } else if (arg.startsWith('--port=')) {
       serverPort = int.parse(arg.substring(7));
     } else if (arg == '--headless') {
@@ -1419,4 +1422,17 @@ Future<Map<String, dynamic>> _handleQrLoginWaitServe(
     'hint':
         'QR code may have expired. Call qr_login_start again for a fresh code.',
   };
+}
+
+/// Check if Chrome is already running on the specified port
+Future<bool> _checkForExistingChrome(int port) async {
+  try {
+    final response = await Future.get(
+      'http://127.0.0.1:$port/json',
+      headers: {'Accept': 'application/json'},
+    ).timeout(Duration(milliseconds: 500));
+    return response.statusCode == 200;
+  } catch (e) {
+    return false;
+  }
 }

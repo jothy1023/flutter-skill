@@ -1852,3 +1852,10 @@ Claude Code (and other AI agents) couldn't auto-invoke flutter-skill when users 
 - Includes `launch`, `inspect`, `act` CLI tools.
 - Includes `flutter_skill` app-side binding.
 - Includes MCP server implementation.
+
+## 0.9.26 (2026-03-17)
+
+- Added `--chrome-port=N` as an alias for `--cdp-port=N` for better compatibility
+- Fixed: Parsing of `--chrome-port` parameter (previously threw FormatException)
+- This allows connecting to Chrome instances running on non-default ports (e.g., 18800)
+
