@@ -68,7 +68,7 @@ part 'tool_handlers/bug_report_handlers.dart';
 part 'tool_handlers/fixture_handlers.dart';
 part 'tool_handlers/explore_handlers.dart';
 
-const String currentVersion = '0.9.25';
+const String currentVersion = '0.9.26';
 
 /// Session information for multi-session support
 class SessionInfo {
@@ -108,9 +108,18 @@ Future<void> runServer(List<String> args) async {
   // Acquire lock to prevent multiple instances
   final lockFile = await _acquireLock();
   if (lockFile == null) {
-    stderr.writeln('ERROR: Another flutter-skill server is already running.');
-    stderr.writeln(
-        'If you believe this is an error, delete: ~/.flutter_skill.lock');
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '~';
+    _printCliError(
+      'Another flutter-skill server is already running',
+      'A lock file prevents starting a second instance.',
+      fixes: [
+        'Stop the existing server first',
+        'Or delete the stale lock: rm "$home/.flutter_skill.lock"',
+        'On Windows: del "%USERPROFILE%\\.flutter_skill.lock"',
+      ],
+    );
     exit(1);
   }
 
@@ -331,7 +340,25 @@ class FlutterMcpServer {
     listener.onClientDisconnected = () {
       stderr.writeln('Browser client disconnected from bridge listener');
     };
-    await listener.start(port);
+    try {
+      await listener.start(port);
+    } on SocketException catch (e) {
+      if (e.message.contains('Address already in use') ||
+          e.osError?.errorCode == 98 ||
+          e.osError?.errorCode == 48) {
+        _printCliError(
+          'Port $port is already in use',
+          'Another process is already using this port.',
+          fixes: [
+            'Run: lsof -i :$port',
+            'Kill the process using that port',
+            'Or start with a different port: flutter-skill --bridge-port=9090',
+          ],
+        );
+        exit(1);
+      }
+      rethrow;
+    }
     _webBridgeListener = listener;
     stderr.writeln('Bridge listener started on ws://127.0.0.1:$port');
   }
@@ -1037,11 +1064,30 @@ class FlutterMcpServer {
   /// Export recorded steps as Jest test
 }
 
+// ==================== CLI Error Formatting ====================
+
+/// Print a structured, actionable CLI error to stderr.
+void _printCliError(String title, String detail, {List<String> fixes = const []}) {
+  stderr.writeln('');
+  stderr.writeln('❌ $title');
+  stderr.writeln('');
+  stderr.writeln('   $detail');
+  if (fixes.isNotEmpty) {
+    stderr.writeln('');
+    stderr.writeln('🔧 Suggested Fixes:');
+    for (final fix in fixes) {
+      stderr.writeln('   • $fix');
+    }
+  }
+  stderr.writeln('');
+}
+
 // ==================== Lock Management ====================
 
 /// Acquire a lock file to prevent multiple server instances
 Future<File?> _acquireLock() async {
-  final home = Platform.environment['HOME'];
+  final home = Platform.environment['HOME'] ??
+      Platform.environment['USERPROFILE'];
   if (home == null) return null;
 
   final lockFile = File('$home/.flutter_skill.lock');
