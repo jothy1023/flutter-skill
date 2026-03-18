@@ -1,3 +1,12 @@
+## 0.9.27
+
+**fix coordinate filtering, tap(ref) elem_ fix, Windows lock fallback, CLI error improvements**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.25
 
 **fix coordinate system: filter non-active routes, fix tap(ref: elem_NNN), fix off-screen tap detection**
@@ -1858,4 +1867,3 @@ Claude Code (and other AI agents) couldn't auto-invoke flutter-skill when users 
 - Added `--chrome-port=N` as an alias for `--cdp-port=N` for better compatibility
 - Fixed: Parsing of `--chrome-port` parameter (previously threw FormatException)
 - This allows connecting to Chrome instances running on non-default ports (e.g., 18800)
-
