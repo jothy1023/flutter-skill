@@ -497,6 +497,77 @@ They will automatically route through the CDP connection.""",
         },
       },
 
+      // Connect to OpenClaw's built-in Chrome (port 18800, no launch needed)
+      {
+        "name": "connect_openclaw_browser",
+        "description":
+            """Connect to OpenClaw's built-in Chrome browser (always running on port 18800).
+
+[USE WHEN]
+• You are running inside OpenClaw and need to automate the browser
+• No URL needed — OpenClaw keeps Chrome alive on port 18800
+• Faster than connect_cdp — no Chrome launch, instant connection
+
+[HOW IT WORKS]
+Connects to the OpenClaw-managed Chrome instance via CDP on port 18800.
+Optionally navigates to a URL after connecting.
+
+[AFTER CONNECTING]
+Use snapshot(), act(), navigate(), screenshot(), eval(), get_cookies(), etc.""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description":
+                  "Optional URL to navigate to after connecting. Omit to stay on current page."
+            },
+          },
+        },
+      },
+
+      // Connect via Chrome's native WebMCP (Chrome 146+)
+      {
+        "name": "connect_webmcp",
+        "description":
+            """Connect to a web page via Chrome's native WebMCP protocol (Chrome 146+).
+
+[USE WHEN]
+• Chrome 146+ is running with chrome://flags/#enable-webmcp-testing enabled
+• You want native MCP browser control without CDP overhead
+• Prefer this over connect_cdp when Chrome WebMCP is available
+
+[HOW IT WORKS]
+1. Probes Chrome's WebMCP endpoint (auto-detects port)
+2. Falls back to CDP on port 18800 (OpenClaw) or 9222 (default) if WebMCP unavailable
+3. Navigates to the given URL
+
+[CHROME WEBMCP SETUP]
+1. Upgrade to Chrome 146+
+2. Open chrome://flags/#enable-webmcp-testing → Enabled
+3. Restart Chrome""",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "URL to navigate to"
+            },
+            "webmcp_port": {
+              "type": "integer",
+              "description":
+                  "Chrome WebMCP port (default: auto-detect). Usually same as CDP port."
+            },
+            "fallback_cdp_port": {
+              "type": "integer",
+              "description":
+                  "CDP fallback port if WebMCP unavailable (default: 18800 for OpenClaw, 9222 otherwise)"
+            },
+          },
+          "required": ["url"],
+        },
+      },
+
       // HTTP Request tool (API testing)
       {
         "name": "http_request",

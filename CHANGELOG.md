@@ -1,3 +1,14 @@
+## 0.9.28
+
+**Add connect_openclaw_browser and connect_webmcp tools; fix OpenClaw plugin binary path**
+
+### Changes
+- Add `connect_openclaw_browser` tool: instant connection to OpenClaw's built-in Chrome (port 18800, no launch needed)
+- Add `connect_webmcp` tool: Chrome 146+ native WebMCP support with auto-detection and CDP fallback
+- Fix OpenClaw plugin binary path: use `~/.pub-cache/bin/flutter_skill` instead of volatile `/tmp/fs-*`
+
+---
+
 ## 0.9.27
 
 **fix coordinate filtering, tap(ref) elem_ fix, Windows lock fallback, CLI error improvements**

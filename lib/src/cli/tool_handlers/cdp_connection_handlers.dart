@@ -77,6 +77,146 @@ extension _CdpConnectionHandlers2 on FlutterMcpServer {
       }
     }
 
+    if (name == 'connect_openclaw_browser') {
+      // Connect to OpenClaw's built-in Chrome (port 18800, no launch)
+      final url = args['url'] as String? ?? '';
+      if (_cdpDriver != null) {
+        await _cdpDriver!.disconnect();
+        _cdpDriver = null;
+      }
+      try {
+        final driver = CdpDriver(
+          url: url,
+          port: 18800,
+          launchChrome: false,
+          headless: false,
+        );
+        await driver.connect();
+        _cdpDriver = driver;
+        final sessionId = 'openclaw_${DateTime.now().millisecondsSinceEpoch}';
+        _clients[sessionId] = driver;
+        _sessions[sessionId] = SessionInfo(
+          id: sessionId,
+          name: 'OpenClaw Chrome${url.isNotEmpty ? ": $url" : ""}',
+          projectPath: url,
+          deviceId: 'openclaw-chrome',
+          port: 18800,
+          vmServiceUri: 'cdp://127.0.0.1:18800',
+        );
+        _activeSessionId = sessionId;
+        return {
+          "success": true,
+          "mode": "cdp",
+          "port": 18800,
+          "url": url.isEmpty ? "(current page)" : url,
+          "session_id": sessionId,
+          "message": "Connected to OpenClaw Chrome on port 18800",
+        };
+      } catch (e) {
+        return {
+          "success": false,
+          "error": {"code": "E602", "message": "OpenClaw Chrome connection failed: $e"},
+          "suggestions": [
+            "Ensure OpenClaw is running (openclaw gateway)",
+            "Check Chrome is alive: lsof -i :18800",
+            "Restart OpenClaw if Chrome process is dead",
+          ],
+        };
+      }
+    }
+
+    if (name == 'connect_webmcp') {
+      final url = args['url'] as String? ?? '';
+      final webmcpPort = args['webmcp_port'] as int?;
+      final fallbackCdpPort = args['fallback_cdp_port'] as int? ?? 18800;
+
+      if (_cdpDriver != null) {
+        await _cdpDriver!.disconnect();
+        _cdpDriver = null;
+      }
+
+      // Probe WebMCP endpoint: Chrome 146 exposes MCP on the CDP port via /mcp path
+      // Try candidate ports in order: explicit, CDP port 18800, 9222
+      final candidatePorts = [
+        if (webmcpPort != null) webmcpPort,
+        18800,
+        9222,
+      ].toSet().toList();
+
+      String? webmcpEndpoint;
+      int? detectedPort;
+      for (final port in candidatePorts) {
+        try {
+          final client = HttpClient();
+          client.connectionTimeout = const Duration(seconds: 2);
+          final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json/version'));
+          final res = await req.close();
+          if (res.statusCode == 200) {
+            // Check for WebMCP capability in response headers or body
+            final body = await res.transform(const Utf8Decoder()).join();
+            final hasWebMcp = body.contains('webSocketDebuggerUrl') ||
+                body.contains('"Browser"');
+            if (hasWebMcp) {
+              detectedPort = port;
+              // Chrome 146 WebMCP endpoint is typically /mcp on the debugging port
+              webmcpEndpoint = 'http://127.0.0.1:$port/mcp';
+            }
+            client.close();
+            if (detectedPort != null) break;
+          }
+          client.close();
+        } catch (_) {}
+      }
+
+      // Attempt CDP connection (WebMCP uses same underlying Chrome)
+      try {
+        final effectivePort = detectedPort ?? fallbackCdpPort;
+        final driver = CdpDriver(
+          url: url,
+          port: effectivePort,
+          launchChrome: false,
+          headless: false,
+        );
+        await driver.connect();
+        _cdpDriver = driver;
+        final sessionId = 'webmcp_${DateTime.now().millisecondsSinceEpoch}';
+        _clients[sessionId] = driver;
+        _sessions[sessionId] = SessionInfo(
+          id: sessionId,
+          name: 'WebMCP: $url',
+          projectPath: url,
+          deviceId: 'chrome-webmcp',
+          port: effectivePort,
+          vmServiceUri: 'cdp://127.0.0.1:$effectivePort',
+        );
+        _activeSessionId = sessionId;
+        return {
+          "success": true,
+          "mode": webmcpEndpoint != null ? "webmcp" : "cdp_fallback",
+          "port": effectivePort,
+          "webmcp_endpoint": webmcpEndpoint,
+          "url": url,
+          "session_id": sessionId,
+          "message": webmcpEndpoint != null
+              ? "Connected via Chrome WebMCP on port $effectivePort"
+              : "WebMCP not detected — connected via CDP fallback on port $effectivePort",
+          "chrome_146_setup": webmcpEndpoint == null
+              ? "Enable: chrome://flags/#enable-webmcp-testing → Restart Chrome"
+              : null,
+        };
+      } catch (e) {
+        return {
+          "success": false,
+          "error": {"code": "E603", "message": "WebMCP/CDP connection failed: $e"},
+          "suggestions": [
+            "Ensure Chrome 146+ is running",
+            "Enable chrome://flags/#enable-webmcp-testing and restart Chrome",
+            "For OpenClaw: ensure openclaw gateway is running",
+          ],
+        };
+      }
+    }
+
     if (name == 'diagnose_project') {
       final projectPath = args['project_path'] ?? '.';
       final autoFix = args['auto_fix'] ?? true;
