@@ -470,8 +470,8 @@ Future<void> _configureMCP() async {
   print('');
   print('🤖 Configuring AI agent MCP...');
 
-  final home = Platform.environment['HOME'] ??
-      Platform.environment['USERPROFILE'];
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
   if (home == null) {
     print('   Warning: Could not determine home directory');
     return;

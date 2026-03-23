@@ -549,10 +549,7 @@ Use snapshot(), act(), navigate(), screenshot(), eval(), get_cookies(), etc.""",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url": {
-              "type": "string",
-              "description": "URL to navigate to"
-            },
+            "url": {"type": "string", "description": "URL to navigate to"},
             "webmcp_port": {
               "type": "integer",
               "description":

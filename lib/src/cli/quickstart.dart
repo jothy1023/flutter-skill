@@ -773,8 +773,8 @@ Future<String?> _findFlutter() async {
   if (inPath != null) return 'flutter';
 
   // Check common locations
-  final home = Platform.environment['HOME'] ??
-      Platform.environment['USERPROFILE'];
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
   final candidates = [
     if (home != null) ...[
       '$home/development/flutter/bin/flutter',

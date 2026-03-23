@@ -8,8 +8,8 @@ extension _BfScreenshot on FlutterMcpServer {
         // Default to lower quality and max width to prevent token overflow
         final quality = (args['quality'] as num?)?.toDouble() ?? 0.8;
         final maxWidth = args['max_width'] as int? ?? 800;
-        final saveToFile =
-            args['save_to_file'] ?? true; // Save to file by default to avoid token overflow
+        final saveToFile = args['save_to_file'] ??
+            true; // Save to file by default to avoid token overflow
 
         var imageBase64 =
             await client!.takeScreenshot(quality: quality, maxWidth: maxWidth);

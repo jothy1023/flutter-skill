@@ -23,7 +23,8 @@ void main() {
       expect(
         noConnectionTools.length,
         lessThanOrEqualTo(ToolRegistry.geminiToolLimit),
-        reason: 'Vertex AI / Gemini rejects requests with > 128 tool declarations',
+        reason:
+            'Vertex AI / Gemini rejects requests with > 128 tool declarations',
       );
     });
 
@@ -37,13 +38,20 @@ void main() {
         'scan_and_connect',
         'launch_app',
       ]) {
-        expect(names, contains(tool), reason: '$tool must be available before connecting');
+        expect(names, contains(tool),
+            reason: '$tool must be available before connecting');
       }
     });
 
     test('does not include CDP-only tools before connecting', () {
       final names = noConnectionTools.map((t) => t['name'] as String).toSet();
-      for (final tool in ['snapshot', 'act', 'navigate', 'eval', 'get_cookies']) {
+      for (final tool in [
+        'snapshot',
+        'act',
+        'navigate',
+        'eval',
+        'get_cookies'
+      ]) {
         expect(names, isNot(contains(tool)),
             reason: '$tool should only appear after CDP connection');
       }
@@ -72,8 +80,15 @@ void main() {
 
     test('includes CDP tools after connecting', () {
       final names = cdpTools.map((t) => t['name'] as String).toSet();
-      for (final tool in ['snapshot', 'act', 'navigate', 'eval', 'screenshot']) {
-        expect(names, contains(tool), reason: '$tool must be available in CDP mode');
+      for (final tool in [
+        'snapshot',
+        'act',
+        'navigate',
+        'eval',
+        'screenshot'
+      ]) {
+        expect(names, contains(tool),
+            reason: '$tool must be available in CDP mode');
       }
     });
 
@@ -108,14 +123,27 @@ void main() {
 
     test('includes Flutter interaction tools after connecting', () {
       final names = flutterTools.map((t) => t['name'] as String).toSet();
-      for (final tool in ['tap', 'enter_text', 'screenshot', 'inspect', 'hot_reload']) {
-        expect(names, contains(tool), reason: '$tool must be available in Flutter mode');
+      for (final tool in [
+        'tap',
+        'enter_text',
+        'screenshot',
+        'inspect',
+        'hot_reload'
+      ]) {
+        expect(names, contains(tool),
+            reason: '$tool must be available in Flutter mode');
       }
     });
 
     test('excludes CDP-only tools in Flutter mode', () {
       final names = flutterTools.map((t) => t['name'] as String).toSet();
-      for (final tool in ['act', 'navigate', 'get_cookies', 'get_tabs', 'new_tab']) {
+      for (final tool in [
+        'act',
+        'navigate',
+        'get_cookies',
+        'get_tabs',
+        'new_tab'
+      ]) {
         expect(names, isNot(contains(tool)),
             reason: '$tool is CDP-only and must not appear in Flutter mode');
       }
@@ -171,7 +199,8 @@ void main() {
       expect(
         names.length,
         equals(unique.length),
-        reason: 'Duplicate tool names: ${names.where((n) => names.where((x) => x == n).length > 1).toSet()}',
+        reason:
+            'Duplicate tool names: ${names.where((n) => names.where((x) => x == n).length > 1).toSet()}',
       );
     });
 
@@ -180,7 +209,8 @@ void main() {
       final allNames = all.map((t) => t['name'] as String).toSet();
       for (final tool in ToolRegistry.connectionOnlyTools) {
         expect(allNames, contains(tool),
-            reason: '$tool is in connectionOnlyTools but missing from full list');
+            reason:
+                '$tool is in connectionOnlyTools but missing from full list');
       }
     });
   });

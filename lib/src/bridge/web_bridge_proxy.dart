@@ -156,8 +156,8 @@ class WebBridgeProxy {
 
     // Read the SDK script — try common locations
     String? sdkSource;
-    final home = Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'];
+    final home =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
     final candidates = [
       // Relative to the flutter-skill package
       'sdks/web/flutter-skill.js',

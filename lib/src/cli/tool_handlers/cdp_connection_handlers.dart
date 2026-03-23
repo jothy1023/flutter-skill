@@ -115,7 +115,10 @@ extension _CdpConnectionHandlers2 on FlutterMcpServer {
       } catch (e) {
         return {
           "success": false,
-          "error": {"code": "E602", "message": "OpenClaw Chrome connection failed: $e"},
+          "error": {
+            "code": "E602",
+            "message": "OpenClaw Chrome connection failed: $e"
+          },
           "suggestions": [
             "Ensure OpenClaw is running (openclaw gateway)",
             "Check Chrome is alive: lsof -i :18800",
@@ -149,7 +152,8 @@ extension _CdpConnectionHandlers2 on FlutterMcpServer {
         try {
           final client = HttpClient();
           client.connectionTimeout = const Duration(seconds: 2);
-          final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json/version'));
+          final req = await client
+              .getUrl(Uri.parse('http://127.0.0.1:$port/json/version'));
           final res = await req.close();
           if (res.statusCode == 200) {
             // Check for WebMCP capability in response headers or body
@@ -207,7 +211,10 @@ extension _CdpConnectionHandlers2 on FlutterMcpServer {
       } catch (e) {
         return {
           "success": false,
-          "error": {"code": "E603", "message": "WebMCP/CDP connection failed: $e"},
+          "error": {
+            "code": "E603",
+            "message": "WebMCP/CDP connection failed: $e"
+          },
           "suggestions": [
             "Ensure Chrome 146+ is running",
             "Enable chrome://flags/#enable-webmcp-testing and restart Chrome",

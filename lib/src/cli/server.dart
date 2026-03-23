@@ -68,7 +68,7 @@ part 'tool_handlers/bug_report_handlers.dart';
 part 'tool_handlers/fixture_handlers.dart';
 part 'tool_handlers/explore_handlers.dart';
 
-const String currentVersion = '0.9.32';
+const String currentVersion = '0.9.33';
 
 /// Session information for multi-session support
 class SessionInfo {
@@ -1020,8 +1020,8 @@ class FlutterMcpServer {
       'no isolates found',
       'connection refused',
       'timeout',
-      'rpcerror',      // errors from target app, not flutter-skill itself
-      'server error',  // RPC server errors from target app
+      'rpcerror', // errors from target app, not flutter-skill itself
+      'server error', // RPC server errors from target app
     ];
 
     // Check if it's a critical error
@@ -1067,7 +1067,8 @@ class FlutterMcpServer {
 // ==================== CLI Error Formatting ====================
 
 /// Print a structured, actionable CLI error to stderr.
-void _printCliError(String title, String detail, {List<String> fixes = const []}) {
+void _printCliError(String title, String detail,
+    {List<String> fixes = const []}) {
   stderr.writeln('');
   stderr.writeln('❌ $title');
   stderr.writeln('');
@@ -1086,8 +1087,8 @@ void _printCliError(String title, String detail, {List<String> fixes = const []}
 
 /// Acquire a lock file to prevent multiple server instances
 Future<File?> _acquireLock() async {
-  final home = Platform.environment['HOME'] ??
-      Platform.environment['USERPROFILE'];
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
   if (home == null) return null;
 
   final lockFile = File('$home/.flutter_skill.lock');

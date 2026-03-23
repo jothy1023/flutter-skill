@@ -162,8 +162,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
               "success": false,
               "error": {
                 "code": "E_DTD_PROTOCOL",
-                "message":
-                    "❌ Detected DTD protocol (not VM Service protocol)\n\n"
+                "message": "❌ Detected DTD protocol (not VM Service protocol)\n\n"
                     "The URI you provided connects to the Dart Tooling Daemon,\n"
                     "not the VM Service. flutter-skill requires a VM Service URI.\n\n"
                     "Expected format: ws://host:port/token=/ws\n"
@@ -640,7 +639,14 @@ extension _ConnectionHandlers on FlutterMcpServer {
 
       // Use lsof to find which TCP port(s) the process is listening on
       final lsofResult = await Process.run('lsof', [
-        '-a', '-p', '$pid', '-i', 'TCP', '-s', 'TCP:LISTEN', '-Fn',
+        '-a',
+        '-p',
+        '$pid',
+        '-i',
+        'TCP',
+        '-s',
+        'TCP:LISTEN',
+        '-Fn',
       ]);
       final ports = <int>[];
       for (final line in lsofResult.stdout.toString().split('\n')) {
@@ -706,7 +712,8 @@ extension _ConnectionHandlers on FlutterMcpServer {
         "success": false,
         "error": {
           "code": "E_PID_CONNECT_FAILED",
-          "message": "Found ports $ports for PID $pid but could not connect to VM Service",
+          "message":
+              "Found ports $ports for PID $pid but could not connect to VM Service",
         },
         "suggestions": [
           "The app may not have FlutterSkillBinding initialized",

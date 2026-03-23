@@ -538,10 +538,7 @@ Use snapshot(), act(), navigate(), screenshot(), eval(), etc.""",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url": {
-              "type": "string",
-              "description": "URL to navigate to"
-            },
+            "url": {"type": "string", "description": "URL to navigate to"},
             "webmcp_port": {
               "type": "integer",
               "description": "Chrome WebMCP port (default: auto-detect)"

@@ -494,7 +494,8 @@ end tell
     if (!dest.existsSync()) dest.createSync(recursive: true);
     try {
       await for (final entity in src.list()) {
-        final name = entity.uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
+        final name = entity.uri.pathSegments
+            .lastWhere((s) => s.isNotEmpty, orElse: () => '');
         if (name.isEmpty) continue;
         if (entity is File) {
           try {
@@ -654,7 +655,8 @@ end tell
 
     // Chrome is still running — verify the debug port actually opened.
     final portOpened = await _pollCdpPort(
-        timeout: const Duration(seconds: 4), interval: const Duration(milliseconds: 200));
+        timeout: const Duration(seconds: 4),
+        interval: const Duration(milliseconds: 200));
     if (!portOpened) {
       // Chrome silently ignored --remote-debugging-port (Chrome 145+ behaviour).
       // Kill this instance, then try session-copy profile (copies user's cookies/storage
@@ -682,7 +684,8 @@ end tell
           timeout: const Duration(seconds: 6),
           interval: const Duration(milliseconds: 200),
         );
-        if (sessionPortOpened) return; // Session copy worked with debug port open.
+        if (sessionPortOpened)
+          return; // Session copy worked with debug port open.
         try {
           _chromeProcess?.kill();
         } catch (_) {}
@@ -3095,7 +3098,8 @@ end tell
   Future<String?> _discoverTarget() async {
     // Chrome 146+ consent port: HTTP endpoints not available, use WebSocket CDP.
     if (_isChrome146ConsentPort) {
-      return _discoverTargetViaConsentPort(timeout: const Duration(seconds: 30));
+      return _discoverTargetViaConsentPort(
+          timeout: const Duration(seconds: 30));
     }
 
     // Try multiple times as Chrome may still be starting
