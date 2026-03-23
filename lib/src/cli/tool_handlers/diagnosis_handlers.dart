@@ -333,6 +333,95 @@ if (mounted) {
     final suggestions = <String>[];
     final lowerError = errorMessage.toLowerCase();
 
+    // SDK not integrated
+    if (lowerError.contains('flutterskillbinding') ||
+        lowerError.contains('flutter_skill') && lowerError.contains('not found') ||
+        lowerError.contains('ext.flutter.flutter_skill') ||
+        lowerError.contains('method not found') && lowerError.contains('-32601')) {
+      suggestions.addAll([
+        '❌ flutter_skill SDK not integrated in the app',
+        '',
+        '1. Add dependency:',
+        '   flutter pub add flutter_skill',
+        '',
+        '2. Add to lib/main.dart BEFORE runApp():',
+        "   import 'package:flutter_skill/flutter_skill.dart';",
+        '   void main() {',
+        '     FlutterSkillBinding.ensureInitialized();',
+        '     runApp(MyApp());',
+        '   }',
+        '',
+        '3. Hot restart (not hot reload):',
+        '   hot_restart()',
+        '',
+        'Auto-fix: run  diagnose_project()  to patch automatically.',
+      ]);
+      return suggestions;
+    }
+
+    // Port already in use
+    if (lowerError.contains('address already in use') ||
+        lowerError.contains('port') && lowerError.contains('in use') ||
+        lowerError.contains('bind failed') ||
+        lowerError.contains('osError: address already in use')) {
+      suggestions.addAll([
+        '❌ Port already in use',
+        '',
+        '1. Find and kill the process using the port:',
+        '   lsof -ti :50000 | xargs kill -9',
+        '',
+        '2. Or use a different port:',
+        '   flutter run --vm-service-port=50001',
+        '   connect_app(uri: "ws://127.0.0.1:50001/TOKEN=/ws")',
+        '',
+        '3. Or let flutter choose a free port:',
+        '   launch_app(project_path: ".")  ← auto-selects free port',
+      ]);
+      return suggestions;
+    }
+
+    // Wrong Flutter version
+    if (lowerError.contains('requires flutter') ||
+        lowerError.contains('flutter sdk') && lowerError.contains('version') ||
+        lowerError.contains('unsupported flutter') ||
+        lowerError.contains('flutter >=')) {
+      suggestions.addAll([
+        '❌ Flutter version incompatibility',
+        '',
+        '1. Check your Flutter version:',
+        '   flutter --version',
+        '',
+        '2. flutter_skill requires Flutter 3.0+',
+        '   Upgrade: flutter upgrade',
+        '',
+        '3. If on a fixed version, use a compatible release:',
+        '   flutter_skill: ^0.8.0  (check pub.dev for version matrix)',
+      ]);
+      return suggestions;
+    }
+
+    // Missing platform tools
+    if (lowerError.contains('flutter doctor') ||
+        lowerError.contains('no connected device') ||
+        lowerError.contains('no devices found')) {
+      suggestions.addAll([
+        '❌ No devices / platform tools not set up',
+        '',
+        '1. Run flutter doctor:',
+        '   flutter doctor -v',
+        '',
+        '2. iOS Simulator: open Xcode → Simulator',
+        '   Or: open -a Simulator',
+        '',
+        '3. Android: ensure AVD is running or physical device connected',
+        '   flutter devices  ← list available devices',
+        '',
+        '4. Pass device explicitly:',
+        '   launch_app(project_path: ".", device_id: "iPhone 16 Pro")',
+      ]);
+      return suggestions;
+    }
+
     // iOS specific errors
     if (lowerError.contains('xcode') || lowerError.contains('cocoapods')) {
       suggestions.addAll([

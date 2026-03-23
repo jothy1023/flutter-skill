@@ -297,11 +297,13 @@ class FlutterSkillBinding {
       try {
         final key = parameters['key'];
         final text = parameters['text'];
-        final success = await _performScroll(key: key, text: text);
+        final result = await _performScroll(key: key, text: text);
         return developer.ServiceExtensionResponse.result(
           jsonEncode({
-            'success': success,
-            'message': success ? 'Scroll successful' : 'Element not found'
+            'success': result['success'],
+            'message': result['success'] == true
+                ? 'Scroll successful'
+                : (result['error'] ?? 'Scroll failed'),
           }),
         );
       } catch (e, stack) {
@@ -1861,21 +1863,39 @@ class FlutterSkillBinding {
         method: key != null ? 'key' : 'fallback');
   }
 
-  static Future<bool> _performScroll({String? key, String? text}) async {
+  static Future<Map<String, dynamic>> _performScroll(
+      {String? key, String? text}) async {
     final element = _findElement(key: key, text: text);
     if (element == null) {
-      _log('Element not found for scroll (key: $key, text: $text)');
-      return false;
+      return {'success': false, 'error': 'Element not found (key: $key, text: $text)'};
+    }
+
+    // Guard: context must still be mounted before calling ensureVisible.
+    // An unmounted context throws StateError and can crash the VM Service
+    // connection if the exception escapes the isolate's error zone.
+    if (!element.mounted) {
+      return {
+        'success': false,
+        'error': 'Element context is no longer mounted (key: $key, text: $text)',
+      };
     }
 
     try {
-      await Scrollable.ensureVisible(element,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      await Scrollable.ensureVisible(
+        element,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          _log('scroll_to timed out after 5s (key: $key, text: $text)');
+        },
+      );
       _log('Scrolled to element (key: $key, text: $text)');
-      return true;
+      return {'success': true};
     } catch (e) {
       _log('Scroll failed: $e');
-      return false;
+      return {'success': false, 'error': e.toString()};
     }
   }
 

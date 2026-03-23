@@ -92,11 +92,23 @@ extension _BfInteraction on FlutterMcpServer {
           return {"success": true, "message": "Scrolled"};
         }
         final fc = _asFlutterClient(client!, 'scroll_to');
-        final result = await fc.scrollTo(key: args['key'], text: args['text']);
+        final result = await fc
+            .scrollTo(key: args['key'], text: args['text'])
+            .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => {
+            'success': false,
+            'message': 'scroll_to timed out — element may be unreachable. '
+                'Use swipe() to scroll manually instead.',
+          },
+        );
         if (result['success'] != true) {
           return {
             "success": false,
-            "error": result['message'] ?? "Element not found",
+            "error": result['message'] ?? 'Element not found or unreachable',
+            "suggestion":
+                "Use swipe(direction: 'up') to scroll manually, "
+                "then retry scroll_to once the element is closer to the viewport.",
           };
         }
         return {"success": true, "message": "Scrolled"};

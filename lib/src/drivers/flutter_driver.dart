@@ -136,6 +136,32 @@ URI: $wsUri''');
       );
       return response.json ?? {};
     } catch (e) {
+      // Detect SDK-not-integrated errors and surface a clear setup message.
+      final msg = e.toString();
+      if (msg.contains('Method not found') ||
+          msg.contains('Service extension not found') ||
+          msg.contains('ext.flutter.flutter_skill') && msg.contains('-32601')) {
+        throw Exception('''❌ flutter_skill SDK not found in the running app.
+
+The app is running but the flutter_skill extensions are not registered.
+
+🔧 Fix:
+1. Add dependency to pubspec.yaml:
+   flutter pub add flutter_skill
+
+2. Add to lib/main.dart BEFORE runApp():
+   import 'package:flutter_skill/flutter_skill.dart';
+   void main() {
+     FlutterSkillBinding.ensureInitialized();
+     runApp(MyApp());
+   }
+
+3. Hot restart the app (not just hot reload):
+   flutter_skill hot_restart
+
+Auto-setup: run  diagnose_project()  to fix automatically.
+''');
+      }
       if (!_isConnectionError(e)) rethrow;
 
       // Connection broken — attempt one reconnect and retry

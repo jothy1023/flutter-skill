@@ -1,3 +1,12 @@
+## 0.9.31
+
+**fix scroll_to crash on unmounted context (#28), improve setup error messages (#15)**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.30
 
 **Fix Gemini/Vertex AI "Duplicate function declaration" error (issue #32)**
