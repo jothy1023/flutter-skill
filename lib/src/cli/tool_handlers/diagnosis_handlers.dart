@@ -335,9 +335,11 @@ if (mounted) {
 
     // SDK not integrated
     if (lowerError.contains('flutterskillbinding') ||
-        lowerError.contains('flutter_skill') && lowerError.contains('not found') ||
+        lowerError.contains('flutter_skill') &&
+            lowerError.contains('not found') ||
         lowerError.contains('ext.flutter.flutter_skill') ||
-        lowerError.contains('method not found') && lowerError.contains('-32601')) {
+        lowerError.contains('method not found') &&
+            lowerError.contains('-32601')) {
       suggestions.addAll([
         '❌ flutter_skill SDK not integrated in the app',
         '',

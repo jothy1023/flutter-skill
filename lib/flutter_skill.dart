@@ -1482,14 +1482,15 @@ class FlutterSkillBinding {
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final sw = view.physicalSize.width / view.devicePixelRatio;
     final sh = view.physicalSize.height / view.devicePixelRatio;
-    if (center.dx < -50 || center.dx > sw + 50 ||
-        center.dy < -50 || center.dy > sh + 50) {
+    if (center.dx < -50 ||
+        center.dx > sw + 50 ||
+        center.dy < -50 ||
+        center.dy > sh + 50) {
       return {
         'success': false,
         'error': {
           'code': ErrorCode.elementNotVisible,
-          'message':
-              'Element "${text ?? key ?? refId}" is off-screen '
+          'message': 'Element "${text ?? key ?? refId}" is off-screen '
               '(coords: ${center.dx.round()}, ${center.dy.round()}). '
               'It may belong to a different route. Navigate to the correct page first.',
         },
@@ -1867,7 +1868,10 @@ class FlutterSkillBinding {
       {String? key, String? text}) async {
     final element = _findElement(key: key, text: text);
     if (element == null) {
-      return {'success': false, 'error': 'Element not found (key: $key, text: $text)'};
+      return {
+        'success': false,
+        'error': 'Element not found (key: $key, text: $text)'
+      };
     }
 
     // Guard: context must still be mounted before calling ensureVisible.
@@ -1876,7 +1880,8 @@ class FlutterSkillBinding {
     if (!element.mounted) {
       return {
         'success': false,
-        'error': 'Element context is no longer mounted (key: $key, text: $text)',
+        'error':
+            'Element context is no longer mounted (key: $key, text: $text)',
       };
     }
 
@@ -2287,12 +2292,13 @@ class FlutterSkillBinding {
           // Filter out elements from non-active routes (e.g. previous page still
           // in Navigator stack). Negative x means the page was pushed left.
           // Use a generous threshold to still include elements near the edge.
-          final view =
-              WidgetsBinding.instance.platformDispatcher.views.first;
+          final view = WidgetsBinding.instance.platformDispatcher.views.first;
           final sw = view.physicalSize.width / view.devicePixelRatio;
           final sh = view.physicalSize.height / view.devicePixelRatio;
-          if (offset.dx < -sw * 0.5 || offset.dx > sw * 1.5 ||
-              offset.dy < -sh * 0.5 || offset.dy > sh * 1.5) {
+          if (offset.dx < -sw * 0.5 ||
+              offset.dx > sw * 1.5 ||
+              offset.dy < -sh * 0.5 ||
+              offset.dy > sh * 1.5) {
             element.visitChildren((child) => visit(child, ancestors));
             return;
           }
@@ -2508,12 +2514,13 @@ class FlutterSkillBinding {
           final size = renderObject.size;
 
           // Filter out elements from non-active routes
-          final view =
-              WidgetsBinding.instance.platformDispatcher.views.first;
+          final view = WidgetsBinding.instance.platformDispatcher.views.first;
           final sw = view.physicalSize.width / view.devicePixelRatio;
           final sh = view.physicalSize.height / view.devicePixelRatio;
-          if (offset.dx < -sw * 0.5 || offset.dx > sw * 1.5 ||
-              offset.dy < -sh * 0.5 || offset.dy > sh * 1.5) {
+          if (offset.dx < -sw * 0.5 ||
+              offset.dx > sw * 1.5 ||
+              offset.dy < -sh * 0.5 ||
+              offset.dy > sh * 1.5) {
             element.visitChildren(visit);
             return;
           }
