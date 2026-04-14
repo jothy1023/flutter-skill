@@ -2225,8 +2225,25 @@ class FlutterSkillBinding {
           widget is FloatingActionButton) {
         type = 'Button';
         text = _extractTextFrom(element);
-        if (widget is IconButton && widget.icon is Icon) {
-          icon = (widget.icon as Icon).icon?.toString();
+        if (widget is FloatingActionButton) {
+          // Prefer child text, fall back to tooltip (e.g. FAB with Icon child)
+          final fabTooltip = widget.tooltip;
+          if ((text == null || text.isEmpty) &&
+              fabTooltip != null &&
+              fabTooltip.isNotEmpty) {
+            text = fabTooltip;
+          }
+        } else if (widget is IconButton) {
+          if (widget.icon is Icon) {
+            icon = (widget.icon as Icon).icon?.toString();
+          }
+          // Use tooltip as label when there is no visible text
+          final btnTooltip = widget.tooltip;
+          if ((text == null || text.isEmpty) &&
+              btnTooltip != null &&
+              btnTooltip.isNotEmpty) {
+            text = btnTooltip;
+          }
         }
       } else if (widget is TextField || widget is TextFormField) {
         type = 'TextField';
@@ -2393,17 +2410,29 @@ class FlutterSkillBinding {
         text = _extractTextFrom(element);
         actions = ['tap', 'long_press'];
 
-        // Get button state
+        // Get button state and tooltip fallback
         bool enabled = true;
-        if (widget is ElevatedButton) {
+        if (widget is FloatingActionButton) {
+          enabled = widget.onPressed != null;
+          final fabTooltip = widget.tooltip;
+          if ((text == null || text.isEmpty) &&
+              fabTooltip != null &&
+              fabTooltip.isNotEmpty) {
+            text = fabTooltip;
+          }
+        } else if (widget is IconButton) {
+          enabled = widget.onPressed != null;
+          final btnTooltip = widget.tooltip;
+          if ((text == null || text.isEmpty) &&
+              btnTooltip != null &&
+              btnTooltip.isNotEmpty) {
+            text = btnTooltip;
+          }
+        } else if (widget is ElevatedButton) {
           enabled = widget.onPressed != null;
         } else if (widget is TextButton) {
           enabled = widget.onPressed != null;
         } else if (widget is OutlinedButton) {
-          enabled = widget.onPressed != null;
-        } else if (widget is IconButton) {
-          enabled = widget.onPressed != null;
-        } else if (widget is FloatingActionButton) {
           enabled = widget.onPressed != null;
         }
         state['enabled'] = enabled;
@@ -3197,9 +3226,19 @@ class FlutterSkillBinding {
     void visit(Element e) {
       if (found != null) return;
       if (e.widget is Text) {
-        found = (e.widget as Text).data;
+        final data = (e.widget as Text).data;
+        // Skip null or empty text — internal Flutter widgets (e.g. inside
+        // FloatingActionButton, Tooltip) often render empty Text("") nodes.
+        if (data != null && data.isNotEmpty) {
+          found = data;
+          return;
+        }
       } else if (e.widget is RichText) {
-        found = (e.widget as RichText).text.toPlainText();
+        final plain = (e.widget as RichText).text.toPlainText();
+        if (plain.isNotEmpty) {
+          found = plain;
+          return;
+        }
       }
       e.visitChildren(visit);
     }

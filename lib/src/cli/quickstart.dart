@@ -759,7 +759,11 @@ void _serveStatic(HttpServer server, String rootPath) {
 
 Future<String?> _checkCommand(String command, List<String> args) async {
   try {
-    final result = await Process.run(command, args);
+    final result = await Process.run(
+      command,
+      args,
+      runInShell: Platform.isWindows,
+    );
     if (result.exitCode == 0) {
       return result.stdout.toString();
     }
@@ -768,7 +772,13 @@ Future<String?> _checkCommand(String command, List<String> args) async {
 }
 
 Future<String?> _findFlutter() async {
-  // Check PATH first
+  // On Windows try flutter.bat first (flutter is a bash script on Windows)
+  if (Platform.isWindows) {
+    final batInPath = await _checkCommand('flutter.bat', ['--version']);
+    if (batInPath != null) return 'flutter.bat';
+  }
+
+  // Check PATH
   final inPath = await _checkCommand('flutter', ['--version']);
   if (inPath != null) return 'flutter';
 
@@ -782,6 +792,12 @@ Future<String?> _findFlutter() async {
       '$home/.flutter/bin/flutter',
       '$home/snap/flutter/common/flutter/bin/flutter',
       '$home/fvm/default/bin/flutter',
+      // Windows-specific common paths
+      if (Platform.isWindows) ...[
+        r'C:\tools\flutter\bin\flutter.bat',
+        r'C:\flutter\bin\flutter.bat',
+        '${Platform.environment['LOCALAPPDATA']}\\flutter\\bin\\flutter.bat',
+      ],
     ],
     '/opt/flutter/bin/flutter',
   ];

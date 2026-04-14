@@ -93,7 +93,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
       final projectPath = args['project_path'] as String?;
       if (projectPath != null) {
         try {
-          await runSetup(projectPath);
+          await runSetup(projectPath, quiet: true);
         } catch (e) {
           // Continue even if setup fails
           print('Warning: Auto-setup failed: $e');
@@ -112,6 +112,40 @@ extension _ConnectionHandlers on FlutterMcpServer {
       // If session already exists, disconnect it first
       if (_clients.containsKey(sessionId)) {
         await _clients[sessionId]!.disconnect();
+      }
+
+      // Probe for bridge protocol first (C++, React Native, Electron, etc.).
+      // Bridge apps expose /.flutter-skill over plain HTTP on the same port.
+      // If detected, use BridgeDriver instead of the Dart VM Service client.
+      final bridgeInfo = await _probeBridgeUri(uri);
+      if (bridgeInfo != null) {
+        try {
+          final driver = BridgeDriver.fromInfo(bridgeInfo);
+          await driver.connect();
+          _clients[sessionId] = driver;
+          _sessions[sessionId] = SessionInfo(
+            id: sessionId,
+            name: args['name'] as String? ??
+                '${bridgeInfo.framework} app (bridge)',
+            projectPath: args['project_path'] as String? ?? 'unknown',
+            deviceId: bridgeInfo.platform,
+            port: bridgeInfo.port,
+            vmServiceUri: bridgeInfo.wsUri,
+          );
+          _activeSessionId = sessionId;
+          _lastConnectionUri = bridgeInfo.wsUri;
+          _lastConnectionPort = bridgeInfo.port;
+          return {
+            "success": true,
+            "message": "Connected to ${bridgeInfo.framework} bridge at $uri",
+            "uri": bridgeInfo.wsUri,
+            "framework": bridgeInfo.framework,
+            "session_id": sessionId,
+            "active_session": true,
+          };
+        } catch (e) {
+          // Fall through to VM Service attempt if bridge connect fails
+        }
       }
 
       // Retry logic with exponential backoff
@@ -242,14 +276,22 @@ extension _ConnectionHandlers on FlutterMcpServer {
         }
       }
 
+      // Ensure VM Service is reachable on a fixed port so URI parsing works
+      // reliably across Flutter versions (especially 3.38+ DDS proxy mode).
+      if (!processArgs.any((a) => a.contains('--vm-service-port'))) {
+        processArgs.add('--vm-service-port=50000');
+      }
+
       try {
-        await runSetup(projectPath);
+        await runSetup(projectPath, quiet: true);
       } catch (e) {
         // Continue even if setup fails
       }
 
-      _flutterProcess = await Process.start('flutter', processArgs,
-          workingDirectory: projectPath);
+      final flutterCmd = Platform.isWindows ? 'flutter.bat' : 'flutter';
+      _flutterProcess = await Process.start(flutterCmd, processArgs,
+          workingDirectory: projectPath,
+          runInShell: Platform.isWindows);
 
       final completer = Completer<String>();
       final errorLines = <String>[];
@@ -261,9 +303,12 @@ extension _ConnectionHandlers on FlutterMcpServer {
           .transform(const LineSplitter())
           .listen((line) {
         // Priority 1: Look for VM Service URI (http://.../)
-        // Example: "The Dart VM service is listening on http://127.0.0.1:50753/xxxx=/" (Flutter 3.x)
-        // Example: "The Dart VM service is listening on http://127.0.0.1:50753/xxxx#" (Flutter 3.41+)
-        if (line.contains('VM service') || line.contains('Observatory')) {
+        // Matches all known Flutter output formats:
+        //   Flutter <=3.37: "The Dart VM service is listening on http://..."
+        //   Flutter 3.38+:  "A Dart VM Service on <device> is available at: http://..."
+        //   Observatory:    "Observatory listening on http://..."
+        final lineLower = line.toLowerCase();
+        if (lineLower.contains('vm service') || lineLower.contains('observatory')) {
           final vmRegex = RegExp(r'http://[a-zA-Z0-9.:\-_/=#]+[/#]?');
           final match = vmRegex.firstMatch(line);
           if (match != null && !completer.isCompleted) {
@@ -477,7 +522,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
       final projectPath = args['project_path'] as String?;
       if (projectPath != null) {
         try {
-          await runSetup(projectPath);
+          await runSetup(projectPath, quiet: true);
         } catch (e) {
           // Continue even if setup fails
           print('Warning: Auto-setup failed: $e');
@@ -848,5 +893,39 @@ extension _ConnectionHandlers on FlutterMcpServer {
     if (_activeSessionId == null && _sessions.isNotEmpty) {
       _activeSessionId = _sessions.keys.first;
     }
+  }
+
+  /// Probe a WebSocket URI for the bridge protocol (JSON-RPC 2.0, not Dart VM
+  /// Service). Returns BridgeServiceInfo if the host:port serves the
+  /// /.flutter-skill health endpoint; null otherwise.
+  ///
+  /// This is how we distinguish C++ / React Native / Electron bridge URIs from
+  /// Flutter VM Service URIs so that connect_app can route to the right driver.
+  Future<BridgeServiceInfo?> _probeBridgeUri(String wsUri) async {
+    try {
+      final parsed = Uri.tryParse(wsUri);
+      if (parsed == null) return null;
+      final host = parsed.host.isEmpty ? '127.0.0.1' : parsed.host;
+      final port = parsed.port;
+      if (port == 0) return null;
+
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(milliseconds: 300);
+      final request = await client.get(host, port, '/.flutter-skill');
+      final response = await request.close().timeout(const Duration(milliseconds: 500));
+      if (response.statusCode == 200) {
+        final body = await response
+            .transform(const Utf8Decoder())
+            .join()
+            .timeout(const Duration(milliseconds: 300));
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        if (json.containsKey('framework')) {
+          client.close();
+          return BridgeServiceInfo.fromHealthCheck(json, port);
+        }
+      }
+      client.close();
+    } catch (_) {}
+    return null;
   }
 }

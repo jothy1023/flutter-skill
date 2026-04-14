@@ -39,11 +39,13 @@ Future<void> runLaunch(List<String> args) async {
 
   print('Launching Flutter app in: $projectPath with args: $flutterArgs');
 
+  final flutterCmd = Platform.isWindows ? 'flutter.bat' : 'flutter';
   final process = await Process.start(
-    'flutter',
+    flutterCmd,
     ['run', ...flutterArgs],
     workingDirectory: projectPath,
     mode: ProcessStartMode.normal,
+    runInShell: Platform.isWindows,
   );
 
   print(
