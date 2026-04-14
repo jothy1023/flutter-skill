@@ -1,3 +1,12 @@
+## 0.9.35
+
+**Fix inspect empty text, Flutter 3.38+ URI detection, MCP stdout pollution, Homebrew arm64 on Intel, Windows flutter command**
+
+### Changes
+- TODO: Add your changes here
+
+---
+
 ## 0.9.34
 
 **notifications/tools/list_changed support + idb integration for native iOS automation**
