@@ -85,6 +85,11 @@ async function main() {
 
   // Try to use existing native binary
   if (localBinaryPath && fs.existsSync(localBinaryPath)) {
+    // Always ensure the execute bit is set before spawning.
+    // postinstall chmodSync can silently fail on some npm configurations
+    // (e.g. restricted sandbox, npm run as root on certain macOS setups),
+    // leaving the binary present but not executable (EACCES).
+    try { fs.chmodSync(localBinaryPath, 0o755); } catch (_) {}
     runNativeBinary(localBinaryPath);
     return;
   }
