@@ -57,7 +57,14 @@ function downloadBinary(url, destPath) {
         response.pipe(file);
         file.on('finish', () => {
           file.close();
-          fs.chmodSync(destPath, 0o755);
+          try {
+            fs.chmodSync(destPath, 0o755);
+          } catch (chmodErr) {
+            // chmod failed — reject so the caller can log a warning instead
+            // of leaving a non-executable file behind silently.
+            reject(new Error(`Downloaded binary but could not set execute permission: ${chmodErr.message}`));
+            return;
+          }
           console.log('\n[flutter-skill] Native binary installed successfully!');
           resolve(destPath);
         });
@@ -78,6 +85,9 @@ async function main() {
   const localPath = path.join(binDir, `${binaryName}-v${VERSION}`);
 
   if (fs.existsSync(localPath)) {
+    // Re-apply execute permission in case a previous install left the binary
+    // without +x (e.g. chmod failed silently inside a restricted npm sandbox).
+    try { fs.chmodSync(localPath, 0o755); } catch (_) {}
     console.log('[flutter-skill] Native binary already installed');
     return;
   }
