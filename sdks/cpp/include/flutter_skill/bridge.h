@@ -91,6 +91,7 @@ private:
 
     void        run_server();
     void        handle_client(int fd);
+    void        handle_http(int fd, const std::string& request);
     std::string dispatch(const std::string& method, const std::string& params_json);
     std::string make_success(const std::string& extra = "");
     std::string make_error_result(const std::string& msg);

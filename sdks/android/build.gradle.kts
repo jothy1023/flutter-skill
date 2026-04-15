@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.flutterskill"
-version = "0.9.35"
+version = "0.9.36"
 
 android {
     namespace = "com.flutterskill"
