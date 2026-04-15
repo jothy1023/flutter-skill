@@ -121,11 +121,17 @@ void FlutterSkillBridge::run_server() {
 // ── Client handling ────────────────────────────────────────────────────────
 
 void FlutterSkillBridge::handle_client(int fd) {
-    // 1. Read HTTP upgrade request
+    // 1. Read HTTP request (could be a WebSocket upgrade or a plain GET)
     std::string http_req = read_http_request(fd);
     if (http_req.empty()) return;
 
-    // 2. Perform WebSocket handshake
+    // 2. Route plain HTTP requests (e.g., health check from BridgeDiscovery)
+    if (get_header(http_req, "Upgrade").empty()) {
+        handle_http(fd, http_req);
+        return;
+    }
+
+    // 3. Perform WebSocket handshake
     if (!ws_handshake(fd, http_req)) return;
 
     fprintf(stderr, "[flutter-skill] Client connected\n");
@@ -168,7 +174,17 @@ void FlutterSkillBridge::handle_client(int fd) {
                 }
 
                 std::string result = dispatch(method, params);
-                std::string response = rpc_ok(id, result);
+                // Use JSON-RPC error response when dispatch reports failure,
+                // so clients see a proper {"error": ...} instead of a
+                // {"result": {"success": false, ...}} envelope.
+                std::string response;
+                if (result.find("\"success\":false") != std::string::npos) {
+                    std::string err_msg = json_get(result, "error");
+                    if (err_msg.empty()) err_msg = "command failed";
+                    response = rpc_error(id, -32601, err_msg);
+                } else {
+                    response = rpc_ok(id, result);
+                }
                 ws_send_text(fd, response);
                 break;
             }
@@ -179,6 +195,55 @@ void FlutterSkillBridge::handle_client(int fd) {
     }
 done:
     fprintf(stderr, "[flutter-skill] Client disconnected\n");
+}
+
+// ── HTTP handler ───────────────────────────────────────────────────────────
+
+void FlutterSkillBridge::handle_http(int fd, const std::string& request) {
+    // Extract path from the request line: "GET /path HTTP/1.1"
+    std::string path = "/";
+    size_t sp1 = request.find(' ');
+    if (sp1 != std::string::npos) {
+        size_t sp2 = request.find(' ', sp1 + 1);
+        if (sp2 != std::string::npos) {
+            path = request.substr(sp1 + 1, sp2 - sp1 - 1);
+        }
+    }
+
+    if (path == "/.flutter-skill" || path == "/.flutter-skill/") {
+        // Respond with the health-check JSON that BridgeDiscovery expects.
+        // ws_uri uses the same port as the WebSocket server.
+#if defined(_WIN32)
+        const char* platform = "windows";
+#elif defined(__APPLE__)
+        const char* platform = "macos";
+#else
+        const char* platform = "linux";
+#endif
+        std::string json =
+            "{"
+            "\"framework\":\"cpp\","
+            "\"app_name\":" + json_str(opts_.app_name) + ","
+            "\"sdk_version\":" + json_str(sdk_version()) + ","
+            "\"platform\":\"" + platform + "\","
+            "\"ws_uri\":\"ws://127.0.0.1:" + std::to_string(opts_.port) + "\","
+            "\"capabilities\":[\"initialize\",\"ping\",\"inspect\",\"tap\","
+            "\"enter_text\",\"press_key\",\"scroll\",\"screenshot\","
+            "\"get_focused_window_title\",\"get_logs\",\"clear_logs\"]"
+            "}";
+
+        std::string response =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: " + std::to_string(json.size()) + "\r\n"
+            "Connection: close\r\n"
+            "\r\n" + json;
+
+        sock_send(fd, response.data(), response.size());
+    } else {
+        const char* not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+        sock_send(fd, not_found, std::strlen(not_found));
+    }
 }
 
 // ── JSON-RPC dispatcher ────────────────────────────────────────────────────
