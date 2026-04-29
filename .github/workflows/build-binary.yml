@@ -1,0 +1,30 @@
+name: Build macOS arm64 Binary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+
+      - name: Get dependencies
+        run: dart pub get
+
+      - name: Compile binary
+        run: dart compile exe bin/flutter_skill.dart -o flutter-skill-macos-arm64
+
+      - name: Make executable
+        run: chmod +x flutter-skill-macos-arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter-skill-macos-arm64-v0.9.36
+          path: flutter-skill-macos-arm64
+          retention-days: 7
