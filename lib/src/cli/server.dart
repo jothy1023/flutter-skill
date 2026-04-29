@@ -390,7 +390,6 @@ class FlutterMcpServer {
         _sendResult(id, {
           "capabilities": {
             "tools": {"listChanged": true},
-            "resources": {}
           },
           "protocolVersion": "2024-11-05",
           "serverInfo": {"name": "flutter-skill", "version": currentVersion},
