@@ -154,7 +154,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
 
       for (var attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          final client = FlutterSkillClient(uri);
+          final client = FlutterSkillClient(uri, onLog: _sendLog);
           await client.connect();
 
           // Store client and session info
@@ -320,7 +320,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
             }
 
             // Create new client and session
-            final client = FlutterSkillClient(uri);
+            final client = FlutterSkillClient(uri, onLog: _sendLog);
             client.connect().then((_) {
               // Store client and session info
               _clients[sessionId] = client;
@@ -650,7 +650,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
         await _clients[sessionId]!.disconnect();
       }
 
-      final client = FlutterSkillClient(uri);
+      final client = FlutterSkillClient(uri, onLog: _sendLog);
       await client.connect();
 
       // Store client and session info
@@ -728,7 +728,7 @@ extension _ConnectionHandlers on FlutterMcpServer {
           if (_clients.containsKey(sessionId)) {
             await _clients[sessionId]!.disconnect();
           }
-          final client = FlutterSkillClient(vmUri);
+          final client = FlutterSkillClient(vmUri, onLog: _sendLog);
           await client.connect();
           _clients[sessionId] = client;
           _sessions[sessionId] = SessionInfo(

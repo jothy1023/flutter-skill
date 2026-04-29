@@ -5,20 +5,24 @@ import 'app_driver.dart';
 
 class FlutterSkillClient implements AppDriver {
   final String wsUri;
+  final void Function(String level, String message)? onLog;
   VmService? _service;
   String? _isolateId;
   bool _reconnecting = false;
 
-  FlutterSkillClient(this.wsUri);
+  FlutterSkillClient(this.wsUri, {this.onLog});
 
   /// Get the VM Service URI this client is connected to
   String get vmServiceUri => wsUri;
 
   Future<void> connect() async {
+    onLog?.call('info', 'Connecting to $wsUri');
     try {
       _service = await vmServiceConnectUri(wsUri);
+      onLog?.call('info', 'Connected to VM Service');
 
       final vm = await _service!.getVM();
+      onLog?.call('info', 'Got VM info');
       final isolates = vm.isolates;
       if (isolates == null || isolates.isEmpty) {
         throw Exception('''❌ No Dart isolates found in the VM
@@ -86,6 +90,7 @@ Error details: $e''');
     if (_reconnecting) return false;
     _reconnecting = true;
     try {
+      onLog?.call('info', 'VM Service connection lost, attempting reconnect to $wsUri');
       // Tear down the old connection
       try {
         await _service?.dispose();
@@ -99,12 +104,14 @@ Error details: $e''');
       final isolates = vm.isolates;
       if (isolates != null && isolates.isNotEmpty) {
         _isolateId = isolates.first.id!;
+        onLog?.call('info', 'Reconnected to VM Service successfully');
         return true;
       }
       // Connected but no isolates — app may have exited
       _service = null;
       return false;
     } catch (e) {
+      onLog?.call('warning', 'Reconnection failed: $e');
       _service = null;
       _isolateId = null;
       return false;

@@ -1066,6 +1066,14 @@ class FlutterMcpServer {
 
   // ==================== End Build Error Helpers ====================
 
+  void _sendLog(String level, String message) {
+    _sendNotification('notifications/message', {
+      'level': level,
+      'logger': 'flutter-skill',
+      'data': message,
+    });
+  }
+
   void _sendNotification(String method, [Map<String, dynamic>? params]) {
     stdout.writeln(jsonEncode({
       "jsonrpc": "2.0",
