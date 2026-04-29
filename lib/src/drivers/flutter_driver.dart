@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 import '../discovery/unified_discovery.dart';
@@ -16,13 +15,10 @@ class FlutterSkillClient implements AppDriver {
   String get vmServiceUri => wsUri;
 
   Future<void> connect() async {
-    stderr.writeln('DEBUG: Connecting to $wsUri');
     try {
       _service = await vmServiceConnectUri(wsUri);
-      stderr.writeln('DEBUG: Connected to VM Service');
 
       final vm = await _service!.getVM();
-      stderr.writeln('DEBUG: Got VM info');
       final isolates = vm.isolates;
       if (isolates == null || isolates.isEmpty) {
         throw Exception('''❌ No Dart isolates found in the VM
@@ -90,8 +86,6 @@ Error details: $e''');
     if (_reconnecting) return false;
     _reconnecting = true;
     try {
-      stderr.writeln(
-          'DEBUG: VM Service connection lost, attempting reconnect to $wsUri');
       // Tear down the old connection
       try {
         await _service?.dispose();
@@ -105,14 +99,12 @@ Error details: $e''');
       final isolates = vm.isolates;
       if (isolates != null && isolates.isNotEmpty) {
         _isolateId = isolates.first.id!;
-        stderr.writeln('DEBUG: Reconnected to VM Service successfully');
         return true;
       }
       // Connected but no isolates — app may have exited
       _service = null;
       return false;
     } catch (e) {
-      stderr.writeln('DEBUG: Reconnection failed: $e');
       _service = null;
       _isolateId = null;
       return false;
